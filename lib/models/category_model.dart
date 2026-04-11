@@ -18,7 +18,10 @@ class CategoryModel extends HiveObject {
   late bool isExpense; // Thu hay Chi
 
   @HiveField(4)
-  late String? parentId; // Nếu null => Là danh mục Cha. Nếu có giá trị => Là con.
+  String? parentId; // Nếu null => Là danh mục Cha. Nếu có giá trị => Là con.
+
+  @HiveField(5)
+  double? budget; // Ngân sách thiết lập
 
   CategoryModel({
     required this.id,
@@ -26,6 +29,7 @@ class CategoryModel extends HiveObject {
     required this.iconCode,
     required this.isExpense,
     this.parentId, // Có thể null
+    this.budget,
   });
 
   IconData get iconData => IconData(iconCode, fontFamily: 'MaterialIcons');

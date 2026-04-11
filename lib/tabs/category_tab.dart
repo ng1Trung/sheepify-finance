@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/intl.dart';
 import '../models/category_model.dart';
+import '../models/transaction.dart';
 import '../constants.dart';
 import '../widgets/category_form.dart';
 
@@ -11,10 +13,31 @@ class CategoryTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: ValueListenableBuilder(
-        valueListenable: Hive.box<CategoryModel>(kCatBox).listenable(),
-        builder: (context, box, _) {
+      body: AnimatedBuilder(
+        animation: Listenable.merge([
+          Hive.box<CategoryModel>(kCatBox).listenable(),
+          Hive.box<Transaction>(kMoneyBox).listenable(),
+        ]),
+        builder: (context, _) {
+          final box = Hive.box<CategoryModel>(kCatBox);
           final parents = box.values.where((c) => c.parentId == null).toList();
+          final txBox = Hive.box<Transaction>(kMoneyBox);
+          final now = DateTime.now();
+
+          // Tính tổng chi tiêu từng danh mục trong tháng này
+          Map<String, double> categorySpent = {};
+          for (var tx in txBox.values) {
+            if (tx.isExpense &&
+                tx.date.month == now.month &&
+                tx.date.year == now.year) {
+              categorySpent[tx.categoryId] =
+                  (categorySpent[tx.categoryId] ?? 0) + tx.amount;
+            }
+          }
+
+          String formatMoney(double amount) =>
+              NumberFormat.currency(locale: 'vi_VN', symbol: 'đ')
+                  .format(amount);
 
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 80),
@@ -24,6 +47,13 @@ class CategoryTab extends StatelessWidget {
               final children = box.values
                   .where((c) => c.parentId == parent.id)
                   .toList();
+
+              // Tính tổng chi của cả nhóm (Cha + tất cả con)
+              double totalGroupSpent = 0;
+              totalGroupSpent += (categorySpent[parent.id] ?? 0);
+              for (var child in children) {
+                totalGroupSpent += (categorySpent[child.id] ?? 0);
+              }
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 15),
@@ -96,13 +126,46 @@ class CategoryTab extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              Text(
-                                '${children.length} mục',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: parent.isExpense
-                                      ? Colors.red[300]
-                                      : Colors.green[300],
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (parent.isExpense &&
+                                        parent.budget != null) ...[
+                                      Text(
+                                        'Còn: ${formatMoney(parent.budget! - totalGroupSpent)}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: (parent.budget! -
+                                                      totalGroupSpent) <
+                                                  0
+                                              ? Colors.red
+                                              : Colors.blue[700],
+                                        ),
+                                      ),
+                                      Text(
+                                        'Tổng NS: ${formatMoney(parent.budget!)}',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          color: parent.isExpense
+                                              ? Colors.red[300]
+                                              : Colors.green[300],
+                                        ),
+                                      ),
+                                    ] else ...[
+                                      Text(
+                                        '${children.length} mục',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: parent.isExpense
+                                              ? Colors.red[300]
+                                              : Colors.green[300],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ],
@@ -147,10 +210,55 @@ class CategoryTab extends StatelessWidget {
                             child.name,
                             style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
-                          trailing: const Icon(
-                            Icons.edit,
-                            size: 16,
-                            color: Colors.grey,
+                          trailing: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              if (child.isExpense) ...[
+                                if (parent.budget != null) ...[
+                                  // Nếu cha có ngân sách -> Hiện phần chi tiêu của con trong NS đó
+                                  Text(
+                                    '- ${formatMoney(categorySpent[child.id] ?? 0)}',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ] else if (child.budget != null) ...[
+                                  // Nếu cha không có nhưng con có -> Hiện theo con
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Còn: ${formatMoney(child.budget! - (categorySpent[child.id] ?? 0))}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: (child.budget! -
+                                                      (categorySpent[child.id] ??
+                                                          0)) <
+                                                  0
+                                              ? Colors.red
+                                              : Colors.blue,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        'NS riêng: ${formatMoney(child.budget!)}',
+                                        style: const TextStyle(
+                                            fontSize: 9, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(width: 8),
+                              ],
+                              const Icon(
+                                Icons.edit,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                            ],
                           ),
                           onTap: () => _showCategoryForm(context, child),
                         ),

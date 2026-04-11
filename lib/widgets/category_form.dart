@@ -13,6 +13,7 @@ class CategoryForm extends StatefulWidget {
 
 class _CategoryFormState extends State<CategoryForm> {
   final _nameController = TextEditingController();
+  final _budgetController = TextEditingController();
   final _catBox = Hive.box<CategoryModel>(kCatBox);
 
   late bool _isExpense;
@@ -69,6 +70,8 @@ class _CategoryFormState extends State<CategoryForm> {
       _isExpense = cat.isExpense;
       _selectedIcon = cat.iconCode;
       _selectedParentId = cat.parentId;
+      _budgetController.text =
+          cat.budget != null ? cat.budget!.toStringAsFixed(0) : '';
     } else {
       // --- CHẾ ĐỘ TẠO MỚI ---
       _nameController.text = '';
@@ -85,7 +88,7 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   void _submit() {
-    if (_nameController.text.isEmpty) return;
+    final enteredBudget = double.tryParse(_budgetController.text);
 
     if (widget.category != null) {
       // UPDATE
@@ -93,6 +96,7 @@ class _CategoryFormState extends State<CategoryForm> {
       cat.name = _nameController.text;
       cat.iconCode = _selectedIcon;
       // Lưu ý: Không cho sửa ParentId hay Thu/Chi để tránh lỗi dữ liệu phức tạp
+      cat.budget = enteredBudget;
       cat.save();
     } else {
       // CREATE NEW
@@ -103,6 +107,7 @@ class _CategoryFormState extends State<CategoryForm> {
         iconCode: _selectedIcon,
         isExpense: _isExpense,
         parentId: _selectedParentId == 'new_group' ? null : _selectedParentId,
+        budget: enteredBudget,
       );
       _catBox.add(newCat);
     }
@@ -178,6 +183,20 @@ class _CategoryFormState extends State<CategoryForm> {
           ),
 
           const SizedBox(height: 15),
+
+          if (_isExpense) ...[
+            const Text('Ngân sách dự kiến (vnđ):',
+                style: TextStyle(color: Colors.grey)),
+            TextField(
+              controller: _budgetController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                prefixText: 'đ ',
+              ),
+            ),
+            const SizedBox(height: 15),
+          ],
 
           // 2. Dropdown chọn Nhóm (Cha)
           // Chỉ hiện khi Tạo mới, hoặc khi đang Sửa danh mục con
