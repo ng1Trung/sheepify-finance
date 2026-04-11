@@ -66,7 +66,33 @@ class _DiaryTabState extends State<DiaryTab> {
               tx.date.year == widget.currentDay.year;
         }).toList();
 
-        transactions.sort((a, b) => b.date.compareTo(a.date));
+        // --- TÍNH SỐ DƯ LŨY KẾ ---
+        // 1. Lấy toàn bộ giao dịch, sắp xếp từ cũ nhất -> mới nhất (Dùng key làm tie-breaker)
+        final allTxs = box.values.cast<Transaction>().toList();
+        allTxs.sort((a, b) {
+          int cmp = a.date.compareTo(b.date);
+          if (cmp == 0) return (a.key as int).compareTo(b.key as int);
+          return cmp;
+        });
+
+        // 2. Tính số dư tại từng thời điểm
+        Map<dynamic, double> runningBalances = {};
+        double currentTotal = 0;
+        for (var tx in allTxs) {
+          if (tx.isExpense) {
+            currentTotal -= tx.amount;
+          } else {
+            currentTotal += tx.amount;
+          }
+          runningBalances[tx.key] = currentTotal;
+        }
+
+        // 3. Sắp xếp danh sách hiển thị: Mới nhất -> Cũ nhất (Tie-breaker key)
+        transactions.sort((a, b) {
+          int cmp = b.date.compareTo(a.date);
+          if (cmp == 0) return (b.key as int).compareTo(a.key as int);
+          return cmp;
+        });
 
         double dailyIncome = 0;
         double dailyExpense = 0;
@@ -303,23 +329,52 @@ class _DiaryTabState extends State<DiaryTab> {
                                   ],
                                 ),
                               ),
-                              title: Text(
-                                titleText,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      titleText,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    DateFormat('HH:mm').format(tx.date),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
                               subtitle: tx.note.isNotEmpty
                                   ? Text(tx.note)
                                   : null,
-                              trailing: Text(
-                                formatMoney(tx.amount),
-                                style: TextStyle(
-                                  color: tx.isExpense
-                                      ? Colors.red
-                                      : Colors.teal,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    formatMoney(tx.amount),
+                                    style: TextStyle(
+                                      color: tx.isExpense
+                                          ? Colors.red
+                                          : Colors.teal,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Số dư: ${formatMoney(runningBalances[tx.key] ?? 0)}',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
                               ),
                               onTap: () async {
                                 final result = await showModalBottomSheet(
