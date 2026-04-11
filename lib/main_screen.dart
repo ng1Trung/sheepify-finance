@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:line_icons/line_icons.dart';
 import 'widgets/transaction_form.dart';
-import 'models/transaction.dart';
 import 'models/category_model.dart';
 import 'constants.dart';
 import 'tabs/stats_tab.dart';
@@ -20,18 +19,11 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 1;
 
-  // 1. TÁCH BIẾN THỜI GIAN
-  DateTime _selectedMonth = DateTime.now(); // Dùng cho Tab Thống kê
-  DateTime _selectedDay = DateTime.now(); // Dùng cho Tab Nhật ký
+  // QUẢN LÝ THỜI GIAN VÀ CHẾ ĐỘ XEM
+  DateTime _selectedDate = DateTime.now();
+  bool _isMonthlyView = false; // Mặc định là xem theo Ngày
 
-  final _box = Hive.box<Transaction>(kMoneyBox);
   final _catBox = Hive.box<CategoryModel>(kCatBox);
-
-  final _noteController = TextEditingController();
-  final _amountController = TextEditingController();
-
-  // Logic form thêm mới vẫn dùng biến riêng này để chọn ngày nhập liệu
-  DateTime _inputDate = DateTime.now();
 
   @override
   void initState() {
@@ -82,162 +74,142 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // Hàm chuyển Tháng (Cho Tab Thống Kê)
-  void _changeMonth(int months) {
+  void _changeTime(int offset) {
     setState(() {
-      _selectedMonth = DateTime(
-        _selectedMonth.year,
-        _selectedMonth.month + months,
-        1,
-      );
+      if (_isMonthlyView || _currentIndex == 0) {
+        // Chế độ Tháng hoặc đang ở Tab Thống kê
+        _selectedDate = DateTime(
+          _selectedDate.year,
+          _selectedDate.month + offset,
+          1,
+        );
+      } else {
+        // Chế độ Ngày
+        _selectedDate = _selectedDate.add(Duration(days: offset));
+      }
     });
   }
 
-  // Hàm chuyển Ngày (Cho Tab Nhật Ký)
-  void _changeDay(int days) {
-    setState(() {
-      _selectedDay = _selectedDay.add(Duration(days: days));
-    });
-  }
-
-  // Hàm mở lịch chọn ngày nhanh (Cho Tab Nhật Ký)
-  Future<void> _pickDay() async {
+  Future<void> _pickTime() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDay,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
     );
     if (picked != null) {
-      setState(() => _selectedDay = picked);
+      setState(() => _selectedDate = picked);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 2. LOGIC APPBAR LINH HOẠT
+    // APPBAR NAVIGATOR TÍCH HỢP XỊN XÒ
     Widget buildAppBarTitle() {
-      // --- TRƯỜNG HỢP 1: TAB THỐNG KÊ (CHỌN THÁNG) ---
-      if (_currentIndex == 0) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new,
-                size: 16,
-                color: Colors.teal,
-              ),
-              onPressed: () => _changeMonth(-1),
-            ),
+      if (_currentIndex == 2) {
+        return const Text('Danh Mục',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal));
+      }
+
+      String dateText;
+      if (_currentIndex == 0 || _isMonthlyView) {
+        dateText = 'Tháng ${DateFormat('MM/yyyy').format(_selectedDate)}';
+      } else {
+        dateText = DateFormat('dd/MM/yyyy').format(_selectedDate);
+      }
+
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // NÚT CHUYỂN ĐỔI NGÀY/THÁNG (CHỈ HIỆN Ở TAB NHẬT KÝ)
+          if (_currentIndex == 1)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              height: 32,
+              padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey[300]!, width: 0.5),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.calendar_month,
-                    size: 16,
-                    color: Colors.teal,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Tháng ${DateFormat('MM/yyyy').format(_selectedMonth)}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal,
-                    ),
-                  ),
+                  _buildModeToggleItem('Ngày', !_isMonthlyView),
+                  _buildModeToggleItem('Tháng', _isMonthlyView),
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.teal,
+          const SizedBox(height: 8),
+          // NAVIGATOR < NGÀY/THÁNG >
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.arrow_back_ios_new,
+                    size: 14, color: Colors.teal),
+                onPressed: () => _changeTime(-1),
               ),
-              onPressed: () => _changeMonth(1),
-            ),
-          ],
-        );
-      }
-
-      // --- TRƯỜNG HỢP 2: TAB NHẬT KÝ (CHỌN NGÀY) ---
-      if (_currentIndex == 1) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new,
-                size: 16,
-                color: Colors.teal,
-              ),
-              onPressed: () => _changeDay(-1), // Trừ 1 ngày
-            ),
-            GestureDetector(
-              onTap: _pickDay, // Bấm vào để chọn lịch
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.teal.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.calendar_today,
-                      size: 16,
-                      color: Colors.teal,
-                    ),
-                    const SizedBox(width: 8),
-                    // Hiển thị ngày cụ thể (VD: 17/01/2026)
-                    Text(
-                      DateFormat('dd/MM/yyyy').format(_selectedDay),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+              InkWell(
+                onTap: _pickTime,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        (_currentIndex == 0 || _isMonthlyView)
+                            ? Icons.calendar_month
+                            : Icons.calendar_today,
+                        size: 14,
                         color: Colors.teal,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Text(
+                        dateText,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            IconButton(
-              icon: const Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.teal,
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.arrow_forward_ios,
+                    size: 14, color: Colors.teal),
+                onPressed: () => _changeTime(1),
               ),
-              // Nếu là ngày tương lai thì có thể ẩn nút next hoặc vẫn cho bấm tùy bạn
-              onPressed: () => _changeDay(1), // Cộng 1 ngày
-            ),
-          ],
-        );
-      }
-
-      // --- TRƯỜNG HỢP 3: DANH MỤC ---
-      return const Text(
-        'Quản Lý Danh Mục',
-        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+            ],
+          ),
+        ],
       );
     }
 
     Widget buildBody() {
       switch (_currentIndex) {
         case 0:
-          return StatsTab(currentMonth: _selectedMonth); // Truyền Tháng
+          return StatsTab(currentMonth: _selectedDate);
         case 1:
-          return DiaryTab(currentDay: _selectedDay); // Truyền Ngày (Mới)
+          return DiaryTab(
+            selectedDate: _selectedDate,
+            isMonthly: _isMonthlyView,
+          );
         case 2:
           return const CategoryTab();
         default:
@@ -246,25 +218,21 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.grey[50], // Nền hơi xám cho nổi card
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.white,
+        toolbarHeight: _currentIndex == 2 ? 60 : 100, // Tăng chiều cao cho toggle
         title: buildAppBarTitle(),
       ),
       body: buildBody(),
       floatingActionButton: _currentIndex == 1
           ? FloatingActionButton(
-              onPressed: () {
-                // Khi bấm thêm mới, mặc định lấy ngày đang chọn ở Nhật ký để nhập cho tiện
-                _inputDate = _selectedDay;
-                _showAddTransactionForm();
-              },
+              onPressed: _showAddTransactionForm,
               backgroundColor: Colors.teal,
               elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
@@ -276,12 +244,11 @@ class _MainScreenState extends State<MainScreen> {
           activeColor: Colors.teal,
           iconSize: 24,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          duration: const Duration(milliseconds: 400),
           tabBackgroundColor: Colors.teal.withOpacity(0.1),
           color: Colors.grey[600],
           tabs: const [
             GButton(icon: LineIcons.pieChart, text: 'Thống kê'),
-            GButton(icon: LineIcons.book, text: 'Nhật ký'), // Nhật ký
+            GButton(icon: LineIcons.book, text: 'Nhật ký'),
             GButton(icon: LineIcons.tags, text: 'Danh mục'),
           ],
           selectedIndex: _currentIndex,
@@ -291,38 +258,56 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  Widget _buildModeToggleItem(String title, bool isActive) {
+    return GestureDetector(
+      onTap: () => setState(() => _isMonthlyView = (title == 'Tháng')),
+      child: Container(
+        width: 80,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+            color: isActive ? Colors.teal : Colors.grey[600],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showAddTransactionForm() async {
-    // Chờ kết quả trả về từ Form (là ngày user đã chọn)
     final resultDate = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TransactionForm(initialDate: _selectedDay),
+      builder: (_) => TransactionForm(initialDate: _selectedDate),
     );
 
-    // Nếu có kết quả trả về (tức là Lưu thành công)
     if (resultDate != null) {
       setState(() {
-        // 1. Cập nhật ngày đang chọn thành ngày của giao dịch vừa tạo
-        _selectedDay = resultDate;
-
-        // 2. Chuyển ngay sang tab Nhật Ký (index 1) để user thấy kết quả
+        _selectedDate = resultDate;
+        _isMonthlyView = false; // Khi thêm xong, hiện thị ngày vừa thêm
         _currentIndex = 1;
       });
-
-      // 3. Hiển thị thông báo thành công
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Đã thêm giao dịch ngày ${DateFormat('dd/MM/yyyy').format(resultDate)}',
-              style: const TextStyle(color: Colors.white),
-            ),
+            content: Text('Đã thêm giao dịch ngày ${DateFormat('dd/MM/yyyy').format(resultDate)}'),
             backgroundColor: Colors.teal,
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating, // Nổi lên cho đẹp
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
