@@ -9,8 +9,13 @@ import '../constants.dart';
 import '../widgets/transaction_form.dart';
 
 class DiaryTab extends StatefulWidget {
-  final DateTime currentDay;
-  const DiaryTab({super.key, required this.currentDay});
+  final DateTime selectedDate;
+  final bool isMonthly;
+  const DiaryTab({
+    super.key,
+    required this.selectedDate,
+    required this.isMonthly,
+  });
 
   @override
   State<DiaryTab> createState() => _DiaryTabState();
@@ -20,39 +25,6 @@ class _DiaryTabState extends State<DiaryTab> {
   String formatMoney(double amount) =>
       NumberFormat.currency(locale: 'vi_VN', symbol: 'đ').format(amount);
 
-  void _confirmDelete(BuildContext context, Transaction tx) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xóa giao dịch?'),
-        content: const Text('Hành động này không thể hoàn tác.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () {
-              tx.delete();
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã xóa giao dịch thành công'),
-                  backgroundColor: Colors.redAccent,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            child: const Text(
-              'Xóa Vĩnh Viễn',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
@@ -60,22 +32,14 @@ class _DiaryTabState extends State<DiaryTab> {
       builder: (context, box, _) {
         final catBox = Hive.box<CategoryModel>(kCatBox);
 
-        final transactions = box.values.cast<Transaction>().where((tx) {
-          return tx.date.day == widget.currentDay.day &&
-              tx.date.month == widget.currentDay.month &&
-              tx.date.year == widget.currentDay.year;
-        }).toList();
-
-        // --- TÍNH SỐ DƯ LŨY KẾ ---
-        // 1. Lấy toàn bộ giao dịch, sắp xếp từ cũ nhất -> mới nhất (Dùng key làm tie-breaker)
+        // 1. Lấy toàn bộ giao dịch để tính số dư lũy kế
         final allTxs = box.values.cast<Transaction>().toList();
         allTxs.sort((a, b) {
           int cmp = a.date.compareTo(b.date);
-          if (cmp == 0) return (a.key as int).compareTo(b.key as int);
+          if (cmp == 0) return a.key.toString().compareTo(b.key.toString());
           return cmp;
         });
 
-        // 2. Tính số dư tại từng thời điểm
         Map<dynamic, double> runningBalances = {};
         double currentTotal = 0;
         for (var tx in allTxs) {
@@ -87,315 +51,180 @@ class _DiaryTabState extends State<DiaryTab> {
           runningBalances[tx.key] = currentTotal;
         }
 
-        // 3. Sắp xếp danh sách hiển thị: Mới nhất -> Cũ nhất (Tie-breaker key)
-        transactions.sort((a, b) {
-          int cmp = b.date.compareTo(a.date);
-          if (cmp == 0) return (b.key as int).compareTo(a.key as int);
-          return cmp;
-        });
+        // 2. Lọc giao dịch hiển thị
+        final displayTxs = allTxs.where((tx) {
+          if (widget.isMonthly) {
+            return tx.date.month == widget.selectedDate.month &&
+                   tx.date.year == widget.selectedDate.year;
+          } else {
+            return tx.date.day == widget.selectedDate.day &&
+                   tx.date.month == widget.selectedDate.month &&
+                   tx.date.year == widget.selectedDate.year;
+          }
+        }).toList();
 
-        double dailyIncome = 0;
-        double dailyExpense = 0;
-        for (var tx in transactions) {
-          if (tx.isExpense)
-            dailyExpense += tx.amount;
-          else
-            dailyIncome += tx.amount;
+        // 3. Tính toán Thống kê Summary
+        double totalIncome = 0;
+        double totalExpense = 0;
+        for (var tx in displayTxs) {
+          if (tx.isExpense) totalExpense += tx.amount;
+          else totalIncome += tx.amount;
         }
+
+        // 4. Gom nhóm theo ngày
+        Map<String, List<Transaction>> grouped = {};
+        for (var tx in displayTxs) {
+          final dayKey = DateFormat('yyyy-MM-dd').format(tx.date);
+          if (grouped[dayKey] == null) grouped[dayKey] = [];
+          grouped[dayKey]!.add(tx);
+        }
+
+        final sortedDayKeys = grouped.keys.toList()
+          ..sort((a, b) => b.compareTo(a));
 
         return Column(
           children: [
+            // summary header
             Container(
               margin: const EdgeInsets.all(15),
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 10,
-                  ),
-                ],
+                boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10)],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Column(
-                    children: [
-                      const Text(
-                        'Thu Nhập',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      Text(
-                        formatMoney(dailyIncome),
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildStatItem('Thu nhập', totalIncome, Colors.green),
                   Container(width: 1, height: 40, color: Colors.grey[300]),
-                  Column(
-                    children: [
-                      const Text(
-                        'Chi Tiêu',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      Text(
-                        formatMoney(dailyExpense),
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildStatItem('Chi tiêu', totalExpense, Colors.red),
                   Container(width: 1, height: 40, color: Colors.grey[300]),
-                  Column(
-                    children: [
-                      const Text('Tổng', style: TextStyle(color: Colors.grey)),
-                      Text(
-                        formatMoney(dailyIncome - dailyExpense),
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildStatItem('Tổng', totalIncome - totalExpense, Colors.blue),
                 ],
               ),
             ),
 
             Expanded(
-              child: transactions.isEmpty
-                  // --- CẬP NHẬT EMPTY STATE TO RÕ ---
+              child: displayTxs.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Lottie.asset(
-                            'assets/empty.json',
-                            width:
-                                MediaQuery.of(context).size.width *
-                                0.8, // 80% màn hình
-                            fit: BoxFit.contain,
-                          ),
+                          Lottie.asset('assets/empty.json', width: 250),
                           const SizedBox(height: 10),
                           Text(
-                            'Ngày ${DateFormat('dd/MM').format(widget.currentDay)} không có giao dịch',
+                            widget.isMonthly
+                                ? 'Tháng này chưa có giao dịch'
+                                : 'Hôm nay chưa có giao dịch',
                             style: const TextStyle(color: Colors.grey),
                           ),
                         ],
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 80),
-                      itemCount: transactions.length,
-                      itemBuilder: (context, index) {
-                        final tx = transactions[index];
-                        final childCat = catBox.values.firstWhere(
-                          (c) => c.id == tx.categoryId,
-                          orElse: () => CategoryModel(
-                            id: '',
-                            name: '?',
-                            iconCode: Icons.help.codePoint,
-                            isExpense: true,
-                            parentId: null,
-                          ),
-                        );
-                        String parentName = '';
-                        if (childCat.parentId != null) {
-                          try {
-                            parentName = catBox.values
-                                .firstWhere((c) => c.id == childCat.parentId)
-                                .name;
-                          } catch (_) {}
-                        }
-                        final titleText = parentName.isNotEmpty
-                            ? '$parentName - ${childCat.name}'
-                            : childCat.name;
+                      padding: const EdgeInsets.only(bottom: 100),
+                      itemCount: sortedDayKeys.length,
+                      itemBuilder: (context, dayIdx) {
+                        final dKey = sortedDayKeys[dayIdx];
+                        final dayTxs = grouped[dKey]!;
+                        // sort txs within day newest to oldest
+                        dayTxs.sort((a,b) {
+                          int c = b.date.compareTo(a.date);
+                          if (c == 0) return b.key.toString().compareTo(a.key.toString());
+                          return c;
+                        });
 
-                        return Dismissible(
-                          key: ValueKey(tx.key),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 15,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red[100],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.red,
-                              size: 30,
-                            ),
-                          ),
-                          confirmDismiss: (direction) async {
-                            return await showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Xác nhận xóa'),
-                                content: const Text(
-                                  'Bạn có chắc muốn xóa giao dịch này không?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(false),
-                                    child: const Text('Hủy'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(true),
-                                    child: const Text(
-                                      'Xóa',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          onDismissed: (direction) {
-                            tx.delete();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Đã xóa giao dịch thành công'),
-                                backgroundColor: Colors.redAccent,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 15,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.05),
-                                  blurRadius: 5,
-                                ),
-                              ],
-                            ),
-                            child: ListTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: tx.isExpense
-                                      ? Colors.red.withOpacity(0.1)
-                                      : Colors.green.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // CHỈ HIỆN TIÊU ĐỀ NGÀY KHI ĐANG XEM THEO THÁNG
+                            if (widget.isMonthly) 
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 15, 20, 5),
                                 child: Row(
-                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      IconData(
-                                        childCat.iconCode,
-                                        fontFamily: 'MaterialIcons',
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                      color: tx.isExpense
-                                          ? Colors.red
-                                          : Colors.green,
-                                      size: 22,
+                                      child: Text(
+                                        DateFormat('dd/MM (EEEE)').format(DateTime.parse(dKey)),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.teal),
+                                      ),
                                     ),
-                                    if (tx.imagePath != null) ...[
-                                      const SizedBox(width: 8),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: Image.file(
-                                          File(tx.imagePath!),
-                                          width: 30,
-                                          height: 30,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ],
+                                    const Expanded(child: Divider(indent: 10)),
                                   ],
                                 ),
                               ),
-                              title: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      titleText,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
+                            ...dayTxs.map((tx) {
+                              final cat = catBox.values.firstWhere(
+                                (c) => c.id == tx.categoryId,
+                                orElse: () => CategoryModel(id: '', name: '?', iconCode: Icons.help.codePoint, isExpense: true),
+                              );
+                              return Dismissible(
+                                key: ValueKey(tx.key),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  color: Colors.red[100],
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  child: const Icon(Icons.delete, color: Colors.red),
+                                ),
+                                onDismissed: (_) => tx.delete(),
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5)],
+                                  ),
+                                  child: ListTile(
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: tx.isExpense ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
-                                      overflow: TextOverflow.ellipsis,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(IconData(cat.iconCode, fontFamily: 'MaterialIcons'), color: tx.isExpense ? Colors.red : Colors.green, size: 20),
+                                          if (tx.imagePath != null) ...[
+                                            const SizedBox(width: 8),
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(4),
+                                              child: Image.file(File(tx.imagePath!), width: 25, height: 25, fit: BoxFit.cover),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
                                     ),
+                                    title: Text(cat.name,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14)),
+                                    subtitle: tx.note.isNotEmpty
+                                        ? Text(tx.note,
+                                            style:
+                                                const TextStyle(fontSize: 12))
+                                        : null,
+                                    trailing: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(formatMoney(tx.amount), style: TextStyle(color: tx.isExpense ? Colors.red : Colors.teal, fontWeight: FontWeight.bold, fontSize: 14)),
+                                        Text('Số dư: ${formatMoney(runningBalances[tx.key] ?? 0)}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                      ],
+                                    ),
+                                    onTap: () => showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => TransactionForm(transaction: tx)),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    DateFormat('HH:mm').format(tx.date),
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              subtitle: tx.note.isNotEmpty
-                                  ? Text(tx.note)
-                                  : null,
-                              trailing: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    formatMoney(tx.amount),
-                                    style: TextStyle(
-                                      color: tx.isExpense
-                                          ? Colors.red
-                                          : Colors.teal,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Số dư: ${formatMoney(runningBalances[tx.key] ?? 0)}',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              onTap: () async {
-                                final result = await showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  builder: (_) =>
-                                      TransactionForm(transaction: tx),
-                                );
-                                if (result != null && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Cập nhật thành công!'),
-                                      backgroundColor: Colors.teal,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                }
-                              },
-                              onLongPress: () => _confirmDelete(context, tx),
-                            ),
-                          ),
+                                ),
+                              );
+                            }).toList(),
+                          ],
                         );
                       },
                     ),
@@ -403,6 +232,15 @@ class _DiaryTabState extends State<DiaryTab> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildStatItem(String label, double amount, Color color) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(formatMoney(amount), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+      ],
     );
   }
 }
