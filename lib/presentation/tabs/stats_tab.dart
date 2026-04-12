@@ -2,238 +2,471 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:line_icons/line_icons.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../core/constants/constants.dart';
 import '../../core/utils/currency_util.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
+import '../../data/models/settings_model.dart';
 
-class StatsTab extends StatelessWidget {
+class StatsTab extends StatefulWidget {
   final DateTime currentMonth;
   const StatsTab({super.key, required this.currentMonth});
 
   @override
+  State<StatsTab> createState() => _StatsTabState();
+}
+
+class _StatEntry {
+  final CategoryModel category;
+  double amount;
+  _StatEntry(this.category, this.amount);
+}
+
+class _StatsTabState extends State<StatsTab> {
+  bool _isExpenseMode = true;
+  int _touchedIndex = -1;
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      valueListenable: Hive.box<Transaction>(kMoneyBox).listenable(),
-      builder: (context, box, _) {
-        final catBox = Hive.box<CategoryModel>(kCatBox);
+      valueListenable: Hive.box<AppSettings>(kSettingsBox).listenable(),
+      builder: (context, settingsBox, _) {
+        final settings = settingsBox.get('current') ?? AppSettings();
 
-        final transactions = box.values.cast<Transaction>().where((tx) {
-          return tx.date.month == currentMonth.month &&
-              tx.date.year == currentMonth.year;
-        }).toList();
+        return ValueListenableBuilder(
+          valueListenable: Hive.box<Transaction>(kMoneyBox).listenable(),
+          builder: (context, box, _) {
+            final catBox = Hive.box<CategoryModel>(kCatBox);
+            final allTransactions = box.values.cast<Transaction>().toList();
 
-        final allParents = catBox.values
-            .where((c) => c.parentId == null)
-            .toList();
-        Map<String, double> parentStats = {for (var p in allParents) p.id: 0.0};
-        Map<String, double> childStats = {};
-        double totalIncome = 0;
-        double totalExpense = 0;
+            // 1. Phân loại giao dịch: Tháng này vs Các tháng trước
+            final monthStart = DateTime(
+              widget.currentMonth.year,
+              widget.currentMonth.month,
+              1,
+            );
+            final nextMonthStart = DateTime(
+              widget.currentMonth.year,
+              widget.currentMonth.month + 1,
+              1,
+            );
 
-        for (var tx in transactions) {
-          final childCat = catBox.values.firstWhere(
-            (c) => c.id == tx.categoryId,
-            orElse: () => CategoryModel(
-              id: '',
-              name: '?',
-              iconCode: 0,
-              isExpense: true,
-              parentId: null,
-            ),
-          );
-          if (childCat.id == '') continue;
+            final monthTransactions = allTransactions
+                .where(
+                  (tx) =>
+                      tx.date.isAfter(
+                        monthStart.subtract(const Duration(seconds: 1)),
+                      ) &&
+                      tx.date.isBefore(nextMonthStart),
+                )
+                .toList();
 
-          if (tx.isExpense)
-            totalExpense += tx.amount;
-          else
-            totalIncome += tx.amount;
+            final previousTransactions = allTransactions
+                .where((tx) => tx.date.isBefore(monthStart))
+                .toList();
 
-          childStats[childCat.name] =
-              (childStats[childCat.name] ?? 0) + tx.amount;
+            // 2. Tính toán số dư tồn dư từ quá khứ
+            double prevIncome = 0;
+            double prevExpense = 0;
+            for (var tx in previousTransactions) {
+              if (tx.isExpense)
+                prevExpense += tx.amount;
+              else
+                prevIncome += tx.amount;
+            }
+            double carriedOverBalance = prevIncome - prevExpense;
 
-          if (childCat.parentId != null &&
-              parentStats.containsKey(childCat.parentId)) {
-            parentStats[childCat.parentId!] =
-                (parentStats[childCat.parentId!] ?? 0) + tx.amount;
-          }
-        }
+            // 3. Phân tích dữ liệu theo Danh mục trong tháng
+            Map<String, _StatEntry> statsMap = {};
+            double monthIncome = 0;
+            double monthExpense = 0;
 
-        var sortedChildEntries = childStats.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-        allParents.sort(
-          (a, b) => (parentStats[b.id] ?? 0).compareTo(parentStats[a.id] ?? 0),
-        );
+            for (var tx in monthTransactions) {
+              if (tx.isExpense)
+                monthExpense += tx.amount;
+              else
+                monthIncome += tx.amount;
 
-        bool hasData = totalIncome > 0 || totalExpense > 0;
+              if (tx.isExpense == _isExpenseMode) {
+                final cat = catBox.values.firstWhere(
+                  (c) => c.id == tx.categoryId,
+                  orElse: () => CategoryModel(
+                    id: 'unknown',
+                    name: 'Khác',
+                    iconCode: 58263,
+                    isExpense: tx.isExpense,
+                  ),
+                );
 
-        // --- EMPTY STATE ---
-        if (!hasData) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Lottie.asset(
-                  'assets/empty.json',
-                  width: MediaQuery.of(context).size.width * 0.8,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Tháng ${DateFormat('MM/yyyy').format(currentMonth)} chưa có dữ liệu!',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                ),
-              ],
-            ),
-          );
-        }
+                if (statsMap.containsKey(cat.id)) {
+                  statsMap[cat.id]!.amount += tx.amount;
+                } else {
+                  statsMap[cat.id] = _StatEntry(cat, tx.amount);
+                }
+              }
+            }
 
-        double balance = totalIncome - totalExpense;
-        Color cardColor = balance > 0
-            ? Colors.green
-            : (balance < 0 ? Colors.red : Colors.grey);
-        const textColor = Colors.white;
+            // 4. Xử lý "Số dư khả dụng" và "Danh mục ảo Tháng trước"
+            double availableBalance;
+            if (settings.accumulateBalance) {
+              availableBalance =
+                  carriedOverBalance + monthIncome - monthExpense;
 
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Container(
-              height: 300,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 40,
-                  sections: sortedChildEntries.map((e) {
-                    final color = Colors
-                        .primaries[e.key.hashCode % Colors.primaries.length];
-                    final percent =
-                        (e.value / (totalIncome + totalExpense) * 100).toInt();
-                    return PieChartSectionData(
-                      color: color,
-                      value: e.value,
-                      title: percent > 5 ? '$percent%' : '',
-                      radius: 80,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+              // Thêm mục "Tháng trước" vào Tab THU NHẬP nếu có dư
+              if (!_isExpenseMode && carriedOverBalance > 0) {
+                final prevMonthCat = CategoryModel(
+                  id: 'virtual_prev_month',
+                  name: 'Tháng trước',
+                  iconCode: LineIcons.history.codePoint,
+                  isExpense: false,
+                );
+                statsMap[prevMonthCat.id] = _StatEntry(
+                  prevMonthCat,
+                  carriedOverBalance,
+                );
+              }
+            } else {
+              availableBalance = monthIncome - monthExpense;
+            }
+
+            double currentModeDisplayTotal = statsMap.values.fold(
+              0,
+              (sum, item) => sum + item.amount,
+            );
+
+            // Sắp xếp danh mục
+            var sortedStats = statsMap.values.toList()
+              ..sort((a, b) => b.amount.compareTo(a.amount));
+
+            // --- EMPTY STATE ---
+            if (currentModeDisplayTotal == 0) {
+              return Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    _buildBalanceCard(availableBalance),
+                    const SizedBox(height: 15),
+                    _buildToggleButton(),
+                    Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Lottie.asset(
+                              'assets/empty.json',
+                              width: MediaQuery.of(context).size.width * 0.6,
+                              fit: BoxFit.contain,
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Tháng ${DateFormat('MM/yyyy').format(widget.currentMonth)} chưa có dữ liệu ${_isExpenseMode ? "chi tiêu" : "thu nhập"}!',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      badgeWidget: _Badge(e.key),
-                      badgePositionPercentageOffset: 1.2,
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...allParents.map((parent) {
-              final total = parentStats[parent.id] ?? 0;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.05),
-                      blurRadius: 5,
                     ),
                   ],
-                ),
-                child: ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: parent.isExpense
-                          ? Colors.red.withOpacity(0.1)
-                          : Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      IconData(parent.iconCode, fontFamily: 'MaterialIcons'),
-                      color: parent.isExpense ? Colors.red : Colors.green,
-                      size: 22,
-                    ),
-                  ),
-                  title: Text(
-                    parent.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  trailing: Text(
-                    CurrencyUtil.formatMoney(total),
-                    style: TextStyle(
-                      color: total == 0
-                          ? Colors.grey
-                          : (parent.isExpense ? Colors.red : Colors.green),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
                 ),
               );
-            }),
-            const SizedBox(height: 20),
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              color: cardColor,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'SỐ DƯ THỰC TẾ:',
-                      style: TextStyle(
-                        color: textColor,
-                        fontWeight: FontWeight.bold,
+            }
+
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildBalanceCard(availableBalance),
+                const SizedBox(height: 15),
+                _buildToggleButton(),
+                const SizedBox(height: 20),
+
+                // --- BIỂU ĐỒ TRÒN ---
+                Container(
+                  height: 300,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
                       ),
-                    ),
-                    Text(
-                      CurrencyUtil.formatMoney(balance),
-                      style: const TextStyle(
-                        color: textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      PieChart(
+                        PieChartData(
+                          pieTouchData: PieTouchData(
+                            touchCallback:
+                                (FlTouchEvent event, pieTouchResponse) {
+                                  setState(() {
+                                    if (!event.isInterestedForInteractions ||
+                                        pieTouchResponse == null ||
+                                        pieTouchResponse.touchedSection ==
+                                            null) {
+                                      _touchedIndex = -1;
+                                      return;
+                                    }
+                                    _touchedIndex = pieTouchResponse
+                                        .touchedSection!
+                                        .touchedSectionIndex;
+                                  });
+                                },
+                          ),
+                          borderData: FlBorderData(show: false),
+                          sectionsSpace: 4,
+                          centerSpaceRadius: 65,
+                          sections: List.generate(sortedStats.length, (i) {
+                            final isTouched = i == _touchedIndex;
+                            final radius = isTouched ? 75.0 : 65.0;
+                            final stat = sortedStats[i];
+                            final color =
+                                Colors.primaries[stat.category.id.hashCode %
+                                    Colors.primaries.length];
+                            final double percentage =
+                                (stat.amount / currentModeDisplayTotal) * 100;
+
+                            return PieChartSectionData(
+                              color: color,
+                              value: stat.amount,
+                              title: '${percentage.toStringAsFixed(1)}%',
+                              radius: radius,
+                              titleStyle: TextStyle(
+                                fontSize: isTouched ? 14 : 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            );
+                          }),
+                        ),
                       ),
-                    ),
-                  ],
+                      _buildCenterInfo(sortedStats, currentModeDisplayTotal),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 50),
-          ],
+
+                const SizedBox(height: 30),
+                ...sortedStats.map((stat) {
+                  final parent = stat.category.parentId != null
+                      ? catBox.values.firstWhere(
+                          (c) => c.id == stat.category.parentId,
+                          orElse: () => stat.category,
+                        )
+                      : null;
+
+                  bool isVirtual = stat.category.id == 'virtual_prev_month';
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      leading: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: _isExpenseMode
+                              ? Colors.red.withOpacity(0.08)
+                              : Colors.green.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          isVirtual
+                              ? LineIcons.history
+                              : IconData(
+                                  stat.category.iconCode,
+                                  fontFamily: 'MaterialIcons',
+                                ),
+                          color: _isExpenseMode ? Colors.red : Colors.green,
+                          size: 22,
+                        ),
+                      ),
+                      title: Text(
+                        stat.category.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      subtitle: isVirtual
+                          ? const Text(
+                              'Số dư cộng dồn từ trước',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue,
+                              ),
+                            )
+                          : (parent != null
+                                ? Text(
+                                    parent.name,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[500],
+                                    ),
+                                  )
+                                : null),
+                      trailing: Text(
+                        CurrencyUtil.formatMoney(stat.amount),
+                        style: TextStyle(
+                          color: _isExpenseMode ? Colors.red : Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 50),
+              ],
+            );
+          },
         );
       },
     );
   }
-}
 
-class _Badge extends StatelessWidget {
-  final String text;
-  const _Badge(this.text);
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildToggleButton() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      height: 45,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.5), blurRadius: 2),
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildToggleItem("Chi tiêu", _isExpenseMode, Colors.red),
+          ),
+          Expanded(
+            child: _buildToggleItem("Thu nhập", !_isExpenseMode, Colors.green),
+          ),
         ],
       ),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _buildToggleItem(String title, bool isActive, Color color) {
+    return GestureDetector(
+      onTap: () => setState(() {
+        _isExpenseMode = (title == "Chi tiêu");
+        _touchedIndex = -1;
+      }),
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(21),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: isActive ? color : Colors.grey[600],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterInfo(List<_StatEntry> sortedStats, double total) {
+    String label = "TỔNG";
+    String amount = CurrencyUtil.formatMoney(total);
+    Color color = _isExpenseMode ? Colors.red : Colors.green;
+
+    if (_touchedIndex != -1 && _touchedIndex < sortedStats.length) {
+      label = sortedStats[_touchedIndex].category.name;
+      amount = CurrencyUtil.formatMoney(sortedStats[_touchedIndex].amount);
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[500],
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              amount,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBalanceCard(double balance) {
+    Color color = balance >= 0 ? Colors.teal : Colors.red;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: color.withOpacity(0.1),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'SỐ DƯ KHẢ DỤNG:',
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+            Text(
+              CurrencyUtil.formatMoney(balance),
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
