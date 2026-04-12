@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
-import '../models/transaction.dart';
-import '../models/category_model.dart';
-import '../constants.dart';
+
+import '../../core/constants/constants.dart';
+import '../../core/utils/currency_util.dart';
+import '../../data/models/transaction.dart';
+import '../../data/models/category_model.dart';
 import '../widgets/transaction_form.dart';
 
 class DiaryTab extends StatefulWidget {
@@ -22,9 +24,6 @@ class DiaryTab extends StatefulWidget {
 }
 
 class _DiaryTabState extends State<DiaryTab> {
-  String formatMoney(double amount) =>
-      NumberFormat.currency(locale: 'vi_VN', symbol: 'đ').format(amount);
-
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
@@ -202,21 +201,14 @@ class _DiaryTabState extends State<DiaryTab> {
                                         ],
                                       ),
                                     ),
-                                    title: Text(cat.name,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14)),
-                                    subtitle: tx.note.isNotEmpty
-                                        ? Text(tx.note,
-                                            style:
-                                                const TextStyle(fontSize: 12))
-                                        : null,
+                                    title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                    subtitle: tx.note.isNotEmpty ? Text(tx.note, style: const TextStyle(fontSize: 12)) : null,
                                     trailing: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
-                                        Text(formatMoney(tx.amount), style: TextStyle(color: tx.isExpense ? Colors.red : Colors.teal, fontWeight: FontWeight.bold, fontSize: 14)),
-                                        Text('Số dư: ${formatMoney(runningBalances[tx.key] ?? 0)}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                        Text(CurrencyUtil.formatMoney(tx.amount), style: TextStyle(color: tx.isExpense ? Colors.red : Colors.teal, fontWeight: FontWeight.bold, fontSize: 14)),
+                                        Text('Số dư: ${CurrencyUtil.formatMoney(runningBalances[tx.key] ?? 0)}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                                       ],
                                     ),
                                     onTap: () => showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => TransactionForm(transaction: tx)),
@@ -239,7 +231,7 @@ class _DiaryTabState extends State<DiaryTab> {
     return Column(
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        Text(formatMoney(amount), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+        Text(CurrencyUtil.formatMoney(amount), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
       ],
     );
   }

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'models/transaction.dart';
-import 'models/category_model.dart';
-import 'constants.dart';
-import 'main_screen.dart'; // Import màn hình chính
+import 'data/models/transaction.dart';
+import 'data/models/category_model.dart';
+import 'core/constants/constants.dart';
+import 'presentation/screens/main_screen.dart'; // Import màn hình chính
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

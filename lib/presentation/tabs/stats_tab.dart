@@ -3,16 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
-import '../models/transaction.dart';
-import '../models/category_model.dart';
-import '../constants.dart';
+
+import '../../core/constants/constants.dart';
+import '../../core/utils/currency_util.dart';
+import '../../data/models/transaction.dart';
+import '../../data/models/category_model.dart';
 
 class StatsTab extends StatelessWidget {
   final DateTime currentMonth;
   const StatsTab({super.key, required this.currentMonth});
-
-  String formatMoney(double amount) =>
-      NumberFormat.currency(locale: 'vi_VN', symbol: 'đ').format(amount);
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +69,7 @@ class StatsTab extends StatelessWidget {
 
         bool hasData = totalIncome > 0 || totalExpense > 0;
 
-        // --- CẬP NHẬT EMPTY STATE TO RÕ ---
+        // --- EMPTY STATE ---
         if (!hasData) {
           return Center(
             child: Column(
@@ -78,7 +77,6 @@ class StatsTab extends StatelessWidget {
               children: [
                 Lottie.asset(
                   'assets/empty.json',
-                  // Chiếm 80% chiều rộng màn hình, giữ đúng tỷ lệ ảnh gốc
                   width: MediaQuery.of(context).size.width * 0.8,
                   fit: BoxFit.contain,
                 ),
@@ -188,7 +186,7 @@ class StatsTab extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   trailing: Text(
-                    formatMoney(total),
+                    CurrencyUtil.formatMoney(total),
                     style: TextStyle(
                       color: total == 0
                           ? Colors.grey
@@ -220,7 +218,7 @@ class StatsTab extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      formatMoney(balance),
+                      CurrencyUtil.formatMoney(balance),
                       style: const TextStyle(
                         color: textColor,
                         fontWeight: FontWeight.bold,

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/category_model.dart';
-import '../constants.dart';
+
+import '../../core/constants/constants.dart';
+import '../../data/models/category_model.dart';
 
 class CategoryForm extends StatefulWidget {
   final CategoryModel? category; // Nếu có -> Sửa
