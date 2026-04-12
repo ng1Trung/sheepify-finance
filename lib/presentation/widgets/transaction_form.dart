@@ -5,9 +5,10 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
-import '../models/transaction.dart';
-import '../models/category_model.dart';
-import '../constants.dart';
+
+import '../../core/constants/constants.dart';
+import '../../data/models/transaction.dart';
+import '../../data/models/category_model.dart';
 
 class TransactionForm extends StatefulWidget {
   // Nếu có tx -> Chế độ Edit. Nếu null -> Chế độ Add
@@ -375,7 +376,7 @@ class _TransactionFormState extends State<TransactionForm> {
               prefixIcon: Icon(Icons.edit_note),
             ),
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 20),
 
           // Phần đính kèm ảnh
           const Text(

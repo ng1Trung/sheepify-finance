@@ -3,12 +3,13 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:line_icons/line_icons.dart';
-import 'widgets/transaction_form.dart';
-import 'models/category_model.dart';
-import 'constants.dart';
-import 'tabs/stats_tab.dart';
-import 'tabs/diary_tab.dart';
-import 'tabs/category_tab.dart';
+
+import '../../core/constants/constants.dart';
+import '../../data/models/category_model.dart';
+import '../widgets/transaction_form.dart';
+import '../tabs/stats_tab.dart';
+import '../tabs/diary_tab.dart';
+import '../tabs/category_tab.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -100,6 +101,37 @@ class _MainScreenState extends State<MainScreen> {
     if (picked != null) {
       setState(() => _selectedDate = picked);
     }
+  }
+
+  Widget _buildModeToggleItem(String title, bool isActive) {
+    return GestureDetector(
+      onTap: () => setState(() => _isMonthlyView = (title == 'Tháng')),
+      child: Container(
+        width: 80,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+            color: isActive ? Colors.teal : Colors.grey[600],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -253,37 +285,6 @@ class _MainScreenState extends State<MainScreen> {
           ],
           selectedIndex: _currentIndex,
           onTabChange: (index) => setState(() => _currentIndex = index),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModeToggleItem(String title, bool isActive) {
-    return GestureDetector(
-      onTap: () => setState(() => _isMonthlyView = (title == 'Tháng')),
-      child: Container(
-        width: 80,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : null,
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-            color: isActive ? Colors.teal : Colors.grey[600],
-          ),
         ),
       ),
     );

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import '../models/category_model.dart';
-import '../models/transaction.dart';
-import '../constants.dart';
+
+import '../../core/constants/constants.dart';
+import '../../core/utils/currency_util.dart';
+import '../../data/models/category_model.dart';
+import '../../data/models/transaction.dart';
 import '../widgets/category_form.dart';
 
 class CategoryTab extends StatelessWidget {
@@ -34,10 +36,6 @@ class CategoryTab extends StatelessWidget {
                   (categorySpent[tx.categoryId] ?? 0) + tx.amount;
             }
           }
-
-          String formatMoney(double amount) =>
-              NumberFormat.currency(locale: 'vi_VN', symbol: 'đ')
-                  .format(amount);
 
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 80),
@@ -134,7 +132,7 @@ class CategoryTab extends StatelessWidget {
                                     if (parent.isExpense &&
                                         parent.budget != null) ...[
                                       Text(
-                                        'Còn: ${formatMoney(parent.budget! - totalGroupSpent)}',
+                                        'Còn: ${CurrencyUtil.formatMoney(parent.budget! - totalGroupSpent)}',
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
@@ -146,7 +144,7 @@ class CategoryTab extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        'Tổng NS: ${formatMoney(parent.budget!)}',
+                                        'Tổng NS: ${CurrencyUtil.formatMoney(parent.budget!)}',
                                         style: TextStyle(
                                           fontSize: 9,
                                           color: parent.isExpense
@@ -217,7 +215,7 @@ class CategoryTab extends StatelessWidget {
                                 if (parent.budget != null) ...[
                                   // Nếu cha có ngân sách -> Hiện phần chi tiêu của con trong NS đó
                                   Text(
-                                    '- ${formatMoney(categorySpent[child.id] ?? 0)}',
+                                    '- ${CurrencyUtil.formatMoney(categorySpent[child.id] ?? 0)}',
                                     style: const TextStyle(
                                       fontSize: 10,
                                       color: Colors.grey,
@@ -231,7 +229,7 @@ class CategoryTab extends StatelessWidget {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
-                                        'Còn: ${formatMoney(child.budget! - (categorySpent[child.id] ?? 0))}',
+                                        'Còn: ${CurrencyUtil.formatMoney(child.budget! - (categorySpent[child.id] ?? 0))}',
                                         style: TextStyle(
                                           fontSize: 10,
                                           color: (child.budget! -
@@ -244,7 +242,7 @@ class CategoryTab extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        'NS riêng: ${formatMoney(child.budget!)}',
+                                        'NS riêng: ${CurrencyUtil.formatMoney(child.budget!)}',
                                         style: const TextStyle(
                                             fontSize: 9, color: Colors.grey),
                                       ),
