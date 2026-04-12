@@ -99,17 +99,6 @@ class StatsTab extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10, left: 5),
-              child: Text(
-                'Biểu đồ tháng ${DateFormat('MM/yyyy').format(currentMonth)}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
             Container(
               height: 300,
               padding: const EdgeInsets.all(10),
@@ -140,15 +129,6 @@ class StatsTab extends StatelessWidget {
                     );
                   }).toList(),
                 ),
-              ),
-            ),
-            const SizedBox(height: 25),
-            const Text(
-              'THỐNG KÊ THEO NHÓM (Giảm dần)',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.teal,
               ),
             ),
             const SizedBox(height: 10),

@@ -10,6 +10,7 @@ import '../widgets/transaction_form.dart';
 import '../tabs/stats_tab.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
+import '../tabs/settings_tab.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -142,6 +143,10 @@ class _MainScreenState extends State<MainScreen> {
         return const Text('Danh Mục',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal));
       }
+      if (_currentIndex == 3) {
+        return const Text('Cá nhân',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal));
+      }
 
       String dateText;
       if (_currentIndex == 0 || _isMonthlyView) {
@@ -244,6 +249,8 @@ class _MainScreenState extends State<MainScreen> {
           );
         case 2:
           return const CategoryTab();
+        case 3:
+          return const SettingsTab();
         default:
           return const SizedBox();
       }
@@ -255,7 +262,7 @@ class _MainScreenState extends State<MainScreen> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.white,
-        toolbarHeight: _currentIndex == 2 ? 60 : 100, // Tăng chiều cao cho toggle
+        toolbarHeight: (_currentIndex == 2 || _currentIndex == 3) ? 60 : 100, // Tăng chiều cao cho toggle
         title: buildAppBarTitle(),
       ),
       body: buildBody(),
@@ -282,6 +289,7 @@ class _MainScreenState extends State<MainScreen> {
             GButton(icon: LineIcons.pieChart, text: 'Thống kê'),
             GButton(icon: LineIcons.book, text: 'Nhật ký'),
             GButton(icon: LineIcons.tags, text: 'Danh mục'),
+            GButton(icon: LineIcons.user, text: 'Cá nhân'),
           ],
           selectedIndex: _currentIndex,
           onTabChange: (index) => setState(() => _currentIndex = index),
