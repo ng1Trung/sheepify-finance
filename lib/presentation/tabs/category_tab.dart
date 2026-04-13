@@ -269,11 +269,6 @@ class CategoryTab extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCategoryForm(context, null),
-        backgroundColor: Colors.teal,
-        child: const Icon(Icons.create_new_folder, color: Colors.white),
-      ),
     );
   }
 

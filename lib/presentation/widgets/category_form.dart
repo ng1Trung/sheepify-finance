@@ -71,8 +71,9 @@ class _CategoryFormState extends State<CategoryForm> {
       _isExpense = cat.isExpense;
       _selectedIcon = cat.iconCode;
       _selectedParentId = cat.parentId;
-      _budgetController.text =
-          cat.budget != null ? cat.budget!.toStringAsFixed(0) : '';
+      _budgetController.text = cat.budget != null
+          ? cat.budget!.toStringAsFixed(0)
+          : '';
     } else {
       // --- CHẾ ĐỘ TẠO MỚI ---
       _nameController.text = '';
@@ -147,7 +148,7 @@ class _CategoryFormState extends State<CategoryForm> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  'Thu Nhập',
+                  'Thu',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Switch(
@@ -170,7 +171,7 @@ class _CategoryFormState extends State<CategoryForm> {
                   },
                 ),
                 const Text(
-                  'Chi Tiêu',
+                  'Chi',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
@@ -186,8 +187,10 @@ class _CategoryFormState extends State<CategoryForm> {
           const SizedBox(height: 15),
 
           if (_isExpense) ...[
-            const Text('Ngân sách dự kiến (vnđ):',
-                style: TextStyle(color: Colors.grey)),
+            const Text(
+              'Ngân sách dự kiến (vnđ):',
+              style: TextStyle(color: Colors.grey),
+            ),
             TextField(
               controller: _budgetController,
               keyboardType: TextInputType.number,
