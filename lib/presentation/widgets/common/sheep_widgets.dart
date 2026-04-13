@@ -83,18 +83,18 @@ class SheepButton extends StatelessWidget {
 }
 
 class SheepListTile extends StatelessWidget {
-  final Widget leading;
+  final Widget? leading;
   final String title;
   final String? subtitle;
-  final Widget trailing;
+  final Widget? trailing;
   final VoidCallback? onTap;
 
   const SheepListTile({
     super.key,
-    required this.leading,
+    this.leading,
     required this.title,
     this.subtitle,
-    required this.trailing,
+    this.trailing,
     this.onTap,
   });
 
@@ -107,25 +107,33 @@ class SheepListTile extends StatelessWidget {
         onTap: onTap,
         child: Row(
           children: [
-            leading,
-            const SizedBox(width: 15),
+            if (leading != null) ...[
+              leading!,
+              const SizedBox(width: 15),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
                   if (subtitle != null)
                     Text(
                       subtitle!,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                 ],
               ),
             ),
-            trailing,
+            if (trailing != null) trailing!,
           ],
         ),
       ),

@@ -48,7 +48,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         CategoryModel(
           id: 'p_daily',
-          name: 'Chi tiêu',
+          name: 'Chi',
           iconCode: Icons.shopping_cart.codePoint,
           isExpense: true,
           parentId: null,
@@ -62,7 +62,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         CategoryModel(
           id: 'p_income',
-          name: 'Thu nhập',
+          name: 'Thu',
           iconCode: Icons.attach_money.codePoint,
           isExpense: false,
           parentId: null,

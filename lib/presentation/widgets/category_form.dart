@@ -136,7 +136,7 @@ class _CategoryFormState extends State<CategoryForm> {
         children: [
           Center(
             child: Text(
-              widget.category == null ? 'Tạo Danh Mục' : 'Sửa Danh Mục',
+              widget.category == null ? 'Tạo danh mục' : 'Sửa danh mục',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
