@@ -40,39 +40,34 @@ class _MainScreenState extends State<MainScreen> {
     if (_catBox.isEmpty) {
       final parents = [
         CategoryModel(
-          id: 'p_fixed',
+          id: 'cat_bill',
           name: 'Hoá đơn',
           iconCode: Icons.receipt.codePoint,
           isExpense: true,
-          parentId: null,
         ),
         CategoryModel(
-          id: 'p_daily',
-          name: 'Chi',
+          id: 'cat_eat',
+          name: 'Ăn uống',
+          iconCode: Icons.restaurant.codePoint,
+          isExpense: true,
+        ),
+        CategoryModel(
+          id: 'cat_shop',
+          name: 'Mua sắm',
           iconCode: Icons.shopping_cart.codePoint,
           isExpense: true,
-          parentId: null,
         ),
         CategoryModel(
-          id: 'p_debt',
-          name: 'Trả Nợ',
-          iconCode: Icons.credit_card.codePoint,
-          isExpense: true,
-          parentId: null,
-        ),
-        CategoryModel(
-          id: 'p_income',
-          name: 'Thu',
+          id: 'cat_salary',
+          name: 'Lương',
           iconCode: Icons.attach_money.codePoint,
           isExpense: false,
-          parentId: null,
         ),
         CategoryModel(
-          id: 'p_invest',
-          name: 'Tiết kiệm/Đầu tư',
-          iconCode: Icons.savings.codePoint,
+          id: 'cat_bonus',
+          name: 'Thưởng',
+          iconCode: Icons.card_giftcard.codePoint,
           isExpense: false,
-          parentId: null,
         ),
       ];
       _catBox.addAll(parents);

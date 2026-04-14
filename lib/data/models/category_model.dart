@@ -6,29 +6,25 @@ part 'category_model.g.dart';
 @HiveType(typeId: 2)
 class CategoryModel extends HiveObject {
   @HiveField(0)
-  late String id; // ID riêng biệt (VD: 'cat_001')
+  late String id;
 
   @HiveField(1)
-  late String name; // Tên hiển thị
+  late String name;
 
   @HiveField(2)
   late int iconCode;
 
   @HiveField(3)
-  late bool isExpense; // Thu hay Chi
+  late bool isExpense;
 
   @HiveField(4)
-  String? parentId; // Nếu null => Là danh mục Cha. Nếu có giá trị => Là con.
-
-  @HiveField(5)
-  double? budget; // Ngân sách thiết lập
+  double? budget;
 
   CategoryModel({
     required this.id,
     required this.name,
     required this.iconCode,
     required this.isExpense,
-    this.parentId, // Có thể null
     this.budget,
   });
 
