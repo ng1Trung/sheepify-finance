@@ -11,6 +11,7 @@ class TransactionImageArea extends StatelessWidget {
   final bool isExpense;
   final CategoryModel? selectedCategory;
   final TextEditingController amountController;
+  final TextEditingController noteController;
   final VoidCallback onPickImage;
   final VoidCallback onRemoveImage;
   final VoidCallback onToggleType;
@@ -22,6 +23,7 @@ class TransactionImageArea extends StatelessWidget {
     required this.isExpense,
     required this.selectedCategory,
     required this.amountController,
+    required this.noteController,
     required this.onPickImage,
     required this.onRemoveImage,
     required this.onToggleType,
@@ -30,72 +32,99 @@ class TransactionImageArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    bool hasCategory = selectedCategory != null;
+
     return AspectRatio(
-      aspectRatio: 1.0,
+      aspectRatio: 0.82,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: AppColors.background,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: Colors.grey[200]!, width: 1),
+          borderRadius: BorderRadius.circular(35),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 25,
+              offset: const Offset(0, 12),
+            ),
+          ],
         ),
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // BACKGROUND (IMAGE OR GRADIENT)
             GestureDetector(
               onTap: onPickImage,
               child: imagePath != null
                   ? Image.file(File(imagePath!), fit: BoxFit.cover)
                   : Container(
-                      color: Colors.grey[50],
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(LineIcons.image, size: 50, color: Colors.grey[300]),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Tap to add photo',
-                            style: TextStyle(color: Colors.black26, fontSize: 13),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: !hasCategory
+                              ? [const Color(0xFFBDBDBD), const Color(0xFF757575)] // Platinum Brighter
+                              : (isExpense
+                                  ? [const Color(0xFFC62828), const Color(0xFF8E24AA)]
+                                  : [const Color(0xFF2E7D32), const Color(0xFF00ACC1)]),
+                        ),
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 80),
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              selectedCategory?.iconData ?? LineIcons.image,
+                              size: 50,
+                              color: Colors.white,
+                            ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
             ),
 
-            // Top row: Type and Category
+            // Header UI (Category and Type toggle)
             Positioned(
               top: 20,
-              left: 30,
-              right: 30,
+              left: 20,
+              right: 20,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildTypeToggle(),
                   _buildCategoryPicker(),
+                  if (hasCategory) _buildTypeToggle(),
                 ],
               ),
             ),
 
-            // Bottom: Amount
+            // Action Block (Amount input and Note field)
             Positioned(
               bottom: 20,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: _buildAmountInput(),
-              ),
+              left: 20,
+              right: 20,
+              child: _buildActionBlock(),
             ),
 
+            // Delete Image Button
             if (imagePath != null)
               Positioned(
-                top: 10,
-                right: 10,
+                top: 15,
+                right: 15,
                 child: GestureDetector(
                   onTap: onRemoveImage,
-                  child: const CircleAvatar(
-                    radius: 12,
-                    backgroundColor: Colors.black54,
-                    child: Icon(Icons.close, size: 12, color: Colors.white),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Colors.black45,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, size: 16, color: Colors.white),
                   ),
                 ),
               ),
@@ -105,13 +134,136 @@ class TransactionImageArea extends StatelessWidget {
     );
   }
 
+  Widget _buildActionBlock() {
+    final bool isZeroValue = amountController.text.isEmpty;
+    final bool hasCategory = selectedCategory != null;
+    
+    // COLOR LOGIC: Strictly white until a category is selected to avoid misleading red/green colors
+    Color contentColor;
+    if (!hasCategory) {
+      contentColor = isZeroValue ? Colors.white24 : Colors.white;
+    } else {
+      contentColor = isZeroValue
+          ? Colors.white24
+          : (isExpense ? const Color(0xFFFF8A80) : const Color(0xFFB9F6CA));
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // AMOUNT INPUT SECTION
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  isExpense ? '-' : '+',
+                  style: TextStyle(
+                    color: contentColor,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                IntrinsicWidth(
+                  child: TextField(
+                    controller: amountController,
+                    autofocus: true,
+                    showCursor: false,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: contentColor,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      hintText: '0',
+                      hintStyle: const TextStyle(color: Colors.white24),
+                    ),
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  'đ',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // NOTE INPUT SECTION
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  LineIcons.edit,
+                  size: 16,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: noteController,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      hintText: 'Add details...',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.2),
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      filled: false,
+                      fillColor: Colors.transparent,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 26),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTypeToggle() {
     return GestureDetector(
       onTap: onToggleType,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: (isExpense ? AppColors.expense : AppColors.primary).withOpacity(0.85),
+          color: (isExpense ? AppColors.expense : AppColors.income).withOpacity(
+            0.9,
+          ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -127,25 +279,22 @@ class TransactionImageArea extends StatelessWidget {
   }
 
   Widget _buildCategoryPicker() {
+    bool hasCat = selectedCategory != null;
     return GestureDetector(
       onTap: onShowCategoryPicker,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: (selectedCategory != null ? AppColors.primary : Colors.grey[400]!)
-              .withOpacity(0.85),
+          color: (hasCat ? AppColors.primary : Colors.grey[400]!).withOpacity(
+            0.9,
+          ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              selectedCategory != null ? selectedCategory!.iconData : LineIcons.tag,
-              size: 14,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 6),
             Text(
-              selectedCategory?.name ?? 'Category',
+              hasCat ? selectedCategory!.name : 'Category',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -153,44 +302,6 @@ class TransactionImageArea extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAmountInput() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.white10, width: 0.5),
-      ),
-      child: IntrinsicWidth(
-        child: TextField(
-          controller: amountController,
-          autofocus: true,
-          showCursor: false,
-          keyboardType: TextInputType.number,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: isExpense ? const Color(0xFFFF6B6B) : const Color(0xFF20C997),
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-          ),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            isDense: true,
-            hintText: '0',
-            hintStyle: const TextStyle(color: Colors.white24),
-            prefixText: isExpense ? '- ' : '+ ',
-            prefixStyle: TextStyle(
-              color: isExpense ? const Color(0xFFFF6B6B) : const Color(0xFF20C997),
-            ),
-            suffixText: 'đ',
-            suffixStyle: const TextStyle(fontSize: 16, color: Colors.white38),
-          ),
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
       ),
     );

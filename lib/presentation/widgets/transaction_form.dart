@@ -43,6 +43,7 @@ class _TransactionFormState extends State<TransactionForm> {
   void initState() {
     super.initState();
     if (widget.transaction != null) {
+      // Initialize state with existing transaction data
       final tx = widget.transaction!;
       _amountController.text = tx.amount.toStringAsFixed(0);
       _noteController.text = tx.note;
@@ -51,14 +52,57 @@ class _TransactionFormState extends State<TransactionForm> {
       _selectedCategoryId = tx.categoryId;
       _imagePath = tx.imagePath;
     } else {
+      // Default state for new transaction
       _selectedDate = widget.initialDate ?? DateTime.now();
       _isExpense = true;
       _imagePath = null;
+      _amountController.text = ''; // Start empty to show hint '0'
     }
 
+    // Refresh state on each character typed to update visual feedback
     _amountController.addListener(() => setState(() {}));
   }
 
+  // Pick both date and time through sequential pickers
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_selectedDate),
+      );
+      if (time != null) {
+        setState(() {
+          _selectedDate = DateTime(
+            picked.year,
+            picked.month,
+            picked.day,
+            time.hour,
+            time.minute,
+          );
+        });
+      }
+    }
+  }
+
+  // Upload image from camera or gallery
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final source = await showModalBottomSheet<ImageSource>(
@@ -116,6 +160,7 @@ class _TransactionFormState extends State<TransactionForm> {
     );
   }
 
+  // Validate and persist transaction data
   void _submit() {
     if (_amountController.text.isEmpty || _selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -132,6 +177,7 @@ class _TransactionFormState extends State<TransactionForm> {
 
     try {
       if (widget.transaction != null) {
+        // Update existing transaction in Hive
         final tx = widget.transaction!;
         tx.amount = enteredAmount;
         tx.note = _noteController.text;
@@ -141,6 +187,7 @@ class _TransactionFormState extends State<TransactionForm> {
         tx.imagePath = _imagePath;
         tx.save();
       } else {
+        // Create and add new transaction to Hive
         final newTx = Transaction(
           note: _noteController.text,
           amount: enteredAmount,
@@ -157,16 +204,22 @@ class _TransactionFormState extends State<TransactionForm> {
     }
   }
 
+  // Open the custom category picker dialog
   void _showCategoryPicker() {
     final cats = _catBox.values.where((c) => c.isExpense == _isExpense).toList();
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (_) => TransactionCategoryPicker(
         categories: cats,
         selectedCategoryId: _selectedCategoryId,
         onCategorySelected: (id) {
-          setState(() => _selectedCategoryId = id);
+          final selected = _catBox.values.firstWhere((c) => c.id == id);
+          setState(() {
+            _selectedCategoryId = id;
+            _isExpense = selected.isExpense;
+          });
           Navigator.pop(context);
         },
       ),
@@ -184,7 +237,7 @@ class _TransactionFormState extends State<TransactionForm> {
 
     return Container(
       decoration: const BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.vertical(top: Radius.circular(35))),
-      padding: EdgeInsets.only(top: 20, left: 20, right: 20, bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(top: 20, left: 20, right: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -192,12 +245,13 @@ class _TransactionFormState extends State<TransactionForm> {
             _buildDragHandle(),
             const SizedBox(height: 25),
             _buildDatePill(),
-            const SizedBox(height: 30),
+            const SizedBox(height: 25),
             TransactionImageArea(
               imagePath: _imagePath,
               isExpense: _isExpense,
               selectedCategory: selectedCategory,
               amountController: _amountController,
+              noteController: _noteController,
               onPickImage: _pickImage,
               onRemoveImage: () => setState(() => _imagePath = null),
               onToggleType: () {
@@ -209,9 +263,7 @@ class _TransactionFormState extends State<TransactionForm> {
               },
               onShowCategoryPicker: _showCategoryPicker,
             ),
-            const SizedBox(height: 30),
-            _buildNoteInput(),
-            const SizedBox(height: 30),
+            const SizedBox(height: 25),
             _buildSaveButton(),
             const SizedBox(height: 10),
           ],
@@ -220,26 +272,33 @@ class _TransactionFormState extends State<TransactionForm> {
     );
   }
 
+  // Interactive pill to display and change date/time
   Widget _buildDatePill() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(15)),
-      child: Text(
-        DateFormat('dd MMMM, yyyy - HH:mm', 'en_US').format(_selectedDate),
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
-      ),
-    );
-  }
-
-  Widget _buildNoteInput() {
-    return TextField(
-      controller: _noteController,
-      textAlign: TextAlign.center,
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
-      decoration: InputDecoration(
-        hintText: 'What was this for? :v',
-        hintStyle: TextStyle(color: Colors.black.withOpacity(0.2), fontSize: 14),
-        border: InputBorder.none,
+    return InkWell(
+      onTap: _pickDate,
+      borderRadius: BorderRadius.circular(15),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: AppColors.primary.withOpacity(0.1), width: 0.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(LineIcons.calendar, size: 14, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(
+              DateFormat('dd MMMM, yyyy - HH:mm', 'en_US').format(_selectedDate),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
