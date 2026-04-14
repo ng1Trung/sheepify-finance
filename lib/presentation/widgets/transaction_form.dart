@@ -74,12 +74,12 @@ class _TransactionFormState extends State<TransactionForm> {
           _buildPickerTitle(context),
           ListTile(
             leading: const Icon(LineIcons.camera, color: AppColors.primary),
-            title: const Text('Chụp ảnh'),
+            title: const Text('Take a photo'),
             onTap: () => Navigator.pop(ctx, ImageSource.camera),
           ),
           ListTile(
             leading: const Icon(LineIcons.image, color: AppColors.primary),
-            title: const Text('Chọn từ thư viện'),
+            title: const Text('Choose from gallery'),
             onTap: () => Navigator.pop(ctx, ImageSource.gallery),
           ),
           const SizedBox(height: 20),
@@ -110,7 +110,7 @@ class _TransactionFormState extends State<TransactionForm> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Text(
-        'TẢI LÊN ẢNH',
+        'UPLOAD PHOTO',
         style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
       ),
     );
@@ -119,7 +119,7 @@ class _TransactionFormState extends State<TransactionForm> {
   void _submit() {
     if (_amountController.text.isEmpty || _selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Vui lòng nhập số tiền và chọn danh mục!'),
+        content: Text('Please enter amount and select a category!'),
         backgroundColor: AppColors.expense,
       ));
       return;
@@ -153,7 +153,7 @@ class _TransactionFormState extends State<TransactionForm> {
       }
       Navigator.of(context).pop(_selectedDate);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e'), backgroundColor: AppColors.expense));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.expense));
     }
   }
 
@@ -225,7 +225,7 @@ class _TransactionFormState extends State<TransactionForm> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(15)),
       child: Text(
-        DateFormat('dd MMMM, yyyy - HH:mm', 'vi').format(_selectedDate),
+        DateFormat('dd MMMM, yyyy - HH:mm', 'en_US').format(_selectedDate),
         style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
       ),
     );
@@ -237,7 +237,7 @@ class _TransactionFormState extends State<TransactionForm> {
       textAlign: TextAlign.center,
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
       decoration: InputDecoration(
-        hintText: 'Nhìn vào là biết tiền đi đâu :v',
+        hintText: 'What was this for? :v',
         hintStyle: TextStyle(color: Colors.black.withOpacity(0.2), fontSize: 14),
         border: InputBorder.none,
       ),
@@ -249,7 +249,7 @@ class _TransactionFormState extends State<TransactionForm> {
       width: double.infinity,
       height: 56,
       child: SheepButton(
-        label: widget.transaction == null ? 'LƯU' : 'CẬP NHẬT',
+        label: widget.transaction == null ? 'SAVE' : 'UPDATE',
         onPressed: _submit,
       ),
     );

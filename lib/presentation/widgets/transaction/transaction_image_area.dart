@@ -54,7 +54,7 @@ class TransactionImageArea extends StatelessWidget {
                           Icon(LineIcons.image, size: 50, color: Colors.grey[300]),
                           const SizedBox(height: 10),
                           const Text(
-                            'Chạm để thêm ảnh',
+                            'Tap to add photo',
                             style: TextStyle(color: Colors.black26, fontSize: 13),
                           ),
                         ],
@@ -115,7 +115,7 @@ class TransactionImageArea extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          isExpense ? 'Chi' : 'Thu',
+          isExpense ? 'Expense' : 'Income',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 12,
@@ -145,7 +145,7 @@ class TransactionImageArea extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              selectedCategory?.name ?? 'Danh mục',
+              selectedCategory?.name ?? 'Category',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,

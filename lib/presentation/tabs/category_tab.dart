@@ -31,6 +31,8 @@ class _CategoryTabState extends State<CategoryTab> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: SheepTypeToggle(
             isExpense: _isExpenseMode,
+            leftLabel: "Expense",
+            rightLabel: "Income",
             onChanged: (val) => setState(() => _isExpenseMode = val),
           ),
         ),
@@ -120,7 +122,7 @@ class _CategoryTabState extends State<CategoryTab> {
           Icon(LineIcons.tags, size: 60, color: Colors.grey[300]),
           const SizedBox(height: 10),
           Text(
-            'Chưa có danh mục ${_isExpenseMode ? "chi" : "thu"} nào',
+            'No ${_isExpenseMode ? "expense" : "income"} categories yet',
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
@@ -156,7 +158,7 @@ class _CategoryTabState extends State<CategoryTab> {
           if (_isExpenseMode && cat.budget != null) ...[
             const SizedBox(height: 4),
             Text(
-              'Còn: ${CurrencyUtil.formatMoney(cat.budget! - spent)} / ${CurrencyUtil.formatMoney(cat.budget!)}',
+              'Remaining: ${CurrencyUtil.formatMoney(cat.budget! - spent)} / ${CurrencyUtil.formatMoney(cat.budget!)}',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
@@ -208,13 +210,13 @@ class _CategoryTabState extends State<CategoryTab> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Xóa danh mục?'),
-        content: Text('Bạn muốn xóa danh mục "${item.name}"?'),
+        title: const Text('Delete category?'),
+        content: Text('Are you sure you want to delete "${item.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xóa', style: TextStyle(color: AppColors.expense)),
+            child: const Text('Delete', style: TextStyle(color: AppColors.expense)),
           ),
         ],
       ),

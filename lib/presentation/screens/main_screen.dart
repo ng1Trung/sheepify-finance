@@ -12,7 +12,6 @@ import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
 import '../tabs/settings_tab.dart';
 import '../widgets/category_form.dart';
-
 import '../../core/theme/app_colors.dart';
 
 class MainScreen extends StatefulWidget {
@@ -24,9 +23,9 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 1;
 
-  // QUẢN LÝ THỜI GIAN VÀ CHẾ ĐỘ XEM
+  // TIME AND VIEW MODE MANAGEMENT
   DateTime _selectedDate = DateTime.now();
-  bool _isMonthlyView = false; // Mặc định là xem theo Ngày
+  bool _isMonthlyView = false; // Default is Daily view
 
   final _catBox = Hive.box<CategoryModel>(kCatBox);
 
@@ -41,31 +40,31 @@ class _MainScreenState extends State<MainScreen> {
       final parents = [
         CategoryModel(
           id: 'cat_bill',
-          name: 'Hoá đơn',
+          name: 'Bills',
           iconCode: Icons.receipt.codePoint,
           isExpense: true,
         ),
         CategoryModel(
           id: 'cat_eat',
-          name: 'Ăn uống',
+          name: 'Food & Drink',
           iconCode: Icons.restaurant.codePoint,
           isExpense: true,
         ),
         CategoryModel(
           id: 'cat_shop',
-          name: 'Mua sắm',
+          name: 'Shopping',
           iconCode: Icons.shopping_cart.codePoint,
           isExpense: true,
         ),
         CategoryModel(
           id: 'cat_salary',
-          name: 'Lương',
+          name: 'Salary',
           iconCode: Icons.attach_money.codePoint,
           isExpense: false,
         ),
         CategoryModel(
           id: 'cat_bonus',
-          name: 'Thưởng',
+          name: 'Bonus',
           iconCode: Icons.card_giftcard.codePoint,
           isExpense: false,
         ),
@@ -77,14 +76,14 @@ class _MainScreenState extends State<MainScreen> {
   void _changeTime(int offset) {
     setState(() {
       if (_isMonthlyView || _currentIndex == 0) {
-        // Chế độ Tháng hoặc đang ở Tab Thống kê
+        // Monthly mode or Stats Tab
         _selectedDate = DateTime(
           _selectedDate.year,
           _selectedDate.month + offset,
           1,
         );
       } else {
-        // Chế độ Ngày
+        // Daily mode
         _selectedDate = _selectedDate.add(Duration(days: offset));
       }
     });
@@ -104,7 +103,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildModeToggleItem(String title, bool isActive) {
     return GestureDetector(
-      onTap: () => setState(() => _isMonthlyView = (title == 'Tháng')),
+      onTap: () => setState(() => _isMonthlyView = (title == 'Month')),
       child: Container(
         width: 80,
         alignment: Alignment.center,
@@ -135,11 +134,11 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // APPBAR NAVIGATOR TÍCH HỢP XỊN XÒ
+    // PREMIUM APPBAR NAVIGATOR
     Widget buildAppBarTitle() {
       if (_currentIndex == 2) {
         return const Text(
-          'Danh Mục',
+          'Categories',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: AppColors.primary,
@@ -148,7 +147,7 @@ class _MainScreenState extends State<MainScreen> {
       }
       if (_currentIndex == 3) {
         return const Text(
-          'Cá nhân',
+          'Profile',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: AppColors.primary,
@@ -158,7 +157,7 @@ class _MainScreenState extends State<MainScreen> {
 
       String dateText;
       if (_currentIndex == 0 || _isMonthlyView) {
-        dateText = 'Tháng ${DateFormat('MM/yyyy').format(_selectedDate)}';
+        dateText = DateFormat('MMMM yyyy').format(_selectedDate);
       } else {
         dateText = DateFormat('dd/MM/yyyy').format(_selectedDate);
       }
@@ -166,7 +165,7 @@ class _MainScreenState extends State<MainScreen> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // NÚT CHUYỂN ĐỔI NGÀY/THÁNG (CHỈ HIỆN Ở TAB NHẬT KÝ)
+          // MODE TOGGLE (DAY/MONTH) - ONLY IN DIARY TAB
           if (_currentIndex == 1)
             Container(
               height: 32,
@@ -179,13 +178,13 @@ class _MainScreenState extends State<MainScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildModeToggleItem('Ngày', !_isMonthlyView),
-                  _buildModeToggleItem('Tháng', _isMonthlyView),
+                  _buildModeToggleItem('Day', !_isMonthlyView),
+                  _buildModeToggleItem('Month', _isMonthlyView),
                 ],
               ),
             ),
           const SizedBox(height: 8),
-          // NAVIGATOR < NGÀY/THÁNG >
+          // NAVIGATOR < DATE/MONTH >
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -283,24 +282,19 @@ class _MainScreenState extends State<MainScreen> {
       ),
       body: buildBody(),
       floatingActionButton: (_currentIndex == 1 || _currentIndex == 2)
-          ? Padding(
-              padding: const EdgeInsets.only(
-                bottom: 0,
-              ), // Tighter alignment closer to bottom bar
-              child: FloatingActionButton(
-                onPressed: _currentIndex == 1
-                    ? _showAddTransactionForm
-                    : _showAddCategoryForm,
-                backgroundColor: AppColors.primary,
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  _currentIndex == 1 ? Icons.add : Icons.create_new_folder,
-                  color: Colors.white,
-                  size: 30,
-                ),
+          ? FloatingActionButton(
+              onPressed: _currentIndex == 1
+                  ? _showAddTransactionForm
+                  : _showAddCategoryForm,
+              backgroundColor: AppColors.primary,
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                _currentIndex == 1 ? Icons.add : Icons.create_new_folder,
+                color: Colors.white,
+                size: 30,
               ),
             )
           : null,
@@ -322,10 +316,10 @@ class _MainScreenState extends State<MainScreen> {
               tabBackgroundColor: AppColors.primary.withOpacity(0.08),
               color: AppColors.textSecondary,
               tabs: const [
-                GButton(icon: LineIcons.pieChart, text: 'Thống kê'),
-                GButton(icon: LineIcons.book, text: 'Nhật ký'),
-                GButton(icon: LineIcons.tags, text: 'Danh mục'),
-                GButton(icon: LineIcons.user, text: 'Cá nhân'),
+                GButton(icon: LineIcons.pieChart, text: 'Stats'),
+                GButton(icon: LineIcons.book, text: 'Diary'),
+                GButton(icon: LineIcons.tags, text: 'Categories'),
+                GButton(icon: LineIcons.user, text: 'Profile'),
               ],
               selectedIndex: _currentIndex,
               onTabChange: (index) => setState(() => _currentIndex = index),
@@ -348,14 +342,14 @@ class _MainScreenState extends State<MainScreen> {
     if (resultDate != null) {
       setState(() {
         _selectedDate = resultDate;
-        _isMonthlyView = false; // Khi thêm xong, hiện thị ngày vừa thêm
+        _isMonthlyView = false; // Switch to Daily view to show new transaction
         _currentIndex = 1;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Đã thêm giao dịch ngày ${DateFormat('dd/MM/yyyy').format(resultDate)}',
+              'Added transaction for ${DateFormat('dd/MM/yyyy').format(resultDate)}',
             ),
             backgroundColor: Colors.teal,
             behavior: SnackBarBehavior.floating,

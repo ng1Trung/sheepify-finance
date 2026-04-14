@@ -3,8 +3,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:line_icons/line_icons.dart';
 
 import '../../core/constants/constants.dart';
-import '../../core/theme/app_colors.dart';
 import '../../data/models/category_model.dart';
+import 'common/sheep_toggles.dart';
 
 class CategoryForm extends StatefulWidget {
   final CategoryModel? category;
@@ -116,41 +116,29 @@ class _CategoryFormState extends State<CategoryForm> {
         children: [
           Center(
             child: Text(
-              widget.category == null ? 'Tạo danh mục' : 'Sửa danh mục',
+              widget.category == null ? 'Create Category' : 'Edit Category',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 20),
 
-          // Loại Thu/Chi
-          Container(
-            height: 44,
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildTypeToggleItem("Chi", _isExpense, AppColors.expense),
-                ),
-                Expanded(
-                  child: _buildTypeToggleItem("Thu", !_isExpense, AppColors.income),
-                ),
-              ],
-            ),
+          // Type Toggle
+          SheepTypeToggle(
+            isExpense: _isExpense,
+            leftLabel: "Expense",
+            rightLabel: "Income",
+            onChanged: (val) => setState(() => _isExpense = val),
           ),
           const SizedBox(height: 25),
 
-          const Text('Tên danh mục:',
+          const Text('Category Name:',
               style: TextStyle(color: Colors.grey, fontSize: 13)),
           const SizedBox(height: 8),
           TextField(
             controller: _nameController,
             style: const TextStyle(fontWeight: FontWeight.bold),
             decoration: InputDecoration(
-              hintText: 'Nhập tên...',
+              hintText: 'Enter name...',
               filled: true,
               fillColor: Colors.grey[50],
               contentPadding:
@@ -166,7 +154,7 @@ class _CategoryFormState extends State<CategoryForm> {
 
           if (_isExpense) ...[
             const Text(
-              'Ngân sách dự kiến (vnđ):',
+              'Planned Budget (VND):',
               style: TextStyle(color: Colors.grey, fontSize: 13),
             ),
             const SizedBox(height: 8),
@@ -190,7 +178,7 @@ class _CategoryFormState extends State<CategoryForm> {
             const SizedBox(height: 20),
           ],
 
-          const Text('Biểu tượng:', style: TextStyle(color: Colors.grey)),
+          const Text('Icon:', style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 10),
           SizedBox(
             height: 150,
@@ -236,46 +224,12 @@ class _CategoryFormState extends State<CategoryForm> {
                 ),
               ),
               child: Text(
-                widget.category == null ? 'TẠO MỚI' : 'LƯU THAY ĐỔI',
+                widget.category == null ? 'CREATE NEW' : 'SAVE CHANGES',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTypeToggleItem(String title, bool isActive, Color color) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _isExpense = (title == "Chi");
-        });
-      },
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: isActive ? color : Colors.grey,
-          ),
-        ),
       ),
     );
   }

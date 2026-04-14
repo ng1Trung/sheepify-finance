@@ -24,13 +24,13 @@ class TransactionCategoryPicker extends StatelessWidget {
         children: [
           Center(
             child: Text(
-              'CHỌN DANH MỤC',
+              'SELECT CATEGORY',
               style: Theme.of(context).textTheme.labelSmall,
             ),
           ),
           const SizedBox(height: 20),
           if (categories.isEmpty)
-            const Center(child: Text('Chưa có danh mục nào'))
+            const Center(child: Text('No categories available'))
           else
             GridView.builder(
               shrinkWrap: true,

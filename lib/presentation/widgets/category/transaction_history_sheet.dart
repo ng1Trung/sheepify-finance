@@ -54,7 +54,7 @@ class TransactionHistorySheet extends StatelessWidget {
                 const Spacer(),
                 if (transactions.isNotEmpty)
                   Text(
-                    'Tháng này: ${CurrencyUtil.formatMoney(transactions.fold(0.0, (sum, tx) => sum + tx.amount))}',
+                    'This Month: ${CurrencyUtil.formatMoney(transactions.fold(0.0, (sum, tx) => sum + tx.amount))}',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: category.isExpense ? AppColors.expense : AppColors.income,
@@ -67,7 +67,7 @@ class TransactionHistorySheet extends StatelessWidget {
               child: transactions.isEmpty
                   ? Center(
                       child: Text(
-                        'Không có giao dịch nào trong tháng',
+                        'No transactions this month',
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                     )
@@ -77,8 +77,8 @@ class TransactionHistorySheet extends StatelessWidget {
                       itemBuilder: (_, i) => SheepListTile(
                         onTap: () {},
                         leading: const Icon(LineIcons.receipt, color: Colors.grey, size: 20),
-                        title: transactions[i].note.isNotEmpty ? transactions[i].note : 'Giao dịch',
-                        subtitle: DateFormat('dd/MM/yyyy - HH:mm').format(transactions[i].date),
+                        title: transactions[i].note.isNotEmpty ? transactions[i].note : 'Transaction',
+                        subtitle: DateFormat('MM/dd/yyyy - HH:mm').format(transactions[i].date),
                         trailing: Text(
                           CurrencyUtil.formatMoney(transactions[i].amount),
                           style: const TextStyle(fontWeight: FontWeight.bold),
