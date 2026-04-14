@@ -39,7 +39,7 @@ class _DiaryTabState extends State<DiaryTab> {
           builder: (context, box, _) {
             final catBox = Hive.box<CategoryModel>(kCatBox);
 
-            // 1. Lấy và lọc giao dịch để tính số dư
+            // 1. Fetch and filter transactions for balance calculation
             var calcTxs = box.values.cast<Transaction>().toList();
 
             if (!settings.accumulateBalance) {
@@ -69,7 +69,7 @@ class _DiaryTabState extends State<DiaryTab> {
               runningBalances[tx.key] = currentTotal;
             }
 
-            // 2. Lọc giao dịch hiển thị
+            // 2. Filter transactions for display
             final displayTxs = box.values.cast<Transaction>().where((tx) {
               if (widget.isMonthly) {
                 return tx.date.month == widget.selectedDate.month &&
@@ -81,7 +81,7 @@ class _DiaryTabState extends State<DiaryTab> {
               }
             }).toList();
 
-            // 3. Thống kê Summary
+            // 3. Summary Statistics
             double totalIncome = 0;
             double totalExpense = 0;
             for (var tx in displayTxs) {
@@ -91,7 +91,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 totalIncome += tx.amount;
             }
 
-            // 4. Gom nhóm theo ngày
+            // 4. Group by date
             Map<String, List<Transaction>> grouped = {};
             for (var tx in displayTxs) {
               final dayKey = DateFormat('yyyy-MM-dd').format(tx.date);
@@ -104,7 +104,7 @@ class _DiaryTabState extends State<DiaryTab> {
 
             return Column(
               children: [
-                // --- PHẦN TỔNG QUAN (SUMMARY CARD) ---
+                // --- SUMMARY CARD ---
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -116,8 +116,8 @@ class _DiaryTabState extends State<DiaryTab> {
                       children: [
                         Text(
                           widget.isMonthly
-                              ? 'SỐ DƯ TRONG THÁNG'
-                              : 'SỐ DƯ TRONG NGÀY',
+                              ? 'MONTHLY BALANCE'
+                              : 'DAILY BALANCE',
                           style: Theme.of(
                             context,
                           ).textTheme.labelSmall?.copyWith(letterSpacing: 1),
@@ -137,7 +137,7 @@ class _DiaryTabState extends State<DiaryTab> {
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
                             _buildStatItem(
-                              'Thu',
+                              'Income',
                               totalIncome,
                               AppColors.income,
                             ),
@@ -147,7 +147,7 @@ class _DiaryTabState extends State<DiaryTab> {
                               color: Colors.grey[200],
                             ),
                             _buildStatItem(
-                              'Chi',
+                              'Expense',
                               totalExpense,
                               AppColors.expense,
                             ),
@@ -168,8 +168,8 @@ class _DiaryTabState extends State<DiaryTab> {
                               const SizedBox(height: 10),
                               Text(
                                 widget.isMonthly
-                                    ? 'Tháng này chưa có giao dịch'
-                                    : 'Hôm nay chưa có giao dịch',
+                                    ? 'No transactions this month'
+                                    : 'No transactions today',
                                 style: Theme.of(context).textTheme.labelSmall,
                               ),
                             ],
@@ -207,8 +207,8 @@ class _DiaryTabState extends State<DiaryTab> {
                                     ),
                                     child: Text(
                                       DateFormat(
-                                        'dd/MM/yyyy - EEEE',
-                                        'vi',
+                                        'EEEE, dd/MM/yyyy',
+                                        'en_US',
                                       ).format(DateTime.parse(dKey)),
                                       style: Theme.of(context)
                                           .textTheme
@@ -293,7 +293,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                             ),
                                           ),
                                           Text(
-                                            'Số dư ví: ${CurrencyUtil.formatMoney(runningBalances[tx.key] ?? 0)}',
+                                            'Wallet: ${CurrencyUtil.formatMoney(runningBalances[tx.key] ?? 0)}',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelSmall

@@ -44,7 +44,7 @@ class _StatsTabState extends State<StatsTab> {
             final catBox = Hive.box<CategoryModel>(kCatBox);
             final allTransactions = box.values.cast<Transaction>().toList();
 
-            // 1. Phân loại giao dịch
+            // 1. Transaction Filtering
             final monthStart = DateTime(
               widget.currentMonth.year,
               widget.currentMonth.month,
@@ -70,7 +70,7 @@ class _StatsTabState extends State<StatsTab> {
                 .where((tx) => tx.date.isBefore(monthStart))
                 .toList();
 
-            // 2. Tính tồn dư
+            // 2. Balance Calculation
             double prevIncome = 0;
             double prevExpense = 0;
             for (var tx in previousTransactions) {
@@ -81,7 +81,7 @@ class _StatsTabState extends State<StatsTab> {
             }
             double carriedOverBalance = prevIncome - prevExpense;
 
-            // 3. Phân tích theo Danh mục
+            // 3. Category Analysis
             Map<String, _StatEntry> statsMap = {};
             double monthIncome = 0;
             double monthExpense = 0;
@@ -97,7 +97,7 @@ class _StatsTabState extends State<StatsTab> {
                   (c) => c.id == tx.categoryId,
                   orElse: () => CategoryModel(
                     id: 'unknown',
-                    name: 'Khác',
+                    name: 'Others',
                     iconCode: 58263,
                     isExpense: tx.isExpense,
                   ),
@@ -111,7 +111,7 @@ class _StatsTabState extends State<StatsTab> {
               }
             }
 
-            // 4. Xử lý "Số dư khả dụng"
+            // 4. Handle "Available Balance"
             double availableBalance;
             if (settings.accumulateBalance) {
               availableBalance =
@@ -120,7 +120,7 @@ class _StatsTabState extends State<StatsTab> {
               if (!_isExpenseMode && carriedOverBalance > 0) {
                 final prevMonthCat = CategoryModel(
                   id: 'virtual_prev_month',
-                  name: 'Tháng trước',
+                  name: 'Previous Balance',
                   iconCode: LineIcons.history.codePoint,
                   isExpense: false,
                 );
@@ -158,7 +158,7 @@ class _StatsTabState extends State<StatsTab> {
                             Lottie.asset('assets/empty.json', width: 200),
                             const SizedBox(height: 20),
                             Text(
-                              'Tháng ${DateFormat('MM/yyyy').format(widget.currentMonth)} chưa có dữ liệu ${_isExpenseMode ? "chi" : "thu"}!',
+                              'No ${_isExpenseMode ? "expense" : "income"} data for ${DateFormat('MMMM yyyy').format(widget.currentMonth)}!',
                               style: Theme.of(context).textTheme.labelSmall,
                               textAlign: TextAlign.center,
                             ),
@@ -267,7 +267,7 @@ class _StatsTabState extends State<StatsTab> {
                       ),
                     ),
                     title: stat.category.name,
-                    subtitle: isVirtual ? 'Số dư cộng dồn từ trước' : null,
+                    subtitle: isVirtual ? 'Accumulated balance from previous months' : null,
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -326,10 +326,10 @@ class _StatsTabState extends State<StatsTab> {
       child: Row(
         children: [
           Expanded(
-            child: _buildToggleItem("Chi", _isExpenseMode, AppColors.expense),
+            child: _buildToggleItem("Expense", _isExpenseMode, AppColors.expense),
           ),
           Expanded(
-            child: _buildToggleItem("Thu", !_isExpenseMode, AppColors.income),
+            child: _buildToggleItem("Income", !_isExpenseMode, AppColors.income),
           ),
         ],
       ),
@@ -339,7 +339,7 @@ class _StatsTabState extends State<StatsTab> {
   Widget _buildToggleItem(String title, bool isActive, Color color) {
     return GestureDetector(
       onTap: () => setState(() {
-        _isExpenseMode = (title == "Chi");
+        _isExpenseMode = (title.startsWith("Exp"));
         _touchedIndex = -1;
       }),
       child: Container(
@@ -362,7 +362,7 @@ class _StatsTabState extends State<StatsTab> {
   }
 
   Widget _buildCenterInfo(List<_StatEntry> sortedStats, double total) {
-    String label = _isExpenseMode ? "TỔNG CHI" : "TỔNG THU";
+    String label = _isExpenseMode ? "TOTAL EXPENSE" : "TOTAL INCOME";
     String amount = CurrencyUtil.formatMoney(total);
     Color color = _isExpenseMode ? AppColors.expense : AppColors.income;
 
@@ -406,7 +406,7 @@ class _StatsTabState extends State<StatsTab> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'SỐ DƯ VÍ',
+            'WALLET BALANCE',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.primary,
               fontWeight: FontWeight.bold,
