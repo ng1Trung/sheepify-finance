@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:line_icons/line_icons.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/constants/constants.dart';
 import '../../core/utils/currency_util.dart';
@@ -10,6 +9,8 @@ import '../../data/models/transaction.dart';
 import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
+import '../widgets/common/sheep_toggles.dart';
+import '../widgets/category/transaction_history_sheet.dart';
 
 class CategoryTab extends StatefulWidget {
   const CategoryTab({super.key});
@@ -25,34 +26,12 @@ class _CategoryTabState extends State<CategoryTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // --- 1. MODE TOGGLE (PILL STYLE) ---
+        // --- 1. MODE TOGGLE ---
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Container(
-            height: 48,
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildToggleItem(
-                    "Chi",
-                    _isExpenseMode,
-                    AppColors.expense,
-                  ),
-                ),
-                Expanded(
-                  child: _buildToggleItem(
-                    "Thu",
-                    !_isExpenseMode,
-                    AppColors.income,
-                  ),
-                ),
-              ],
-            ),
+          child: SheepTypeToggle(
+            isExpense: _isExpenseMode,
+            onChanged: (val) => setState(() => _isExpenseMode = val),
           ),
         ),
 
@@ -71,8 +50,7 @@ class _CategoryTabState extends State<CategoryTab> {
               Map<String, double> categorySpent = {};
               List<Transaction> monthTxs = txBox.values
                   .where(
-                    (tx) =>
-                        tx.date.month == now.month && tx.date.year == now.year,
+                    (tx) => tx.date.month == now.month && tx.date.year == now.year,
                   )
                   .toList();
 
@@ -86,19 +64,7 @@ class _CategoryTabState extends State<CategoryTab> {
                   .toList();
 
               if (categories.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(LineIcons.tags, size: 60, color: Colors.grey[300]),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Chưa có danh mục ${_isExpenseMode ? "chi" : "thu"} nào',
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
-                );
+                return _buildEmptyState(context);
               }
 
               return ListView.builder(
@@ -124,51 +90,9 @@ class _CategoryTabState extends State<CategoryTab> {
                           padding: const EdgeInsets.all(16),
                           child: Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: (_isExpenseMode
-                                          ? AppColors.expense
-                                          : AppColors.income)
-                                      .withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                child: Icon(
-                                  cat.iconData,
-                                  color: _isExpenseMode
-                                      ? AppColors.expense
-                                      : AppColors.income,
-                                  size: 24,
-                                ),
-                              ),
+                              _buildIcon(cat),
                               const SizedBox(width: 15),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      cat.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    if (_isExpenseMode && cat.budget != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Còn: ${CurrencyUtil.formatMoney(cat.budget! - spent)} / ${CurrencyUtil.formatMoney(cat.budget!)}',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                          color: (cat.budget! - spent) < 0
-                                              ? AppColors.expense
-                                              : AppColors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
+                              _buildInfo(cat, spent),
                               IconButton(
                                 icon: const Icon(LineIcons.edit, color: Colors.grey),
                                 onPressed: () => _showCategoryForm(context, cat),
@@ -188,24 +112,61 @@ class _CategoryTabState extends State<CategoryTab> {
     );
   }
 
-  Widget _buildToggleItem(String title, bool isActive, Color color) {
-    return GestureDetector(
-      onTap: () => setState(() => _isExpenseMode = (title == "Chi")),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(21),
-          boxShadow: isActive ? AppColors.softShadow : null,
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: isActive ? color : AppColors.textSecondary,
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(LineIcons.tags, size: 60, color: Colors.grey[300]),
+          const SizedBox(height: 10),
+          Text(
+            'Chưa có danh mục ${_isExpenseMode ? "chi" : "thu"} nào',
+            style: Theme.of(context).textTheme.labelSmall,
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIcon(CategoryModel cat) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: (_isExpenseMode ? AppColors.expense : AppColors.income)
+            .withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Icon(
+        cat.iconData,
+        color: _isExpenseMode ? AppColors.expense : AppColors.income,
+        size: 24,
+      ),
+    );
+  }
+
+  Widget _buildInfo(CategoryModel cat, double spent) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            cat.name,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          if (_isExpenseMode && cat.budget != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Còn: ${CurrencyUtil.formatMoney(cat.budget! - spent)} / ${CurrencyUtil.formatMoney(cat.budget!)}',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: (cat.budget! - spent) < 0
+                    ? AppColors.expense
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -222,87 +183,13 @@ class _CategoryTabState extends State<CategoryTab> {
     );
   }
 
-  void _showTransactionHistory(
-    BuildContext context,
-    CategoryModel category,
-    List<Transaction> allMonthTxs,
-  ) {
-    final catTxs = allMonthTxs.where((tx) => tx.categoryId == category.id).toList();
-
+  void _showTransactionHistory(BuildContext context, CategoryModel cat, List<Transaction> txs) {
+    final catTxs = txs.where((tx) => tx.categoryId == cat.id).toList();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        maxChildSize: 0.9,
-        builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Icon(category.iconData, color: AppColors.primary),
-                  const SizedBox(width: 10),
-                  Text(
-                    category.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (catTxs.isNotEmpty)
-                    Text(
-                      'Tháng này: ${CurrencyUtil.formatMoney(catTxs.fold(0.0, (sum, tx) => sum + tx.amount))}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: category.isExpense ? AppColors.expense : AppColors.income,
-                      ),
-                    ),
-                ],
-              ),
-              const Divider(height: 30),
-              Expanded(
-                child: catTxs.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Không có giao dịch nào trong tháng',
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: scrollController,
-                        itemCount: catTxs.length,
-                        itemBuilder: (_, i) => SheepListTile(
-                          onTap: () {},
-                          leading: const Icon(LineIcons.receipt, color: Colors.grey, size: 20),
-                          title: catTxs[i].note.isNotEmpty ? catTxs[i].note : 'Giao dịch',
-                          subtitle: DateFormat('dd/MM/yyyy - HH:mm').format(catTxs[i].date),
-                          trailing: Text(
-                            CurrencyUtil.formatMoney(catTxs[i].amount),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (_) => TransactionHistorySheet(category: cat, transactions: catTxs),
     );
   }
 
@@ -313,7 +200,7 @@ class _CategoryTabState extends State<CategoryTab> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
-      builder: (ctx) => CategoryForm(category: category),
+      builder: (_) => CategoryForm(category: category),
     );
   }
 
@@ -324,16 +211,10 @@ class _CategoryTabState extends State<CategoryTab> {
         title: const Text('Xóa danh mục?'),
         content: Text('Bạn muốn xóa danh mục "${item.name}"?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Xóa',
-              style: TextStyle(color: AppColors.expense),
-            ),
+            child: const Text('Xóa', style: TextStyle(color: AppColors.expense)),
           ),
         ],
       ),
