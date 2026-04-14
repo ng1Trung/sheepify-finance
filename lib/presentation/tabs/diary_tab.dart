@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
+import 'package:line_icons/line_icons.dart';
 
 import '../../core/constants/constants.dart';
 import '../../core/utils/currency_util.dart';
@@ -10,6 +10,8 @@ import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
 import '../widgets/transaction_form.dart';
+import '../../core/theme/app_colors.dart';
+import '../widgets/common/sheep_widgets.dart';
 
 class DiaryTab extends StatefulWidget {
   final DateTime selectedDate;
@@ -31,7 +33,7 @@ class _DiaryTabState extends State<DiaryTab> {
       valueListenable: Hive.box<AppSettings>(kSettingsBox).listenable(),
       builder: (context, settingsBox, _) {
         final settings = settingsBox.get('current') ?? AppSettings();
-        
+
         return ValueListenableBuilder(
           valueListenable: Hive.box<Transaction>(kMoneyBox).listenable(),
           builder: (context, box, _) {
@@ -39,13 +41,15 @@ class _DiaryTabState extends State<DiaryTab> {
 
             // 1. Lấy và lọc giao dịch để tính số dư
             var calcTxs = box.values.cast<Transaction>().toList();
-            
-            // Nếu KHÔNG cộng dồn -> Chỉ tính từ đầu tháng này
+
             if (!settings.accumulateBalance) {
-              calcTxs = calcTxs.where((tx) => 
-                tx.date.year == widget.selectedDate.year && 
-                tx.date.month == widget.selectedDate.month
-              ).toList();
+              calcTxs = calcTxs
+                  .where(
+                    (tx) =>
+                        tx.date.year == widget.selectedDate.year &&
+                        tx.date.month == widget.selectedDate.month,
+                  )
+                  .toList();
             }
 
             calcTxs.sort((a, b) {
@@ -65,24 +69,26 @@ class _DiaryTabState extends State<DiaryTab> {
               runningBalances[tx.key] = currentTotal;
             }
 
-            // 2. Lọc giao dịch hiển thị (lọc theo Ngày/Tháng đang chọn trên UI)
+            // 2. Lọc giao dịch hiển thị
             final displayTxs = box.values.cast<Transaction>().where((tx) {
               if (widget.isMonthly) {
                 return tx.date.month == widget.selectedDate.month &&
-                       tx.date.year == widget.selectedDate.year;
+                    tx.date.year == widget.selectedDate.year;
               } else {
                 return tx.date.day == widget.selectedDate.day &&
-                       tx.date.month == widget.selectedDate.month &&
-                       tx.date.year == widget.selectedDate.year;
+                    tx.date.month == widget.selectedDate.month &&
+                    tx.date.year == widget.selectedDate.year;
               }
             }).toList();
 
-            // 3. Tính toán Thống kê Summary cho vùng hiển thị
+            // 3. Thống kê Summary
             double totalIncome = 0;
             double totalExpense = 0;
             for (var tx in displayTxs) {
-              if (tx.isExpense) totalExpense += tx.amount;
-              else totalIncome += tx.amount;
+              if (tx.isExpense)
+                totalExpense += tx.amount;
+              else
+                totalIncome += tx.amount;
             }
 
             // 4. Gom nhóm theo ngày
@@ -98,24 +104,57 @@ class _DiaryTabState extends State<DiaryTab> {
 
             return Column(
               children: [
-                // summary header
-                Container(
-                  margin: const EdgeInsets.all(15),
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10)],
+                // --- PHẦN TỔNG QUAN (SUMMARY CARD) ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatItem('Thu nhập', totalIncome, Colors.green),
-                      Container(width: 1, height: 40, color: Colors.grey[300]),
-                      _buildStatItem('Chi tiêu', totalExpense, Colors.red),
-                      Container(width: 1, height: 40, color: Colors.grey[300]),
-                      _buildStatItem('Tổng', totalIncome - totalExpense, Colors.blue),
-                    ],
+                  child: SheepCard(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Text(
+                          widget.isMonthly
+                              ? 'SỐ DƯ TRONG THÁNG'
+                              : 'SỐ DƯ TRONG NGÀY',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.copyWith(letterSpacing: 1),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          CurrencyUtil.formatMoney(totalIncome - totalExpense),
+                          style: Theme.of(context).textTheme.displayLarge
+                              ?.copyWith(
+                                color: (totalIncome - totalExpense) >= 0
+                                    ? AppColors.income
+                                    : AppColors.expense,
+                              ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildStatItem(
+                              'Thu',
+                              totalIncome,
+                              AppColors.income,
+                            ),
+                            Container(
+                              width: 1,
+                              height: 30,
+                              color: Colors.grey[200],
+                            ),
+                            _buildStatItem(
+                              'Chi',
+                              totalExpense,
+                              AppColors.expense,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
@@ -125,107 +164,142 @@ class _DiaryTabState extends State<DiaryTab> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Lottie.asset('assets/empty.json', width: 250),
+                              Lottie.asset('assets/empty.json', width: 200),
                               const SizedBox(height: 10),
                               Text(
                                 widget.isMonthly
                                     ? 'Tháng này chưa có giao dịch'
                                     : 'Hôm nay chưa có giao dịch',
-                                style: const TextStyle(color: Colors.grey),
+                                style: Theme.of(context).textTheme.labelSmall,
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 100),
+                          padding: const EdgeInsets.only(
+                            bottom: 120,
+                            left: 16,
+                            right: 16,
+                          ),
                           itemCount: sortedDayKeys.length,
                           itemBuilder: (context, dayIdx) {
                             final dKey = sortedDayKeys[dayIdx];
                             final dayTxs = grouped[dKey]!;
-                            // sort txs within day newest to oldest
-                            dayTxs.sort((a,b) {
+                            dayTxs.sort((a, b) {
                               int c = b.date.compareTo(a.date);
-                              if (c == 0) return b.key.toString().compareTo(a.key.toString());
+                              if (c == 0)
+                                return b.key.toString().compareTo(
+                                  a.key.toString(),
+                                );
                               return c;
                             });
 
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (widget.isMonthly) 
+                                if (widget.isMonthly)
                                   Padding(
-                                    padding: const EdgeInsets.fromLTRB(20, 15, 20, 5),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[200],
-                                            borderRadius: BorderRadius.circular(8),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      4,
+                                      15,
+                                      4,
+                                      10,
+                                    ),
+                                    child: Text(
+                                      DateFormat(
+                                        'dd/MM/yyyy - EEEE',
+                                        'vi',
+                                      ).format(DateTime.parse(dKey)),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
                                           ),
-                                          child: Text(
-                                            DateFormat('dd/MM (EEEE)').format(DateTime.parse(dKey)),
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.teal),
-                                          ),
-                                        ),
-                                        const Expanded(child: Divider(indent: 10)),
-                                      ],
                                     ),
                                   ),
                                 ...dayTxs.map((tx) {
                                   final cat = catBox.values.firstWhere(
                                     (c) => c.id == tx.categoryId,
-                                    orElse: () => CategoryModel(id: '', name: '?', iconCode: Icons.help.codePoint, isExpense: true),
+                                    orElse: () => CategoryModel(
+                                      id: '',
+                                      name: '?',
+                                      iconCode: Icons.help.codePoint,
+                                      isExpense: true,
+                                    ),
                                   );
                                   return Dismissible(
                                     key: ValueKey(tx.key),
                                     direction: DismissDirection.endToStart,
                                     background: Container(
-                                      color: Colors.red[100],
                                       alignment: Alignment.centerRight,
                                       padding: const EdgeInsets.only(right: 20),
-                                      child: const Icon(Icons.delete, color: Colors.red),
+                                      child: const Icon(
+                                        LineIcons.trash,
+                                        color: AppColors.expense,
+                                      ),
                                     ),
                                     onDismissed: (_) => tx.delete(),
-                                    child: Container(
-                                      margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5)],
+                                    child: SheepListTile(
+                                      onTap: () => showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        builder: (_) =>
+                                            TransactionForm(transaction: tx),
                                       ),
-                                      child: ListTile(
-                                        leading: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: tx.isExpense ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(IconData(cat.iconCode, fontFamily: 'MaterialIcons'), color: tx.isExpense ? Colors.red : Colors.green, size: 20),
-                                              if (tx.imagePath != null) ...[
-                                                const SizedBox(width: 8),
-                                                ClipRRect(
-                                                  borderRadius: BorderRadius.circular(4),
-                                                  child: Image.file(File(tx.imagePath!), width: 25, height: 25, fit: BoxFit.cover),
+                                      leading: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: tx.isExpense
+                                              ? AppColors.expense.withOpacity(
+                                                  0.08,
+                                                )
+                                              : AppColors.income.withOpacity(
+                                                  0.08,
                                                 ),
-                                              ],
-                                            ],
+                                          borderRadius: BorderRadius.circular(
+                                            12,
                                           ),
                                         ),
-                                        title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                        subtitle: tx.note.isNotEmpty ? Text(tx.note, style: const TextStyle(fontSize: 12)) : null,
-                                        trailing: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            Text(CurrencyUtil.formatMoney(tx.amount), style: TextStyle(color: tx.isExpense ? Colors.red : Colors.teal, fontWeight: FontWeight.bold, fontSize: 14)),
-                                            Text('Số dư: ${CurrencyUtil.formatMoney(runningBalances[tx.key] ?? 0)}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                                          ],
+                                        child: Icon(
+                                          IconData(
+                                            cat.iconCode,
+                                            fontFamily: 'MaterialIcons',
+                                          ),
+                                          color: tx.isExpense
+                                              ? AppColors.expense
+                                              : AppColors.income,
+                                          size: 20,
                                         ),
-                                        onTap: () => showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => TransactionForm(transaction: tx)),
+                                      ),
+                                      title: cat.name,
+                                      subtitle: tx.note.isNotEmpty
+                                          ? tx.note
+                                          : null,
+                                      trailing: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            CurrencyUtil.formatMoney(tx.amount),
+                                            style: TextStyle(
+                                              color: tx.isExpense
+                                                  ? AppColors.expense
+                                                  : AppColors.income,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Số dư ví: ${CurrencyUtil.formatMoney(runningBalances[tx.key] ?? 0)}',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(fontSize: 10),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   );
@@ -246,8 +320,19 @@ class _DiaryTabState extends State<DiaryTab> {
   Widget _buildStatItem(String label, double amount, Color color) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        Text(CurrencyUtil.formatMoney(amount), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          CurrencyUtil.formatMoney(amount),
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
       ],
     );
   }

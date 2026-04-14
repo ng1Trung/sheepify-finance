@@ -4,6 +4,9 @@ import 'package:line_icons/line_icons.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/settings_model.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../widgets/common/sheep_widgets.dart';
+
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key});
 
@@ -15,86 +18,93 @@ class SettingsTab extends StatelessWidget {
         final settings = box.get('current') ?? AppSettings();
 
         return Scaffold(
-          backgroundColor: Colors.grey[50],
           body: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             children: [
-              // --- PHẦN PROFILE GIẢ LẬP ---
+              // --- MINIMALIST PROFILE ---
               Center(
                 child: Column(
                   children: [
-                    const CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.teal,
-                      child: Icon(
-                        LineIcons.user,
-                        size: 50,
-                        color: Colors.white,
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
+                      ),
+                      child: const CircleAvatar(
+                        radius: 45,
+                        backgroundColor: AppColors.primaryLight,
+                        child: Icon(
+                          LineIcons.user,
+                          size: 40,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 15),
-                    const Text(
+                    const SizedBox(height: 16),
+                    Text(
                       'Người dùng Sheepify',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Quản lý tài chính đơn giản',
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 40),
 
-              // --- NHÓM CÀI ĐẶT TÀI CHÍNH ---
-              const Text(
-                'CÀI ĐẶT',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.teal,
-                  letterSpacing: 1.2,
-                ),
+              // --- SETTINGS SECTION ---
+              Text(
+                'CÀI ĐẶT HỆ THỐNG',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
               ),
-              const SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 12),
+              
+              SheepCard(
+                padding: EdgeInsets.zero,
                 child: Column(
                   children: [
                     SwitchListTile(
                       secondary: const Icon(
                         LineIcons.coins,
-                        color: Colors.teal,
+                        color: AppColors.primary,
                       ),
                       title: const Text(
                         'Cộng dồn số dư từ tháng trước',
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       subtitle: const Text(
-                        'Số dư tháng này sẽ bao gồm cả số tiền còn lại của các tháng trước.',
-                        style: TextStyle(fontSize: 12),
+                        'Số dư tháng này sẽ bao gồm cả số dư khả dụng từ các tháng trước đó.',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                       value: settings.accumulateBalance,
-                      activeColor: Colors.teal,
+                      activeColor: AppColors.primary,
                       onChanged: (val) {
                         settings.accumulateBalance = val;
                         settings.save();
                       },
                     ),
+                    // Có thể thêm các settings khác ở đây trong tương lai
                   ],
                 ),
               ),
+              
+              const SizedBox(height: 30),
+              Center(
+                child: Text(
+                  'Sheepify v1.0.0',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+                ),
+              ),
+              const SizedBox(height: 100),
             ],
           ),
         );

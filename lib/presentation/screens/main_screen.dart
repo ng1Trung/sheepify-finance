@@ -11,6 +11,9 @@ import '../tabs/stats_tab.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
 import '../tabs/settings_tab.dart';
+import '../widgets/category_form.dart';
+
+import '../../core/theme/app_colors.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -45,7 +48,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         CategoryModel(
           id: 'p_daily',
-          name: 'Chi tiêu',
+          name: 'Chi',
           iconCode: Icons.shopping_cart.codePoint,
           isExpense: true,
           parentId: null,
@@ -59,7 +62,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         CategoryModel(
           id: 'p_income',
-          name: 'Thu nhập',
+          name: 'Thu',
           iconCode: Icons.attach_money.codePoint,
           isExpense: false,
           parentId: null,
@@ -119,7 +122,7 @@ class _MainScreenState extends State<MainScreen> {
                     color: Colors.black.withOpacity(0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -128,7 +131,7 @@ class _MainScreenState extends State<MainScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-            color: isActive ? Colors.teal : Colors.grey[600],
+            color: isActive ? AppColors.primary : AppColors.textSecondary,
           ),
         ),
       ),
@@ -140,12 +143,22 @@ class _MainScreenState extends State<MainScreen> {
     // APPBAR NAVIGATOR TÍCH HỢP XỊN XÒ
     Widget buildAppBarTitle() {
       if (_currentIndex == 2) {
-        return const Text('Danh Mục',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal));
+        return const Text(
+          'Danh Mục',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        );
       }
       if (_currentIndex == 3) {
-        return const Text('Cá nhân',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal));
+        return const Text(
+          'Cá nhân',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        );
       }
 
       String dateText;
@@ -183,25 +196,30 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.arrow_back_ios_new,
-                    size: 14, color: Colors.teal),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
                 onPressed: () => _changeTime(-1),
               ),
               InkWell(
                 onTap: _pickTime,
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.teal.withOpacity(0.1),
+                        color: AppColors.primary.withOpacity(0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ],
                   ),
                   child: Row(
@@ -211,7 +229,7 @@ class _MainScreenState extends State<MainScreen> {
                             ? Icons.calendar_month
                             : Icons.calendar_today,
                         size: 14,
-                        color: Colors.teal,
+                        color: AppColors.primary,
                       ),
                       const SizedBox(width: 10),
                       Text(
@@ -219,7 +237,7 @@ class _MainScreenState extends State<MainScreen> {
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: Colors.teal,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -228,8 +246,11 @@ class _MainScreenState extends State<MainScreen> {
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.arrow_forward_ios,
-                    size: 14, color: Colors.teal),
+                icon: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
                 onPressed: () => _changeTime(1),
               ),
             ],
@@ -257,42 +278,64 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Nền hơi xám cho nổi card
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
-        backgroundColor: Colors.white,
-        toolbarHeight: (_currentIndex == 2 || _currentIndex == 3) ? 60 : 100, // Tăng chiều cao cho toggle
+        backgroundColor: Colors.transparent,
+        toolbarHeight: (_currentIndex == 2 || _currentIndex == 3) ? 60 : 100,
         title: buildAppBarTitle(),
       ),
       body: buildBody(),
-      floatingActionButton: _currentIndex == 1
-          ? FloatingActionButton(
-              onPressed: _showAddTransactionForm,
-              backgroundColor: Colors.teal,
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: (_currentIndex == 1 || _currentIndex == 2)
+          ? Padding(
+              padding: const EdgeInsets.only(
+                bottom: 0,
+              ), // Tighter alignment closer to bottom bar
+              child: FloatingActionButton(
+                onPressed: _currentIndex == 1
+                    ? _showAddTransactionForm
+                    : _showAddCategoryForm,
+                backgroundColor: AppColors.primary,
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  _currentIndex == 1 ? Icons.add : Icons.create_new_folder,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
             )
           : null,
-      bottomNavigationBar: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-        child: GNav(
-          gap: 8,
-          activeColor: Colors.teal,
-          iconSize: 24,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          tabBackgroundColor: Colors.teal.withOpacity(0.1),
-          color: Colors.grey[600],
-          tabs: const [
-            GButton(icon: LineIcons.pieChart, text: 'Thống kê'),
-            GButton(icon: LineIcons.book, text: 'Nhật ký'),
-            GButton(icon: LineIcons.tags, text: 'Danh mục'),
-            GButton(icon: LineIcons.user, text: 'Cá nhân'),
-          ],
-          selectedIndex: _currentIndex,
-          onTabChange: (index) => setState(() => _currentIndex = index),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: AppColors.softShadow,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: GNav(
+              gap: 8,
+              activeColor: AppColors.primary,
+              iconSize: 22,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              tabBackgroundColor: AppColors.primary.withOpacity(0.08),
+              color: AppColors.textSecondary,
+              tabs: const [
+                GButton(icon: LineIcons.pieChart, text: 'Thống kê'),
+                GButton(icon: LineIcons.book, text: 'Nhật ký'),
+                GButton(icon: LineIcons.tags, text: 'Danh mục'),
+                GButton(icon: LineIcons.user, text: 'Cá nhân'),
+              ],
+              selectedIndex: _currentIndex,
+              onTabChange: (index) => setState(() => _currentIndex = index),
+            ),
+          ),
         ),
       ),
     );
@@ -302,7 +345,9 @@ class _MainScreenState extends State<MainScreen> {
     final resultDate = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TransactionForm(initialDate: _selectedDate),
+      builder: (_) => TransactionForm(
+        initialDate: _isMonthlyView ? DateTime.now() : _selectedDate,
+      ),
     );
 
     if (resultDate != null) {
@@ -314,12 +359,25 @@ class _MainScreenState extends State<MainScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Đã thêm giao dịch ngày ${DateFormat('dd/MM/yyyy').format(resultDate)}'),
+            content: Text(
+              'Đã thêm giao dịch ngày ${DateFormat('dd/MM/yyyy').format(resultDate)}',
+            ),
             backgroundColor: Colors.teal,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
     }
+  }
+
+  Future<void> _showAddCategoryForm() async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => const CategoryForm(category: null),
+    );
   }
 }

@@ -8,6 +8,8 @@ import 'data/models/settings_model.dart';
 import 'core/constants/constants.dart';
 import 'presentation/screens/main_screen.dart'; // Import màn hình chính
 
+import 'core/theme/app_theme.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('vi_VN', null);
@@ -32,14 +34,8 @@ void main() async {
   runApp(
     MaterialApp(
       debugShowCheckedModeBanner: false,
-      // Áp dụng Font Quicksand cho toàn bộ App
-      theme: ThemeData(
-        fontFamily: 'Quicksand',
-        primarySwatch: Colors.teal,
-        useMaterial3: true, // Dùng Material 3 cho hiện đại
-        scaffoldBackgroundColor:
-            Colors.grey[100], // Nền hơi xám nhẹ cho nổi bật Card
-      ),
+      title: 'Sheepify',
+      theme: AppTheme.lightTheme,
       home: const MainScreen(),
     ),
   );

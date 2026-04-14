@@ -10,6 +10,8 @@ import '../../core/utils/currency_util.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
+import '../../core/theme/app_colors.dart';
+import '../widgets/common/sheep_widgets.dart';
 
 class StatsTab extends StatefulWidget {
   final DateTime currentMonth;
@@ -42,7 +44,7 @@ class _StatsTabState extends State<StatsTab> {
             final catBox = Hive.box<CategoryModel>(kCatBox);
             final allTransactions = box.values.cast<Transaction>().toList();
 
-            // 1. Phân loại giao dịch: Tháng này vs Các tháng trước
+            // 1. Phân loại giao dịch
             final monthStart = DateTime(
               widget.currentMonth.year,
               widget.currentMonth.month,
@@ -68,7 +70,7 @@ class _StatsTabState extends State<StatsTab> {
                 .where((tx) => tx.date.isBefore(monthStart))
                 .toList();
 
-            // 2. Tính toán số dư tồn dư từ quá khứ
+            // 2. Tính tồn dư
             double prevIncome = 0;
             double prevExpense = 0;
             for (var tx in previousTransactions) {
@@ -79,7 +81,7 @@ class _StatsTabState extends State<StatsTab> {
             }
             double carriedOverBalance = prevIncome - prevExpense;
 
-            // 3. Phân tích dữ liệu theo Danh mục trong tháng
+            // 3. Phân tích theo Danh mục
             Map<String, _StatEntry> statsMap = {};
             double monthIncome = 0;
             double monthExpense = 0;
@@ -109,13 +111,12 @@ class _StatsTabState extends State<StatsTab> {
               }
             }
 
-            // 4. Xử lý "Số dư khả dụng" và "Danh mục ảo Tháng trước"
+            // 4. Xử lý "Số dư khả dụng"
             double availableBalance;
             if (settings.accumulateBalance) {
               availableBalance =
                   carriedOverBalance + monthIncome - monthExpense;
 
-              // Thêm mục "Tháng trước" vào Tab THU NHẬP nếu có dư
               if (!_isExpenseMode && carriedOverBalance > 0) {
                 final prevMonthCat = CategoryModel(
                   id: 'virtual_prev_month',
@@ -137,7 +138,6 @@ class _StatsTabState extends State<StatsTab> {
               (sum, item) => sum + item.amount,
             );
 
-            // Sắp xếp danh mục
             var sortedStats = statsMap.values.toList()
               ..sort((a, b) => b.amount.compareTo(a.amount));
 
@@ -155,18 +155,12 @@ class _StatsTabState extends State<StatsTab> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Lottie.asset(
-                              'assets/empty.json',
-                              width: MediaQuery.of(context).size.width * 0.6,
-                              fit: BoxFit.contain,
-                            ),
+                            Lottie.asset('assets/empty.json', width: 200),
                             const SizedBox(height: 20),
                             Text(
-                              'Tháng ${DateFormat('MM/yyyy').format(widget.currentMonth)} chưa có dữ liệu ${_isExpenseMode ? "chi tiêu" : "thu nhập"}!',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
+                              'Tháng ${DateFormat('MM/yyyy').format(widget.currentMonth)} chưa có dữ liệu ${_isExpenseMode ? "chi" : "thu"}!',
+                              style: Theme.of(context).textTheme.labelSmall,
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
@@ -178,165 +172,127 @@ class _StatsTabState extends State<StatsTab> {
             }
 
             return ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
                 _buildBalanceCard(availableBalance),
                 const SizedBox(height: 15),
                 _buildToggleButton(),
                 const SizedBox(height: 20),
 
-                // --- BIỂU ĐỒ TRÒN ---
-                Container(
-                  height: 300,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
+                // --- PIE CHART CARD ---
+                SheepCard(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
                     children: [
-                      PieChart(
-                        PieChartData(
-                          pieTouchData: PieTouchData(
-                            touchCallback:
-                                (FlTouchEvent event, pieTouchResponse) {
-                                  setState(() {
-                                    if (!event.isInterestedForInteractions ||
-                                        pieTouchResponse == null ||
-                                        pieTouchResponse.touchedSection ==
-                                            null) {
-                                      _touchedIndex = -1;
-                                      return;
-                                    }
-                                    _touchedIndex = pieTouchResponse
-                                        .touchedSection!
-                                        .touchedSectionIndex;
-                                  });
-                                },
-                          ),
-                          borderData: FlBorderData(show: false),
-                          sectionsSpace: 4,
-                          centerSpaceRadius: 65,
-                          sections: List.generate(sortedStats.length, (i) {
-                            final isTouched = i == _touchedIndex;
-                            final radius = isTouched ? 75.0 : 65.0;
-                            final stat = sortedStats[i];
-                            final color =
-                                Colors.primaries[stat.category.id.hashCode %
-                                    Colors.primaries.length];
-                            final double percentage =
-                                (stat.amount / currentModeDisplayTotal) * 100;
+                      SizedBox(
+                        height: 220,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            PieChart(
+                              PieChartData(
+                                pieTouchData: PieTouchData(
+                                  touchCallback:
+                                      (FlTouchEvent event, pieTouchResponse) {
+                                        setState(() {
+                                          if (!event
+                                                  .isInterestedForInteractions ||
+                                              pieTouchResponse == null ||
+                                              pieTouchResponse.touchedSection ==
+                                                  null) {
+                                            _touchedIndex = -1;
+                                            return;
+                                          }
+                                          _touchedIndex = pieTouchResponse
+                                              .touchedSection!
+                                              .touchedSectionIndex;
+                                        });
+                                      },
+                                ),
+                                sectionsSpace: 4,
+                                centerSpaceRadius: 70,
+                                sections: List.generate(sortedStats.length, (
+                                  i,
+                                ) {
+                                  final isTouched = i == _touchedIndex;
+                                  final radius = isTouched ? 25.0 : 18.0;
+                                  final stat = sortedStats[i];
+                                  final color = _getPastelColor(i);
 
-                            return PieChartSectionData(
-                              color: color,
-                              value: stat.amount,
-                              title: '${percentage.toStringAsFixed(1)}%',
-                              radius: radius,
-                              titleStyle: TextStyle(
-                                fontSize: isTouched ? 14 : 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                  return PieChartSectionData(
+                                    color: color,
+                                    value: stat.amount,
+                                    title: '',
+                                    radius: radius,
+                                  );
+                                }),
                               ),
-                            );
-                          }),
+                            ),
+                            _buildCenterInfo(
+                              sortedStats,
+                              currentModeDisplayTotal,
+                            ),
+                          ],
                         ),
                       ),
-                      _buildCenterInfo(sortedStats, currentModeDisplayTotal),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 12),
+
                 ...sortedStats.map((stat) {
-                  final parent = stat.category.parentId != null
-                      ? catBox.values.firstWhere(
-                          (c) => c.id == stat.category.parentId,
-                          orElse: () => stat.category,
-                        )
-                      : null;
-
                   bool isVirtual = stat.category.id == 'virtual_prev_month';
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 5,
+                  return SheepListTile(
+                    onTap: () {},
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _isExpenseMode
+                            ? AppColors.expense.withOpacity(0.08)
+                            : AppColors.income.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        isVirtual
+                            ? LineIcons.history
+                            : IconData(
+                                stat.category.iconCode,
+                                fontFamily: 'MaterialIcons',
+                              ),
+                        color: _isExpenseMode
+                            ? AppColors.expense
+                            : AppColors.income,
+                        size: 22,
+                      ),
+                    ),
+                    title: stat.category.name,
+                    subtitle: isVirtual ? 'Số dư cộng dồn từ trước' : null,
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          CurrencyUtil.formatMoney(stat.amount),
+                          style: TextStyle(
+                            color: _isExpenseMode
+                                ? AppColors.expense
+                                : AppColors.income,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        Text(
+                          '${(stat.amount / currentModeDisplayTotal * 100).toStringAsFixed(1)}%',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.copyWith(fontSize: 10),
                         ),
                       ],
                     ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      leading: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: _isExpenseMode
-                              ? Colors.red.withOpacity(0.08)
-                              : Colors.green.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          isVirtual
-                              ? LineIcons.history
-                              : IconData(
-                                  stat.category.iconCode,
-                                  fontFamily: 'MaterialIcons',
-                                ),
-                          color: _isExpenseMode ? Colors.red : Colors.green,
-                          size: 22,
-                        ),
-                      ),
-                      title: Text(
-                        stat.category.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      subtitle: isVirtual
-                          ? const Text(
-                              'Số dư cộng dồn từ trước',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.blue,
-                              ),
-                            )
-                          : (parent != null
-                                ? Text(
-                                    parent.name,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[500],
-                                    ),
-                                  )
-                                : null),
-                      trailing: Text(
-                        CurrencyUtil.formatMoney(stat.amount),
-                        style: TextStyle(
-                          color: _isExpenseMode ? Colors.red : Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
                   );
                 }),
-
-                const SizedBox(height: 50),
+                const SizedBox(height: 100),
               ],
             );
           },
@@ -345,21 +301,35 @@ class _StatsTabState extends State<StatsTab> {
     );
   }
 
+  Color _getPastelColor(int index) {
+    final List<Color> pastelPalette = [
+      const Color(0xFF83EAF1),
+      const Color(0xFF63A4FF),
+      const Color(0xFFB983FF),
+      const Color(0xFFFF83C1),
+      const Color(0xFFFF9B83),
+      const Color(0xFFFFD383),
+      const Color(0xFFD3FF83),
+      const Color(0xFF83FFB9),
+    ];
+    return pastelPalette[index % pastelPalette.length];
+  }
+
   Widget _buildToggleButton() {
     return Container(
-      height: 45,
+      height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
         children: [
           Expanded(
-            child: _buildToggleItem("Chi tiêu", _isExpenseMode, Colors.red),
+            child: _buildToggleItem("Chi", _isExpenseMode, AppColors.expense),
           ),
           Expanded(
-            child: _buildToggleItem("Thu nhập", !_isExpenseMode, Colors.green),
+            child: _buildToggleItem("Thu", !_isExpenseMode, AppColors.income),
           ),
         ],
       ),
@@ -369,7 +339,7 @@ class _StatsTabState extends State<StatsTab> {
   Widget _buildToggleItem(String title, bool isActive, Color color) {
     return GestureDetector(
       onTap: () => setState(() {
-        _isExpenseMode = (title == "Chi tiêu");
+        _isExpenseMode = (title == "Chi");
         _touchedIndex = -1;
       }),
       child: Container(
@@ -377,21 +347,14 @@ class _StatsTabState extends State<StatsTab> {
         decoration: BoxDecoration(
           color: isActive ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(21),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 5,
-                  ),
-                ]
-              : null,
+          boxShadow: isActive ? AppColors.softShadow : null,
         ),
         child: Text(
           title,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.bold,
-            color: isActive ? color : Colors.grey[600],
+            color: isActive ? color : AppColors.textSecondary,
           ),
         ),
       ),
@@ -399,9 +362,9 @@ class _StatsTabState extends State<StatsTab> {
   }
 
   Widget _buildCenterInfo(List<_StatEntry> sortedStats, double total) {
-    String label = "TỔNG";
+    String label = _isExpenseMode ? "TỔNG CHI" : "TỔNG THU";
     String amount = CurrencyUtil.formatMoney(total);
-    Color color = _isExpenseMode ? Colors.red : Colors.green;
+    Color color = _isExpenseMode ? AppColors.expense : AppColors.income;
 
     if (_touchedIndex != -1 && _touchedIndex < sortedStats.length) {
       label = sortedStats[_touchedIndex].category.name;
@@ -413,21 +376,18 @@ class _StatsTabState extends State<StatsTab> {
       children: [
         Text(
           label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[500],
-            letterSpacing: 1,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(fontSize: 10, letterSpacing: 1),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5),
         FittedBox(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
               amount,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -439,34 +399,27 @@ class _StatsTabState extends State<StatsTab> {
   }
 
   Widget _buildBalanceCard(double balance) {
-    Color color = balance >= 0 ? Colors.teal : Colors.red;
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: color.withOpacity(0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'SỐ DƯ KHẢ DỤNG:',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
+    return SheepCard(
+      padding: const EdgeInsets.all(18),
+      color: AppColors.primaryLight,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'SỐ DƯ VÍ',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.bold,
             ),
-            Text(
-              CurrencyUtil.formatMoney(balance),
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+          ),
+          Text(
+            CurrencyUtil.formatMoney(balance),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.primary,
+              fontSize: 20,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

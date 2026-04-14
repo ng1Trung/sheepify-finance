@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:line_icons/line_icons.dart';
 
 import '../../core/constants/constants.dart';
+import '../../core/theme/app_colors.dart';
 import '../../data/models/category_model.dart';
 
 class CategoryForm extends StatefulWidget {
-  final CategoryModel? category; // Nếu có -> Sửa
+  final CategoryModel? category;
   const CategoryForm({super.key, this.category});
 
   @override
@@ -21,7 +23,6 @@ class _CategoryFormState extends State<CategoryForm> {
   String? _selectedParentId;
   late int _selectedIcon;
 
-  // List icon để chọn
   final List<IconData> _iconList = [
     Icons.fastfood,
     Icons.restaurant,
@@ -65,7 +66,6 @@ class _CategoryFormState extends State<CategoryForm> {
   void initState() {
     super.initState();
     if (widget.category != null) {
-      // --- CHẾ ĐỘ SỬA ---
       final cat = widget.category!;
       _nameController.text = cat.name;
       _isExpense = cat.isExpense;
@@ -74,13 +74,11 @@ class _CategoryFormState extends State<CategoryForm> {
       _budgetController.text =
           cat.budget != null ? cat.budget!.toStringAsFixed(0) : '';
     } else {
-      // --- CHẾ ĐỘ TẠO MỚI ---
       _nameController.text = '';
       _isExpense = true;
       _selectedIcon = _iconList[0].codePoint;
       _selectedParentId = null;
 
-      // Mặc định chọn cha đầu tiên nếu có
       final parents = _catBox.values
           .where((c) => c.parentId == null && c.isExpense == _isExpense)
           .toList();
@@ -92,16 +90,12 @@ class _CategoryFormState extends State<CategoryForm> {
     final enteredBudget = double.tryParse(_budgetController.text);
 
     if (widget.category != null) {
-      // UPDATE
       final cat = widget.category!;
       cat.name = _nameController.text;
       cat.iconCode = _selectedIcon;
-      // Lưu ý: Không cho sửa ParentId hay Thu/Chi để tránh lỗi dữ liệu phức tạp
       cat.budget = enteredBudget;
       cat.save();
     } else {
-      // CREATE NEW
-      // Nếu có chọn cha -> Tạo con. Nếu không chọn cha (hoặc chọn mục "Tạo nhóm mới") -> Tạo cha
       final newCat = CategoryModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text,
@@ -117,7 +111,6 @@ class _CategoryFormState extends State<CategoryForm> {
 
   @override
   Widget build(BuildContext context) {
-    // Lấy danh sách Cha để hiển thị trong Dropdown
     final parents = _catBox.values
         .where((c) => c.parentId == null && c.isExpense == _isExpense)
         .toList();
@@ -135,107 +128,107 @@ class _CategoryFormState extends State<CategoryForm> {
         children: [
           Center(
             child: Text(
-              widget.category == null ? 'Tạo Danh Mục' : 'Sửa Danh Mục',
+              widget.category == null ? 'Tạo danh mục' : 'Sửa danh mục',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 20),
 
-          // 1. Chỉ cho chọn Thu/Chi khi Tạo mới (Sửa thì khóa lại)
-          if (widget.category == null)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Thu Nhập',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Switch(
-                  value: _isExpense,
-                  activeColor: Colors.red,
-                  inactiveThumbColor: Colors.green,
-                  onChanged: (val) {
-                    setState(() {
-                      _isExpense = val;
-                      _selectedParentId = null; // Reset cha
-                      final newParents = _catBox.values
-                          .where(
-                            (c) =>
-                                c.parentId == null && c.isExpense == _isExpense,
-                          )
-                          .toList();
-                      if (newParents.isNotEmpty)
-                        _selectedParentId = newParents.first.id;
-                    });
-                  },
-                ),
-                const Text(
-                  'Chi Tiêu',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
+          if (widget.category == null) ...[
+            Container(
+              height: 44,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildTypeToggleItem("Chi", _isExpense, AppColors.expense),
+                  ),
+                  Expanded(
+                    child: _buildTypeToggleItem("Thu", !_isExpense, AppColors.income),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(height: 25),
+          ],
 
-          const SizedBox(height: 10),
-          const Text('Tên danh mục:', style: TextStyle(color: Colors.grey)),
+          const Text('Tên danh mục:',
+              style: TextStyle(color: Colors.grey, fontSize: 13)),
+          const SizedBox(height: 8),
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+            decoration: InputDecoration(
+              hintText: 'Nhập tên...',
+              filled: true,
+              fillColor: Colors.grey[50],
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide.none,
+              ),
+            ),
           ),
 
-          const SizedBox(height: 15),
+          const SizedBox(height: 20),
 
           if (_isExpense) ...[
-            const Text('Ngân sách dự kiến (vnđ):',
-                style: TextStyle(color: Colors.grey)),
+            const Text(
+              'Ngân sách dự kiến (vnđ):',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
             TextField(
               controller: _budgetController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                prefixText: 'đ ',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.grey[50],
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: const Icon(LineIcons.coins, size: 20),
+                suffixText: 'đ',
               ),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
           ],
 
-          // 2. Dropdown chọn Nhóm (Cha)
-          // Chỉ hiện khi Tạo mới, hoặc khi đang Sửa danh mục con
           if (widget.category == null || widget.category!.parentId != null) ...[
-            const Text('Thuộc nhóm:', style: TextStyle(color: Colors.grey)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: _selectedParentId,
-                  items: [
-                    if (widget.category == null)
-                      const DropdownMenuItem(
-                        value: 'new_group',
-                        child: Text(
-                          '+ Tạo nhóm mới',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ),
-                    ...parents.map(
-                      (p) => DropdownMenuItem(value: p.id, child: Text(p.name)),
-                    ),
-                  ],
-                  // SỬA Ở ĐÂY: Cho phép chọn lại cha ngay cả khi đang Edit
-                  onChanged: (val) => setState(() => _selectedParentId = val),
-                  hint: const Text('Chọn nhóm cha'),
+            const Text('Thuộc nhóm:',
+                style: TextStyle(color: Colors.grey, fontSize: 13)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (widget.category == null)
+                  _buildGroupChip(
+                    id: 'new_group',
+                    name: '+ Nhóm mới',
+                    isSelected:
+                        _selectedParentId == 'new_group' || _selectedParentId == null,
+                    isSpecial: true,
+                  ),
+                ...parents.map(
+                  (p) => _buildGroupChip(
+                    id: p.id,
+                    name: p.name,
+                    isSelected: _selectedParentId == p.id,
+                  ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
           ],
 
           const Text('Biểu tượng:', style: TextStyle(color: Colors.grey)),
@@ -279,6 +272,9 @@ class _CategoryFormState extends State<CategoryForm> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal,
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
               ),
               child: Text(
                 widget.category == null ? 'TẠO MỚI' : 'LƯU THAY ĐỔI',
@@ -287,6 +283,75 @@ class _CategoryFormState extends State<CategoryForm> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTypeToggleItem(String title, bool isActive, Color color) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isExpense = (title == "Chi");
+          _selectedParentId = null;
+        });
+      },
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: isActive ? color : Colors.grey,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupChip({
+    required String id,
+    required String name,
+    required bool isSelected,
+    bool isSpecial = false,
+  }) {
+    return FilterChip(
+      label: Text(name),
+      selected: isSelected,
+      onSelected: (val) {
+        setState(() => _selectedParentId = val ? id : null);
+      },
+      showCheckmark: false,
+      selectedColor:
+          isSpecial ? Colors.blue[50] : AppColors.primary.withOpacity(0.1),
+      labelStyle: TextStyle(
+        color: isSelected
+            ? (isSpecial ? Colors.blue : AppColors.primary)
+            : Colors.grey[700],
+        fontSize: 12,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      backgroundColor: Colors.grey[100],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: isSelected
+              ? (isSpecial ? Colors.blue : AppColors.primary)
+              : Colors.transparent,
+        ),
       ),
     );
   }
