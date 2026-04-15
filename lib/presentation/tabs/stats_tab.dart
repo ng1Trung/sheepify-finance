@@ -99,7 +99,7 @@ class _StatsTabState extends State<StatsTab> {
                   (c) => c.id == tx.categoryId,
                   orElse: () => CategoryModel(
                     id: 'unknown',
-                    name: 'Others',
+                    name: 'Khác',
                     iconCode: 58263,
                     isExpense: tx.isExpense,
                   ),
@@ -122,7 +122,7 @@ class _StatsTabState extends State<StatsTab> {
               if (!_isExpenseMode && carriedOverBalance > 0) {
                 final prevMonthCat = CategoryModel(
                   id: 'virtual_prev_month',
-                  name: 'Previous Balance',
+                  name: 'Số dư trước',
                   iconCode: LineIcons.history.codePoint,
                   isExpense: false,
                 );
@@ -160,7 +160,7 @@ class _StatsTabState extends State<StatsTab> {
                             Lottie.asset('assets/empty.json', width: 200),
                             const SizedBox(height: 20),
                             Text(
-                              'No ${_isExpenseMode ? "expense" : "income"} data for ${DateFormat('MMMM yyyy').format(widget.currentMonth)}!',
+                              'Chưa có dữ liệu ${_isExpenseMode ? "chi phí" : "thu nhập"} cho ${DateFormat('MMMM yyyy').format(widget.currentMonth)}!',
                               style: Theme.of(context).textTheme.labelSmall,
                               textAlign: TextAlign.center,
                             ),
@@ -272,7 +272,7 @@ class _StatsTabState extends State<StatsTab> {
                     ),
                     title: stat.category.name,
                     subtitle: isVirtual
-                        ? 'Accumulated balance from previous months'
+                        ? 'Số dư tích lũy từ các tháng trước'
                         : null,
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -333,14 +333,14 @@ class _StatsTabState extends State<StatsTab> {
         children: [
           Expanded(
             child: _buildToggleItem(
-              "Expense",
+              "Chi phí",
               _isExpenseMode,
               AppColors.expense,
             ),
           ),
           Expanded(
             child: _buildToggleItem(
-              "Income",
+              "Thu nhập",
               !_isExpenseMode,
               AppColors.income,
             ),
@@ -376,7 +376,7 @@ class _StatsTabState extends State<StatsTab> {
   }
 
   Widget _buildCenterInfo(List<_StatEntry> sortedStats, double total) {
-    String label = _isExpenseMode ? "TOTAL EXPENSE" : "TOTAL INCOME";
+    String label = _isExpenseMode ? "TỔNG CHI PHÍ" : "TỔNG THU NHẬP";
     String amount = CurrencyUtil.formatMoney(total);
     Color color = _isExpenseMode ? AppColors.expense : AppColors.income;
 
@@ -420,7 +420,7 @@ class _StatsTabState extends State<StatsTab> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'WALLET BALANCE',
+            'SỐ DƯ VÍ',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppColors.primary,
               fontWeight: FontWeight.bold,

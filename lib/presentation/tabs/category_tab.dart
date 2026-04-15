@@ -31,8 +31,8 @@ class _CategoryTabState extends State<CategoryTab> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: SheepTypeToggle(
             isExpense: _isExpenseMode,
-            leftLabel: "Expense",
-            rightLabel: "Income",
+            leftLabel: "Chi phí",
+            rightLabel: "Thu nhập",
             onChanged: (val) => setState(() => _isExpenseMode = val),
           ),
         ),
@@ -122,7 +122,7 @@ class _CategoryTabState extends State<CategoryTab> {
           Icon(LineIcons.tags, size: 60, color: Colors.grey[300]),
           const SizedBox(height: 10),
           Text(
-            'No ${_isExpenseMode ? "expense" : "income"} categories yet',
+            'Chưa có danh mục ${_isExpenseMode ? "chi phí" : "thu nhập"}',
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
@@ -147,6 +147,7 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Widget _buildInfo(CategoryModel cat, double spent) {
+    final remaining = (cat.budget ?? 0) - spent;
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,13 +159,13 @@ class _CategoryTabState extends State<CategoryTab> {
                 cat.name,
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              if (_isExpenseMode && cat.budget != null)
+              if (_isExpenseMode && cat.budget != null && remaining < 0)
                 Text(
-                  CurrencyUtil.formatMoney(cat.budget! - spent),
-                  style: TextStyle(
+                  CurrencyUtil.formatMoney(remaining),
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: (cat.budget! - spent) < 0 ? AppColors.expense : AppColors.textPrimary,
+                    color: AppColors.expense,
                   ),
                 ),
             ],
@@ -177,11 +178,11 @@ class _CategoryTabState extends State<CategoryTab> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  (cat.budget! - spent) < 0 ? 'Over budget' : 'Remaining',
+                  remaining < 0 ? 'Vượt quá' : '',
                   style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                 ),
                 Text(
-                  'Total: ${CurrencyUtil.formatMoney(cat.budget!)}',
+                  'Ngân sách: ${CurrencyUtil.formatMoney(cat.budget!)}',
                   style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                 ),
               ],
@@ -193,12 +194,12 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Widget _buildProgressBar(CategoryModel cat, double spent) {
-    double progress = spent / cat.budget!;
+    double progress = spent / (cat.budget ?? 1.0);
     if (progress > 1.0) progress = 1.0;
     if (progress < 0) progress = 0;
 
     final baseColor = cat.colorValue != null ? Color(cat.colorValue!) : AppColors.primary;
-    final barColor = (spent > cat.budget!) ? AppColors.expense : baseColor;
+    final barColor = (spent > (cat.budget ?? 0)) ? AppColors.expense : baseColor;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),
@@ -210,6 +211,7 @@ class _CategoryTabState extends State<CategoryTab> {
       ),
     );
   }
+
 
   Widget _buildDeleteBackground() {
     return Container(
@@ -228,6 +230,8 @@ class _CategoryTabState extends State<CategoryTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) => TransactionHistorySheet(category: cat, transactions: catTxs),
     );
@@ -237,6 +241,8 @@ class _CategoryTabState extends State<CategoryTab> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
@@ -248,13 +254,13 @@ class _CategoryTabState extends State<CategoryTab> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete category?'),
-        content: Text('Are you sure you want to delete "${item.name}"?'),
+        title: const Text('Xoá danh mục?'),
+        content: Text('Bạn có chắc chắn muốn xoá danh mục "${item.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: AppColors.expense)),
+            child: const Text('Xoá', style: TextStyle(color: AppColors.expense)),
           ),
         ],
       ),

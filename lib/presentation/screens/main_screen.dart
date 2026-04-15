@@ -40,31 +40,31 @@ class _MainScreenState extends State<MainScreen> {
       final parents = [
         CategoryModel(
           id: 'cat_bill',
-          name: 'Bills',
+          name: 'Hoá đơn',
           iconCode: Icons.receipt.codePoint,
           isExpense: true,
         ),
         CategoryModel(
           id: 'cat_eat',
-          name: 'Food & Drink',
+          name: 'Ăn uống',
           iconCode: Icons.restaurant.codePoint,
           isExpense: true,
         ),
         CategoryModel(
           id: 'cat_shop',
-          name: 'Shopping',
+          name: 'Mua sắm',
           iconCode: Icons.shopping_cart.codePoint,
           isExpense: true,
         ),
         CategoryModel(
           id: 'cat_salary',
-          name: 'Salary',
+          name: 'Lương',
           iconCode: Icons.attach_money.codePoint,
           isExpense: false,
         ),
         CategoryModel(
           id: 'cat_bonus',
-          name: 'Bonus',
+          name: 'Thưởng',
           iconCode: Icons.card_giftcard.codePoint,
           isExpense: false,
         ),
@@ -138,7 +138,7 @@ class _MainScreenState extends State<MainScreen> {
     Widget buildAppBarTitle() {
       if (_currentIndex == 2) {
         return const Text(
-          'Categories',
+          'Danh mục',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: AppColors.primary,
@@ -147,7 +147,7 @@ class _MainScreenState extends State<MainScreen> {
       }
       if (_currentIndex == 3) {
         return const Text(
-          'Profile',
+          'Cài đặt',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: AppColors.primary,
@@ -178,8 +178,8 @@ class _MainScreenState extends State<MainScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildModeToggleItem('Day', !_isMonthlyView),
-                  _buildModeToggleItem('Month', _isMonthlyView),
+                  _buildModeToggleItem('Ngày', !_isMonthlyView),
+                  _buildModeToggleItem('Tháng', _isMonthlyView),
                 ],
               ),
             ),
@@ -316,10 +316,10 @@ class _MainScreenState extends State<MainScreen> {
               tabBackgroundColor: AppColors.primary.withOpacity(0.08),
               color: AppColors.textSecondary,
               tabs: const [
-                GButton(icon: LineIcons.pieChart, text: 'Stats'),
-                GButton(icon: LineIcons.book, text: 'Diary'),
-                GButton(icon: LineIcons.tags, text: 'Categories'),
-                GButton(icon: LineIcons.user, text: 'Profile'),
+                GButton(icon: LineIcons.pieChart, text: 'Thống kê'),
+                GButton(icon: LineIcons.book, text: 'Nhật ký'),
+                GButton(icon: LineIcons.tags, text: 'Danh mục'),
+                GButton(icon: LineIcons.user, text: 'Cài đặt'),
               ],
               selectedIndex: _currentIndex,
               onTabChange: (index) => setState(() => _currentIndex = index),
@@ -334,6 +334,8 @@ class _MainScreenState extends State<MainScreen> {
     final resultDate = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       builder: (_) => TransactionForm(
         initialDate: _isMonthlyView ? DateTime.now() : _selectedDate,
       ),
@@ -349,7 +351,7 @@ class _MainScreenState extends State<MainScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Added transaction for ${DateFormat('dd/MM/yyyy').format(resultDate)}',
+              'Đã thêm giao dịch cho ngày ${DateFormat('dd/MM/yyyy').format(resultDate)}',
             ),
             backgroundColor: Colors.teal,
             behavior: SnackBarBehavior.floating,
@@ -363,6 +365,8 @@ class _MainScreenState extends State<MainScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),

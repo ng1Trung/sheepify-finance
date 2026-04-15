@@ -4,6 +4,7 @@ import 'package:line_icons/line_icons.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency_util.dart';
 import '../../../data/models/category_model.dart';
 
 class TransactionImageArea extends StatelessWidget {
@@ -204,7 +205,7 @@ class TransactionImageArea extends StatelessWidget {
                       hintText: '0',
                       hintStyle: const TextStyle(color: Colors.white24),
                     ),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    inputFormatters: [CurrencyInputFormatter()],
                   ),
                 ),
                 const SizedBox(width: 16),

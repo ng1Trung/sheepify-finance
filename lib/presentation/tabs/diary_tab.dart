@@ -117,8 +117,8 @@ class _DiaryTabState extends State<DiaryTab> {
                       children: [
                         Text(
                           widget.isMonthly
-                              ? 'MONTHLY BALANCE'
-                              : 'DAILY BALANCE',
+                              ? 'SỐ DƯ THÁNG'
+                              : 'SỐ DƯ NGÀY',
                           style: Theme.of(
                             context,
                           ).textTheme.labelSmall?.copyWith(letterSpacing: 1),
@@ -138,7 +138,7 @@ class _DiaryTabState extends State<DiaryTab> {
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
                             _buildStatItem(
-                              'Income',
+                              'Thu nhập',
                               totalIncome,
                               AppColors.income,
                             ),
@@ -148,7 +148,7 @@ class _DiaryTabState extends State<DiaryTab> {
                               color: Colors.grey[200],
                             ),
                             _buildStatItem(
-                              'Expense',
+                              'Chi phí',
                               totalExpense,
                               AppColors.expense,
                             ),
@@ -169,8 +169,8 @@ class _DiaryTabState extends State<DiaryTab> {
                               const SizedBox(height: 10),
                               Text(
                                 widget.isMonthly
-                                    ? 'No transactions this month'
-                                    : 'No transactions today',
+                                    ? 'Tháng này chưa có giao dịch'
+                                    : 'Hôm nay chưa có giao dịch',
                                 style: Theme.of(context).textTheme.labelSmall,
                               ),
                             ],
@@ -246,6 +246,8 @@ class _DiaryTabState extends State<DiaryTab> {
                                       onTap: () => showModalBottomSheet(
                                         context: context,
                                         isScrollControlled: true,
+                                        isDismissible: true,
+                                        enableDrag: true,
                                         builder: (_) =>
                                             TransactionForm(transaction: tx),
                                       ),
