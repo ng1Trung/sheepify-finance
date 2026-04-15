@@ -13,6 +13,8 @@ import '../widgets/transaction_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
 
+import '../widgets/common/sheep_dialogs.dart';
+
 class DiaryTab extends StatefulWidget {
   final DateTime selectedDate;
   final bool isMonthly;
@@ -241,6 +243,18 @@ class _DiaryTabState extends State<DiaryTab> {
                                         color: AppColors.expense,
                                       ),
                                     ),
+                                    confirmDismiss: (direction) async {
+                                      return await showDialog(
+                                        context: context,
+                                        builder: (ctx) => SheepConfirmDialog(
+                                          title: 'Xoá giao dịch?',
+                                          content:
+                                              'Bạn có chắc chắn muốn xoá giao dịch này không? Hành động này không thể hoàn tác.',
+                                          confirmLabel: 'Xoá',
+                                          onConfirm: () {},
+                                        ),
+                                      );
+                                    },
                                     onDismissed: (_) => tx.delete(),
                                     child: SheepListTile(
                                       onTap: () => showModalBottomSheet(

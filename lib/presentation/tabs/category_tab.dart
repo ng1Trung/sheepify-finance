@@ -10,6 +10,7 @@ import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_toggles.dart';
+import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/category/transaction_history_sheet.dart';
 
 class CategoryTab extends StatefulWidget {
@@ -251,18 +252,53 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Future<bool?> _confirmDelete(BuildContext context, CategoryModel item) {
+    final txBox = Hive.box<Transaction>(kMoneyBox);
+    final relatedTxsCount =
+        txBox.values.where((tx) => tx.categoryId == item.id).length;
+
     return showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xoá danh mục?'),
-        content: Text('Bạn có chắc chắn muốn xoá danh mục "${item.name}"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xoá', style: TextStyle(color: AppColors.expense)),
+      builder: (ctx) => SheepConfirmDialog(
+        title: relatedTxsCount > 0 ? 'Xoá danh mục & dữ liệu?' : 'Xoá danh mục?',
+        richContent: Text.rich(
+          TextSpan(
+            text: relatedTxsCount > 0
+                ? 'Danh mục '
+                : 'Bạn có chắc chắn muốn xoá danh mục ',
+            children: [
+              TextSpan(
+                text: '"${item.name}"',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (relatedTxsCount > 0) ...[
+                const TextSpan(text: ' hiện đang chứa '),
+                TextSpan(
+                  text: '$relatedTxsCount giao dịch',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const TextSpan(
+                  text:
+                      '. Nếu xoá danh mục này, toàn bộ dữ liệu giao dịch liên quan sẽ bị mất vĩnh viễn. Bạn có chắc muốn tiếp tục?',
+                ),
+              ] else
+                const TextSpan(text: '?'),
+            ],
           ),
-        ],
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.5,
+          ),
+        ),
+        confirmLabel: relatedTxsCount > 0 ? 'Xoá tất cả' : 'Xoá',
+        onConfirm: () {},
       ),
     );
   }
