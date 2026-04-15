@@ -30,7 +30,10 @@ class SettingsTab extends StatelessWidget {
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.2),
+                          width: 2,
+                        ),
                       ),
                       child: const CircleAvatar(
                         radius: 45,
@@ -60,10 +63,12 @@ class SettingsTab extends StatelessWidget {
               // --- SETTINGS SECTION ---
               Text(
                 'CÀI ĐẶT HỆ THỐNG',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
               ),
               const SizedBox(height: 12),
-              
+
               SheepCard(
                 padding: EdgeInsets.zero,
                 child: Column(
@@ -83,10 +88,13 @@ class SettingsTab extends StatelessWidget {
                       ),
                       subtitle: const Text(
                         'Số dư tháng này sẽ bao gồm cả số dư khả dụng từ các tháng trước đó.',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       value: settings.accumulateBalance,
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                       onChanged: (val) {
                         settings.accumulateBalance = val;
                         settings.save();
@@ -96,12 +104,14 @@ class SettingsTab extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 30),
               Center(
                 child: Text(
                   'Sheepify v1.0.0',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(fontSize: 10),
                 ),
               ),
               const SizedBox(height: 100),

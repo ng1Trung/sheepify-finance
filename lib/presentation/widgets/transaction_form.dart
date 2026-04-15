@@ -63,7 +63,7 @@ class _TransactionFormState extends State<TransactionForm> {
     _amountController.addListener(() => setState(() {}));
   }
 
-  // Pick both date and time through sequential pickers
+  // Pick date through date picker
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -84,21 +84,9 @@ class _TransactionFormState extends State<TransactionForm> {
       },
     );
     if (picked != null) {
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_selectedDate),
-      );
-      if (time != null) {
-        setState(() {
-          _selectedDate = DateTime(
-            picked.year,
-            picked.month,
-            picked.day,
-            time.hour,
-            time.minute,
-          );
-        });
-      }
+      setState(() {
+        _selectedDate = picked;
+      });
     }
   }
 
@@ -290,7 +278,7 @@ class _TransactionFormState extends State<TransactionForm> {
             const Icon(LineIcons.calendar, size: 14, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
-              DateFormat('dd MMMM, yyyy - HH:mm', 'en_US').format(_selectedDate),
+              DateFormat('dd MMMM, yyyy', 'en_US').format(_selectedDate),
               style: const TextStyle(
                 color: AppColors.primary,
                 fontSize: 12,

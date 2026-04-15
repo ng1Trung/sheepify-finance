@@ -74,10 +74,11 @@ class _StatsTabState extends State<StatsTab> {
             double prevIncome = 0;
             double prevExpense = 0;
             for (var tx in previousTransactions) {
-              if (tx.isExpense)
+              if (tx.isExpense) {
                 prevExpense += tx.amount;
-              else
+              } else {
                 prevIncome += tx.amount;
+              }
             }
             double carriedOverBalance = prevIncome - prevExpense;
 
@@ -87,10 +88,11 @@ class _StatsTabState extends State<StatsTab> {
             double monthExpense = 0;
 
             for (var tx in monthTransactions) {
-              if (tx.isExpense)
+              if (tx.isExpense) {
                 monthExpense += tx.amount;
-              else
+              } else {
                 monthIncome += tx.amount;
+              }
 
               if (tx.isExpense == _isExpenseMode) {
                 final cat = catBox.values.firstWhere(
@@ -267,7 +269,9 @@ class _StatsTabState extends State<StatsTab> {
                       ),
                     ),
                     title: stat.category.name,
-                    subtitle: isVirtual ? 'Accumulated balance from previous months' : null,
+                    subtitle: isVirtual
+                        ? 'Accumulated balance from previous months'
+                        : null,
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -326,10 +330,18 @@ class _StatsTabState extends State<StatsTab> {
       child: Row(
         children: [
           Expanded(
-            child: _buildToggleItem("Expense", _isExpenseMode, AppColors.expense),
+            child: _buildToggleItem(
+              "Expense",
+              _isExpenseMode,
+              AppColors.expense,
+            ),
           ),
           Expanded(
-            child: _buildToggleItem("Income", !_isExpenseMode, AppColors.income),
+            child: _buildToggleItem(
+              "Income",
+              !_isExpenseMode,
+              AppColors.income,
+            ),
           ),
         ],
       ),

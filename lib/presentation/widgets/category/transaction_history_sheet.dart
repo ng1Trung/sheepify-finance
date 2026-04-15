@@ -78,7 +78,7 @@ class TransactionHistorySheet extends StatelessWidget {
                         onTap: () {},
                         leading: const Icon(LineIcons.receipt, color: Colors.grey, size: 20),
                         title: transactions[i].note.isNotEmpty ? transactions[i].note : 'Transaction',
-                        subtitle: DateFormat('MM/dd/yyyy - HH:mm').format(transactions[i].date),
+                        subtitle: DateFormat('MM/dd/yyyy').format(transactions[i].date),
                         trailing: Text(
                           CurrencyUtil.formatMoney(transactions[i].amount),
                           style: const TextStyle(fontWeight: FontWeight.bold),
