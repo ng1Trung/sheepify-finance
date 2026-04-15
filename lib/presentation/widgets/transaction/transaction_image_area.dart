@@ -10,6 +10,7 @@ class TransactionImageArea extends StatelessWidget {
   final String? imagePath;
   final bool isExpense;
   final CategoryModel? selectedCategory;
+  final Color? categoryColor;
   final TextEditingController amountController;
   final TextEditingController noteController;
   final VoidCallback onPickImage;
@@ -22,6 +23,7 @@ class TransactionImageArea extends StatelessWidget {
     required this.imagePath,
     required this.isExpense,
     required this.selectedCategory,
+    this.categoryColor,
     required this.amountController,
     required this.noteController,
     required this.onPickImage,
@@ -63,10 +65,15 @@ class TransactionImageArea extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: !hasCategory
-                              ? [const Color(0xFFBDBDBD), const Color(0xFF757575)] // Platinum Brighter
-                              : (isExpense
-                                  ? [const Color(0xFFC62828), const Color(0xFF8E24AA)]
-                                  : [const Color(0xFF2E7D32), const Color(0xFF00ACC1)]),
+                              ? [const Color(0xFFBDBDBD), const Color(0xFF757575)]
+                              : (categoryColor != null
+                                  ? [
+                                      categoryColor!,
+                                      categoryColor!.withOpacity(0.7),
+                                    ]
+                                  : (isExpense
+                                      ? [const Color(0xFFC62828), const Color(0xFF8E24AA)]
+                                      : [const Color(0xFF2E7D32), const Color(0xFF00ACC1)])),
                         ),
                       ),
                       child: Center(
@@ -285,9 +292,8 @@ class TransactionImageArea extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: (hasCat ? AppColors.primary : Colors.grey[400]!).withOpacity(
-            0.9,
-          ),
+          color: (categoryColor ?? (hasCat ? AppColors.primary : Colors.grey[400]!))
+              .withOpacity(0.9),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(

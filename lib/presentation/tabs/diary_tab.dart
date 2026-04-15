@@ -252,13 +252,12 @@ class _DiaryTabState extends State<DiaryTab> {
                                       leading: Container(
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: tx.isExpense
-                                              ? AppColors.expense.withOpacity(
-                                                  0.08,
-                                                )
-                                              : AppColors.income.withOpacity(
-                                                  0.08,
-                                                ),
+                                          color: (cat.colorValue != null
+                                                  ? Color(cat.colorValue!)
+                                                  : (tx.isExpense
+                                                      ? AppColors.expense
+                                                      : AppColors.income))
+                                              .withOpacity(0.08),
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
@@ -268,9 +267,11 @@ class _DiaryTabState extends State<DiaryTab> {
                                             cat.iconCode,
                                             fontFamily: 'MaterialIcons',
                                           ),
-                                          color: tx.isExpense
-                                              ? AppColors.expense
-                                              : AppColors.income,
+                                          color: cat.colorValue != null
+                                              ? Color(cat.colorValue!)
+                                              : (tx.isExpense
+                                                  ? AppColors.expense
+                                                  : AppColors.income),
                                           size: 20,
                                         ),
                                       ),

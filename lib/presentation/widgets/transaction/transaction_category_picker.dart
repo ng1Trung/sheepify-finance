@@ -105,10 +105,14 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                     child: Container(
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary : Colors.grey[50],
+                        color: isSelected
+                            ? (c.colorValue != null ? Color(c.colorValue!) : AppColors.primary)
+                            : (c.colorValue != null ? Color(c.colorValue!).withOpacity(0.12) : Colors.grey[50]),
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
-                          color: isSelected ? AppColors.primary : Colors.grey[200]!,
+                          color: isSelected
+                              ? (c.colorValue != null ? Color(c.colorValue!) : AppColors.primary)
+                              : (c.colorValue != null ? Color(c.colorValue!).withOpacity(0.3) : Colors.grey[200]!),
                           width: 1,
                         ),
                       ),
@@ -116,7 +120,9 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                         c.name,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                          color: isSelected
+                              ? Colors.white
+                              : (c.colorValue != null ? Color(c.colorValue!) : AppColors.textPrimary),
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                         ),
                       ),

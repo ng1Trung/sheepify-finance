@@ -219,7 +219,9 @@ class _StatsTabState extends State<StatsTab> {
                                   final isTouched = i == _touchedIndex;
                                   final radius = isTouched ? 25.0 : 18.0;
                                   final stat = sortedStats[i];
-                                  final color = _getPastelColor(i);
+                                  final color = stat.category.colorValue != null
+                                      ? Color(stat.category.colorValue!)
+                                      : _getPastelColor(i);
 
                                   return PieChartSectionData(
                                     color: color,
@@ -245,14 +247,16 @@ class _StatsTabState extends State<StatsTab> {
 
                 ...sortedStats.map((stat) {
                   bool isVirtual = stat.category.id == 'virtual_prev_month';
+                  final color = stat.category.colorValue != null
+                      ? Color(stat.category.colorValue!)
+                      : (_isExpenseMode ? AppColors.expense : AppColors.income);
+
                   return SheepListTile(
                     onTap: () {},
                     leading: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: _isExpenseMode
-                            ? AppColors.expense.withOpacity(0.08)
-                            : AppColors.income.withOpacity(0.08),
+                        color: color.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -262,9 +266,7 @@ class _StatsTabState extends State<StatsTab> {
                                 stat.category.iconCode,
                                 fontFamily: 'MaterialIcons',
                               ),
-                        color: _isExpenseMode
-                            ? AppColors.expense
-                            : AppColors.income,
+                        color: color,
                         size: 22,
                       ),
                     ),

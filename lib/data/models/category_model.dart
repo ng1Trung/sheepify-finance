@@ -20,12 +20,16 @@ class CategoryModel extends HiveObject {
   @HiveField(4)
   double? budget;
 
+  @HiveField(5)
+  int? colorValue;
+
   CategoryModel({
     required this.id,
     required this.name,
     required this.iconCode,
     required this.isExpense,
     this.budget,
+    this.colorValue,
   });
 
   IconData get iconData => IconData(iconCode, fontFamily: 'MaterialIcons');
