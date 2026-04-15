@@ -14,6 +14,7 @@ import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
 
 import '../widgets/common/sheep_dialogs.dart';
+import '../widgets/common/sheep_notifications.dart';
 
 class DiaryTab extends StatefulWidget {
   final DateTime selectedDate;
@@ -255,7 +256,13 @@ class _DiaryTabState extends State<DiaryTab> {
                                         ),
                                       );
                                     },
-                                    onDismissed: (_) => tx.delete(),
+                                    onDismissed: (_) {
+                                      tx.delete();
+                                      SheepNotifications.showSuccess(
+                                        context,
+                                        'Đã xoá giao dịch',
+                                      );
+                                    },
                                     child: SheepListTile(
                                       onTap: () => showModalBottomSheet(
                                         context: context,

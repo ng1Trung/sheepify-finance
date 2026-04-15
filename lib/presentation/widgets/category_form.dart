@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/currency_util.dart';
 import 'common/sheep_toggles.dart';
 import 'common/sheep_widgets.dart';
+import 'common/sheep_notifications.dart';
 
 class CategoryForm extends StatefulWidget {
   final CategoryModel? category;
@@ -117,12 +118,7 @@ class _CategoryFormState extends State<CategoryForm> {
 
   void _submit() {
     if (_nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập tên danh mục!'),
-          backgroundColor: AppColors.expense,
-        ),
-      );
+      SheepNotifications.showError(context, 'Vui lòng nhập tên danh mục!');
       return;
     }
 
@@ -137,16 +133,21 @@ class _CategoryFormState extends State<CategoryForm> {
       cat.budget = enteredBudget;
       cat.colorValue = _selectedColor.value;
       cat.save();
+      
+      SheepNotifications.showSuccess(context, 'Đã cập nhật danh mục "${cat.name}"');
     } else {
+      final catName = _nameController.text;
       final newCat = CategoryModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: _nameController.text,
+        name: catName,
         iconCode: _selectedIcon,
         isExpense: _isExpense,
         budget: enteredBudget,
         colorValue: _selectedColor.value,
       );
       _catBox.add(newCat);
+      
+      SheepNotifications.showSuccess(context, 'Đã tạo danh mục "$catName"');
     }
     Navigator.pop(context);
   }

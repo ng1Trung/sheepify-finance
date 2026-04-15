@@ -14,6 +14,8 @@ import '../tabs/settings_tab.dart';
 import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
 
+import '../widgets/common/sheep_notifications.dart';
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
   @override
@@ -344,20 +346,9 @@ class _MainScreenState extends State<MainScreen> {
     if (resultDate != null) {
       setState(() {
         _selectedDate = resultDate;
-        _isMonthlyView = false; // Switch to Daily view to show new transaction
+        _isMonthlyView = false;
         _currentIndex = 1;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Đã thêm giao dịch cho ngày ${DateFormat('dd/MM/yyyy').format(resultDate)}',
-            ),
-            backgroundColor: Colors.teal,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
     }
   }
 

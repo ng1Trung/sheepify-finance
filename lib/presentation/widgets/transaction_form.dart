@@ -17,6 +17,8 @@ import 'common/sheep_widgets.dart';
 import 'transaction/transaction_image_area.dart';
 import 'transaction/transaction_category_picker.dart';
 
+import 'common/sheep_notifications.dart';
+
 class TransactionForm extends StatefulWidget {
   final Transaction? transaction;
   final DateTime? initialDate;
@@ -152,10 +154,7 @@ class _TransactionFormState extends State<TransactionForm> {
   // Validate and persist transaction data
   void _submit() {
     if (_amountController.text.isEmpty || _selectedCategoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Vui lòng nhập số tiền và chọn danh mục!'),
-        backgroundColor: AppColors.expense,
-      ));
+      SheepNotifications.showError(context, 'Vui lòng nhập số tiền và chọn danh mục!');
       return;
     }
 
@@ -175,6 +174,7 @@ class _TransactionFormState extends State<TransactionForm> {
         tx.categoryId = _selectedCategoryId!;
         tx.imagePath = _imagePath;
         tx.save();
+        SheepNotifications.showSuccess(context, 'Đã cập nhật giao dịch');
       } else {
         // Create and add new transaction to Hive
         final newTx = Transaction(
@@ -186,10 +186,11 @@ class _TransactionFormState extends State<TransactionForm> {
           imagePath: _imagePath,
         );
         _box.add(newTx);
+        SheepNotifications.showSuccess(context, 'Đã thêm giao dịch thành công');
       }
       Navigator.of(context).pop(_selectedDate);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.expense));
+      SheepNotifications.showError(context, 'Lỗi: $e');
     }
   }
 

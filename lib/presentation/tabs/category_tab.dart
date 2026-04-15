@@ -11,6 +11,7 @@ import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_dialogs.dart';
+import '../widgets/common/sheep_notifications.dart';
 import '../widgets/category/transaction_history_sheet.dart';
 
 class CategoryTab extends StatefulWidget {
@@ -82,7 +83,14 @@ class _CategoryTabState extends State<CategoryTab> {
                     direction: DismissDirection.endToStart,
                     background: _buildDeleteBackground(),
                     confirmDismiss: (_) => _confirmDelete(context, cat),
-                    onDismissed: (_) => cat.delete(),
+                    onDismissed: (_) {
+                      final name = cat.name;
+                      cat.delete();
+                      SheepNotifications.showSuccess(
+                        context,
+                        'Đã xoá danh mục "$name"',
+                      );
+                    },
                     child: SheepCard(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: EdgeInsets.zero,
@@ -171,7 +179,7 @@ class _CategoryTabState extends State<CategoryTab> {
                 ),
             ],
           ),
-          if (_isExpenseMode && cat.budget != null) ...[
+          if (_isExpenseMode && cat.budget != null && cat.budget! > 0) ...[
             const SizedBox(height: 10),
             _buildProgressBar(cat, spent),
             const SizedBox(height: 6),
@@ -195,7 +203,9 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Widget _buildProgressBar(CategoryModel cat, double spent) {
-    double progress = spent / (cat.budget ?? 1.0);
+    double progress = (cat.budget != null && cat.budget! > 0)
+        ? (spent / cat.budget!)
+        : 0.0;
     if (progress > 1.0) progress = 1.0;
     if (progress < 0) progress = 0;
 
