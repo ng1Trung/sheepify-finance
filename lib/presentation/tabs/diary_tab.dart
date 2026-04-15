@@ -85,10 +85,11 @@ class _DiaryTabState extends State<DiaryTab> {
             double totalIncome = 0;
             double totalExpense = 0;
             for (var tx in displayTxs) {
-              if (tx.isExpense)
+              if (tx.isExpense) {
                 totalExpense += tx.amount;
-              else
+              } else {
                 totalIncome += tx.amount;
+              }
             }
 
             // 4. Group by date
@@ -187,10 +188,11 @@ class _DiaryTabState extends State<DiaryTab> {
                             final dayTxs = grouped[dKey]!;
                             dayTxs.sort((a, b) {
                               int c = b.date.compareTo(a.date);
-                              if (c == 0)
+                              if (c == 0) {
                                 return b.key.toString().compareTo(
                                   a.key.toString(),
                                 );
+                              }
                               return c;
                             });
 
@@ -303,7 +305,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                       ),
                                     ),
                                   );
-                                }).toList(),
+                                }),
                               ],
                             );
                           },
