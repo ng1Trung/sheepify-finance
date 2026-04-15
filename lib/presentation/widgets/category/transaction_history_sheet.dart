@@ -42,7 +42,7 @@ class TransactionHistorySheet extends StatelessWidget {
             const SizedBox(height: 20),
             Row(
               children: [
-                Icon(category.iconData, color: AppColors.primary),
+                Icon(category.iconData, color: category.colorValue != null ? Color(category.colorValue!) : AppColors.primary),
                 const SizedBox(width: 10),
                 Text(
                   category.name,

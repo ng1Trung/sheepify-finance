@@ -131,16 +131,16 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Widget _buildIcon(CategoryModel cat) {
+    final color = cat.colorValue != null ? Color(cat.colorValue!) : (_isExpenseMode ? AppColors.expense : AppColors.income);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: (_isExpenseMode ? AppColors.expense : AppColors.income)
-            .withOpacity(0.1),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Icon(
         cat.iconData,
-        color: _isExpenseMode ? AppColors.expense : AppColors.income,
+        color: color,
         size: 24,
       ),
     );

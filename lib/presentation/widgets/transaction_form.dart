@@ -238,6 +238,7 @@ class _TransactionFormState extends State<TransactionForm> {
               imagePath: _imagePath,
               isExpense: _isExpense,
               selectedCategory: selectedCategory,
+              categoryColor: selectedCategory?.colorValue != null ? Color(selectedCategory!.colorValue!) : null,
               amountController: _amountController,
               noteController: _noteController,
               onPickImage: _pickImage,
