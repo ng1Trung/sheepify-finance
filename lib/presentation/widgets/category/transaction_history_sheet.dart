@@ -30,6 +30,7 @@ class TransactionHistorySheet extends StatelessWidget {
       initialChildSize: 0.65,
       minChildSize: 0.4,
       maxChildSize: 0.95,
+      expand: false,
       builder: (_, scrollController) => Container(
         decoration: const BoxDecoration(
           color: AppColors.surface,
@@ -39,11 +40,11 @@ class TransactionHistorySheet extends StatelessWidget {
           children: [
             const SizedBox(height: 12),
             _buildDragHandle(),
-            const SizedBox(height: 25),
+            const SizedBox(height: 15),
             
             _buildHeader(catColor, monthlyTotal),
             
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
             Expanded(
               child: _buildTransactionList(scrollController, catColor),
             ),
@@ -66,52 +67,60 @@ class TransactionHistorySheet extends StatelessWidget {
 
   Widget _buildHeader(Color catColor, double total) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 25),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: catColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: catColor.withOpacity(0.2)),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: catColor.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(category.iconData, color: catColor, size: 20),
             ),
-            child: Icon(category.iconData, color: catColor, size: 28),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    category.name,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                    Text(
+                      '${transactions.length} giao dịch trong tháng',
+                      style: TextStyle(fontSize: 10, color: AppColors.textSecondary.withOpacity(0.7)),
+                    ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  category.name,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                const Text(
+                  'TỔNG CHI TIÊU',
+                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: AppColors.textSecondary),
                 ),
                 Text(
-                  '${transactions.length} transactions this month',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  CurrencyUtil.formatMoney(total),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: category.isExpense ? AppColors.expense : AppColors.income,
+                  ),
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                'TOTAL',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1, color: AppColors.textSecondary),
-              ),
-              Text(
-                CurrencyUtil.formatMoney(total),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: category.isExpense ? AppColors.expense : AppColors.income,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -125,7 +134,7 @@ class TransactionHistorySheet extends StatelessWidget {
             Icon(LineIcons.history, size: 50, color: Colors.grey[200]),
             const SizedBox(height: 10),
             Text(
-              'No transactions found',
+              'Chưa có giao dịch nào',
               style: TextStyle(color: Colors.grey[400]),
             ),
           ],
@@ -149,7 +158,7 @@ class TransactionHistorySheet extends StatelessWidget {
             ),
             child: Icon(category.iconData, color: catColor, size: 18),
           ),
-          title: tx.note.isNotEmpty ? tx.note : 'Untitled Transaction',
+          title: tx.note.isNotEmpty ? tx.note : 'Giao dịch chưa đặt tên',
           subtitle: DateFormat('MMMM dd, yyyy').format(tx.date),
           trailing: Text(
             '${tx.isExpense ? '-' : '+'}${CurrencyUtil.formatMoney(tx.amount)}',

@@ -12,6 +12,7 @@ import '../../core/constants/constants.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/currency_util.dart';
 import 'common/sheep_widgets.dart';
 import 'transaction/transaction_image_area.dart';
 import 'transaction/transaction_category_picker.dart';
@@ -45,7 +46,7 @@ class _TransactionFormState extends State<TransactionForm> {
     if (widget.transaction != null) {
       // Initialize state with existing transaction data
       final tx = widget.transaction!;
-      _amountController.text = tx.amount.toStringAsFixed(0);
+      _amountController.text = CurrencyUtil.formatNumber(tx.amount);
       _noteController.text = tx.note;
       _selectedDate = tx.date;
       _isExpense = tx.isExpense;
@@ -106,12 +107,12 @@ class _TransactionFormState extends State<TransactionForm> {
           _buildPickerTitle(context),
           ListTile(
             leading: const Icon(LineIcons.camera, color: AppColors.primary),
-            title: const Text('Take a photo'),
+            title: const Text('Chụp ảnh'),
             onTap: () => Navigator.pop(ctx, ImageSource.camera),
           ),
           ListTile(
             leading: const Icon(LineIcons.image, color: AppColors.primary),
-            title: const Text('Choose from gallery'),
+            title: const Text('Chọn từ thư viện'),
             onTap: () => Navigator.pop(ctx, ImageSource.gallery),
           ),
           const SizedBox(height: 20),
@@ -142,7 +143,7 @@ class _TransactionFormState extends State<TransactionForm> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Text(
-        'UPLOAD PHOTO',
+        'TẢI ẢNH LÊN',
         style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
       ),
     );
@@ -152,13 +153,13 @@ class _TransactionFormState extends State<TransactionForm> {
   void _submit() {
     if (_amountController.text.isEmpty || _selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please enter amount and select a category!'),
+        content: Text('Vui lòng nhập số tiền và chọn danh mục!'),
         backgroundColor: AppColors.expense,
       ));
       return;
     }
 
-    final enteredAmount = double.tryParse(_amountController.text) ?? 0;
+    final enteredAmount = CurrencyParsing.parseAmount(_amountController.text);
     if (enteredAmount <= 0) return;
 
     HapticFeedback.mediumImpact();
@@ -297,7 +298,7 @@ class _TransactionFormState extends State<TransactionForm> {
       width: double.infinity,
       height: 56,
       child: SheepButton(
-        label: widget.transaction == null ? 'SAVE' : 'UPDATE',
+        label: widget.transaction == null ? 'LƯU' : 'CẬP NHẬT',
         onPressed: _submit,
       ),
     );

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/currency_util.dart';
 import 'common/sheep_toggles.dart';
 import 'common/sheep_widgets.dart';
 
@@ -101,7 +102,7 @@ class _CategoryFormState extends State<CategoryForm> {
       _isExpense = cat.isExpense;
       _selectedIcon = cat.iconCode;
       _budgetController.text = cat.budget != null
-          ? cat.budget!.toStringAsFixed(0)
+          ? CurrencyUtil.formatNumber(cat.budget!)
           : '';
       _selectedColor = cat.colorValue != null
           ? Color(cat.colorValue!)
@@ -118,14 +119,14 @@ class _CategoryFormState extends State<CategoryForm> {
     if (_nameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter category name!'),
+          content: Text('Vui lòng nhập tên danh mục!'),
           backgroundColor: AppColors.expense,
         ),
       );
       return;
     }
 
-    final enteredBudget = double.tryParse(_budgetController.text);
+    final enteredBudget = CurrencyParsing.parseAmount(_budgetController.text);
     HapticFeedback.mediumImpact();
 
     if (widget.category != null) {
@@ -179,25 +180,25 @@ class _CategoryFormState extends State<CategoryForm> {
                     _buildHeaderPreview(),
                     const SizedBox(height: 30),
 
-                    _buildSectionTitle('Basic Information'),
+                    _buildSectionTitle('Thông tin cơ bản'),
                     const SizedBox(height: 12),
                     SheepTypeToggle(
                       isExpense: _isExpense,
-                      leftLabel: "Expense",
-                      rightLabel: "Income",
+                      leftLabel: "Chi phí",
+                      rightLabel: "Thu nhập",
                       onChanged: (val) => setState(() => _isExpense = val),
                     ),
                     const SizedBox(height: 15),
                     _buildTextField(
                       controller: _nameController,
-                      hint: 'Category Name',
+                      hint: 'Tên danh mục',
                       icon: LineIcons.tag,
                     ),
                     if (_isExpense) ...[
                       const SizedBox(height: 12),
                       _buildTextField(
                         controller: _budgetController,
-                        hint: 'Monthly Budget (Optional)',
+                        hint: 'Ngân sách hàng tháng (Tùy chọn)',
                         icon: LineIcons.coins,
                         isNumber: true,
                         suffix: 'đ',
@@ -205,12 +206,12 @@ class _CategoryFormState extends State<CategoryForm> {
                     ],
 
                     const SizedBox(height: 30),
-                    _buildSectionTitle('Color'),
+                    _buildSectionTitle('Màu sắc'),
                     const SizedBox(height: 12),
                     _buildColorPicker(),
 
                     const SizedBox(height: 30),
-                    _buildSectionTitle('Icon'),
+                    _buildSectionTitle('Biểu tượng'),
                     const SizedBox(height: 12),
                     _buildIconPicker(),
                     const SizedBox(height: 30),
@@ -275,7 +276,7 @@ class _CategoryFormState extends State<CategoryForm> {
           ),
           child: Center(
             child: Text(
-              widget.category == null ? 'CREATE CATEGORY' : 'SAVE CHANGES',
+              widget.category == null ? 'TẠO DANH MỤC' : 'LƯU THAY ĐỔI',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -327,7 +328,7 @@ class _CategoryFormState extends State<CategoryForm> {
             children: [
               Text(
                 _nameController.text.isEmpty
-                    ? 'CATEGORY NAME'
+                    ? 'TÊN DANH MỤC'
                     : _nameController.text.toUpperCase(),
                 style: const TextStyle(
                   fontSize: 18,
@@ -339,8 +340,8 @@ class _CategoryFormState extends State<CategoryForm> {
               const SizedBox(height: 4),
               Text(
                 _budgetController.text.isEmpty
-                    ? 'No monthly budget'
-                    : 'Budget: ${_budgetController.text}đ',
+                    ? 'Không có ngân sách'
+                    : 'Ngân sách: ${_budgetController.text}đ',
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
@@ -383,6 +384,7 @@ class _CategoryFormState extends State<CategoryForm> {
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         onChanged: (_) => setState(() {}),
+        inputFormatters: isNumber ? [CurrencyInputFormatter()] : null,
         decoration: InputDecoration(
           hintText: hint,
           prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
