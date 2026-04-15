@@ -26,19 +26,31 @@ class _CategoryFormState extends State<CategoryForm> {
   late int _selectedIcon;
   late Color _selectedColor;
 
-  final List<Color> _pastelColors = [
-    const Color(0xFFFFB7B2), // Pastel Pink
-    const Color(0xFFFFDAC1), // Pastel Orange
-    const Color(0xFFE2F0CB), // Pastel Yellow
-    const Color(0xFFB5EAD7), // Pastel Green
-    const Color(0xFFC7CEEA), // Pastel Purple
-    const Color(0xFFF9D5E5), // Soft Rose
-    const Color(0xFFE0BBE4), // Lavender
-    const Color(0xFFAEC6CF), // Pastel Blue
-    const Color(0xFF77DD77), // Pastel Green 2
-    const Color(0xFFFF9AA2), // Soft Red
-    const Color(0xFFC7F9CC), // Mint
-    const Color(0xFFFFE5D9), // Peach
+  final List<Color> _vibrantColors = [
+    const Color(0xFFFF6B6B), // Coral Red
+    const Color(0xFF4ECDC4), // Medium Turquoise
+    const Color(0xFF45B7D1), // Sky Blue
+    const Color(0xFF96CEB4), // Muted Green
+    const Color(0xFFFFD93D), // Sun Yellow
+    const Color(0xFFD4A5A5), // Dusty Rose
+    const Color(0xFF9B59B6), // Amethyst
+    const Color(0xFF2ECC71), // Emerald
+    const Color(0xFF3498DB), // Peter River Blue
+    const Color(0xFFE67E22), // Carrot
+    const Color(0xFF1ABC9C), // Turquoise
+    const Color(0xFFF39C12), // Orange
+    const Color(0xFFEE5253), // Armor
+    const Color(0xFF0FB9B1), // Turquoise 2
+    const Color(0xFFFA8231), // Orange 2
+    const Color(0xFF8854D0), // Gloomy Purple
+    const Color(0xFF45AAF2), // High Blue
+    const Color(0xFFEB3B5A), // Desire
+    const Color(0xFF26DE81), // Algae Green
+    const Color(0xFFF7B731), // Orange Yellow
+    const Color(0xFF20C997), // Mint
+    const Color(0xFFA55EEA), // Lavender
+    const Color(0xFF778CA3), // Blue Grey
+    const Color(0xFFFD9644), // Orange 3
   ];
 
   final List<IconData> _iconList = [
@@ -93,12 +105,12 @@ class _CategoryFormState extends State<CategoryForm> {
           : '';
       _selectedColor = cat.colorValue != null
           ? Color(cat.colorValue!)
-          : _pastelColors[0];
+          : _vibrantColors[0];
     } else {
       _nameController.text = '';
       _isExpense = true;
       _selectedIcon = _iconList[0].codePoint;
-      _selectedColor = _pastelColors[0];
+      _selectedColor = _vibrantColors[0];
     }
   }
 
@@ -141,72 +153,137 @@ class _CategoryFormState extends State<CategoryForm> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
       ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        child: Column(
+          children: [
+            _buildStickyHeader(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeaderPreview(),
+                    const SizedBox(height: 30),
+
+                    _buildSectionTitle('Basic Information'),
+                    const SizedBox(height: 12),
+                    SheepTypeToggle(
+                      isExpense: _isExpense,
+                      leftLabel: "Expense",
+                      rightLabel: "Income",
+                      onChanged: (val) => setState(() => _isExpense = val),
+                    ),
+                    const SizedBox(height: 15),
+                    _buildTextField(
+                      controller: _nameController,
+                      hint: 'Category Name',
+                      icon: LineIcons.tag,
+                    ),
+                    if (_isExpense) ...[
+                      const SizedBox(height: 12),
+                      _buildTextField(
+                        controller: _budgetController,
+                        hint: 'Monthly Budget (Optional)',
+                        icon: LineIcons.coins,
+                        isNumber: true,
+                        suffix: 'đ',
+                      ),
+                    ],
+
+                    const SizedBox(height: 30),
+                    _buildSectionTitle('Color'),
+                    const SizedBox(height: 12),
+                    _buildColorPicker(),
+
+                    const SizedBox(height: 30),
+                    _buildSectionTitle('Icon'),
+                    const SizedBox(height: 12),
+                    _buildIconPicker(),
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              ),
+            ),
+            _buildStickyFooter(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStickyHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      color: AppColors.surface,
+      child: Center(
+        child: _buildDragHandle(),
+      ),
+    );
+  }
+
+  Widget _buildStickyFooter() {
+    return Container(
       padding: EdgeInsets.only(
-        top: 20,
         left: 20,
         right: 20,
+        top: 15,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(child: _buildDragHandle()),
-            const SizedBox(height: 25),
-
-            _buildHeaderPreview(),
-            const SizedBox(height: 30),
-
-            _buildSectionTitle('Basic Information'),
-            const SizedBox(height: 12),
-            SheepTypeToggle(
-              isExpense: _isExpense,
-              leftLabel: "Expense",
-              rightLabel: "Income",
-              onChanged: (val) => setState(() => _isExpense = val),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: GestureDetector(
+        onTap: _submit,
+        child: Container(
+          height: 55,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                _selectedColor,
+                _selectedColor.withOpacity(0.8),
+              ],
             ),
-            const SizedBox(height: 15),
-            _buildTextField(
-              controller: _nameController,
-              hint: 'Category Name',
-              icon: LineIcons.tag,
-            ),
-            if (_isExpense) ...[
-              const SizedBox(height: 12),
-              _buildTextField(
-                controller: _budgetController,
-                hint: 'Monthly Budget (Optional)',
-                icon: LineIcons.coins,
-                isNumber: true,
-                suffix: 'đ',
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: _selectedColor.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
               ),
             ],
-
-            const SizedBox(height: 30),
-            _buildSectionTitle('Color'),
-            const SizedBox(height: 12),
-            _buildColorPicker(),
-
-            const SizedBox(height: 30),
-            _buildSectionTitle('Icon'),
-            const SizedBox(height: 12),
-            _buildIconPicker(),
-
-            const SizedBox(height: 30),
-            SheepButton(
-              label: widget.category == null
-                  ? 'CREATE CATEGORY'
-                  : 'SAVE CHANGES',
-              onPressed: _submit,
-              isFullWidth: true,
+          ),
+          child: Center(
+            child: Text(
+              widget.category == null ? 'CREATE CATEGORY' : 'SAVE CHANGES',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                fontSize: 15,
+              ),
             ),
-            const SizedBox(height: 10),
-          ],
+          ),
         ),
       ),
     );
@@ -321,39 +398,38 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Widget _buildColorPicker() {
-    return SizedBox(
-      height: 45,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _pastelColors.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+    return Container(
+      height: 145,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(color: Colors.grey[100]!),
+      ),
+      child: GridView.builder(
+        padding: EdgeInsets.zero,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 6,
+          crossAxisSpacing: 15,
+          mainAxisSpacing: 15,
+        ),
+        itemCount: _vibrantColors.length,
         itemBuilder: (ctx, i) {
-          final color = _pastelColors[i];
+          final color = _vibrantColors[i];
           final isSelected = _selectedColor.value == color.value;
           return GestureDetector(
-            onTap: () => setState(() => _selectedColor = color),
-            child: Container(
-              width: 45,
-              height: 45,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _selectedColor = color);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? Colors.grey[800]! : Colors.transparent,
-                  width: 2,
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: color.withOpacity(0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
-                    : null,
               ),
               child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 20)
+                  ? const Icon(Icons.check, color: Colors.white, size: 18)
                   : null,
             ),
           );
@@ -383,19 +459,11 @@ class _CategoryFormState extends State<CategoryForm> {
           final isSelected = _selectedIcon == icon.codePoint;
           return GestureDetector(
             onTap: () => setState(() => _selectedIcon = icon.codePoint),
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
                 color: isSelected ? _selectedColor : Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: _selectedColor.withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : AppColors.softShadow,
+                shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,

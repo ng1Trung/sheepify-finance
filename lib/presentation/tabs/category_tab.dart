@@ -151,24 +151,62 @@ class _CategoryTabState extends State<CategoryTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            cat.name,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                cat.name,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              if (_isExpenseMode && cat.budget != null)
+                Text(
+                  CurrencyUtil.formatMoney(cat.budget! - spent),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: (cat.budget! - spent) < 0 ? AppColors.expense : AppColors.textPrimary,
+                  ),
+                ),
+            ],
           ),
           if (_isExpenseMode && cat.budget != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Remaining: ${CurrencyUtil.formatMoney(cat.budget! - spent)} / ${CurrencyUtil.formatMoney(cat.budget!)}',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: (cat.budget! - spent) < 0
-                    ? AppColors.expense
-                    : AppColors.textSecondary,
-              ),
+            const SizedBox(height: 10),
+            _buildProgressBar(cat, spent),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  (cat.budget! - spent) < 0 ? 'Over budget' : 'Remaining',
+                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                ),
+                Text(
+                  'Total: ${CurrencyUtil.formatMoney(cat.budget!)}',
+                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                ),
+              ],
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildProgressBar(CategoryModel cat, double spent) {
+    double progress = spent / cat.budget!;
+    if (progress > 1.0) progress = 1.0;
+    if (progress < 0) progress = 0;
+
+    final baseColor = cat.colorValue != null ? Color(cat.colorValue!) : AppColors.primary;
+    final barColor = (spent > cat.budget!) ? AppColors.expense : baseColor;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(5),
+      child: LinearProgressIndicator(
+        value: progress,
+        minHeight: 6,
+        backgroundColor: barColor.withOpacity(0.1),
+        valueColor: AlwaysStoppedAnimation<Color>(barColor),
       ),
     );
   }
