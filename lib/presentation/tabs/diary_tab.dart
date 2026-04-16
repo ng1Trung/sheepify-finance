@@ -42,8 +42,17 @@ class _DiaryTabState extends State<DiaryTab> {
           builder: (context, box, _) {
             final catBox = Hive.box<CategoryModel>(kCatBox);
 
-            // 1. Fetch and filter transactions for balance calculation
-            var calcTxs = box.values.cast<Transaction>().toList();
+            // 1. Identify Goal categories to exclude from balance
+            final goalCatIds = catBox.values
+                .where((c) => c.effectiveTypeIndex == 2)
+                .map((c) => c.id)
+                .toSet();
+
+            // 1b. Fetch and filter transactions for balance calculation
+            var calcTxs = box.values
+                .cast<Transaction>()
+                .where((tx) => !goalCatIds.contains(tx.categoryId))
+                .toList();
 
             if (!settings.accumulateBalance) {
               calcTxs = calcTxs
@@ -72,7 +81,7 @@ class _DiaryTabState extends State<DiaryTab> {
               runningBalances[tx.key] = currentTotal;
             }
 
-            // 2. Filter transactions for display
+            // 2. Filter transactions for display (Include all transactions for the date)
             final displayTxs = box.values.cast<Transaction>().where((tx) {
               if (widget.isMonthly) {
                 return tx.date.month == widget.selectedDate.month &&
@@ -84,10 +93,13 @@ class _DiaryTabState extends State<DiaryTab> {
               }
             }).toList();
 
-            // 3. Summary Statistics
+            // 3. Summary Statistics (Exclude goals)
             double totalIncome = 0;
             double totalExpense = 0;
             for (var tx in displayTxs) {
+              // Skip goals in summary
+              if (goalCatIds.contains(tx.categoryId)) continue;
+
               if (tx.isExpense) {
                 totalExpense += tx.amount;
               } else {
@@ -299,9 +311,25 @@ class _DiaryTabState extends State<DiaryTab> {
                                         ),
                                       ),
                                       title: cat.name,
-                                      subtitle: tx.note.isNotEmpty
-                                          ? tx.note
-                                          : null,
+                                      subtitle: Row(
+                                        children: [
+                                          if (goalCatIds.contains(tx.categoryId))
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              margin: const EdgeInsets.only(right: 8),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.savings.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: const Text(
+                                                'MỤC TIÊU',
+                                                style: TextStyle(color: AppColors.savings, fontSize: 8, fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                          if (tx.note.isNotEmpty)
+                                            Expanded(child: Text(tx.note)),
+                                        ],
+                                      ),
                                       trailing: Column(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,

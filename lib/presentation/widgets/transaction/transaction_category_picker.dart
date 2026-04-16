@@ -22,13 +22,17 @@ class TransactionCategoryPicker extends StatefulWidget {
 }
 
 class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
-  late bool _isExpense;
-
+  late int _selectedIndex;
+  
   @override
   void initState() {
     super.initState();
-    // Use widget.categories to determine initial state if possible
-    _isExpense = widget.categories.isEmpty || widget.categories.first.isExpense;
+    // Initialize based on the first category's type or fallback to 0
+    if (widget.categories.isNotEmpty) {
+      _selectedIndex = widget.categories.first.effectiveTypeIndex;
+    } else {
+      _selectedIndex = 0;
+    }
   }
 
   @override
@@ -58,12 +62,11 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
           ),
           const SizedBox(height: 15),
           
-          // Toggle inside picker to allow switching types
-          SheepTypeToggle(
-            isExpense: _isExpense,
-            leftLabel: "Expense",
-            rightLabel: "Income",
-            onChanged: (val) => setState(() => _isExpense = val),
+          // Triple toggle inside picker to allow switching all 3 types
+          SheepTripleToggle(
+            selectedIndex: _selectedIndex,
+            onChanged: (index) => setState(() => _selectedIndex = index),
+            labels: const ["Chi tiêu", "Thu nhập", "Mục tiêu"],
           ),
           
           const SizedBox(height: 25),
@@ -72,15 +75,16 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
             valueListenable: Hive.box<CategoryModel>(kCatBox).listenable(),
             builder: (context, box, _) {
               final filteredCats = box.values
-                  .where((c) => c.isExpense == _isExpense)
+                  .where((c) => c.effectiveTypeIndex == _selectedIndex)
                   .toList();
 
               if (filteredCats.isEmpty) {
+                String typeName = _selectedIndex == 0 ? "chi tiêu" : (_selectedIndex == 1 ? "thu nhập" : "mục tiêu");
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Text(
-                      'No ${_isExpense ? "expense" : "income"} categories yet',
+                      'Chưa có danh mục $typeName nào',
                       style: const TextStyle(color: Colors.grey),
                     ),
                   ),

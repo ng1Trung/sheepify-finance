@@ -6,8 +6,8 @@ The data layer is responsible for persistence and state management.
 - **Why Hive?**: Hive is an extremely fast NoSQL database that allows direct object storage without complex SQL. It is ideal for mobile apps requiring offline-first functionality.
 
 ## 2. Models (`models/`)
-- `CategoryModel`: Stores category information (Name, Icon, Type, Budget).
-- `Transaction`: Stores financial records (Amount, Note, Date, Category ID, Image Path).
+- `CategoryModel`: Stores category information (Name, Icon, Type, Budget). Includes **Goal-specific fields**: `goalTypeIndex`, `targetAmount`, `targetDate`, `targetMonth`, `targetYear`, and `reminderDay`.
+- `Transaction`: Stores financial records (Amount, Note, Date, Category ID, Image Path). Goal-deposits are recorded as income transactions linked to Goal categories.
 - `AppSettings`: Stores user preferences.
 
 ## 3. ID Management

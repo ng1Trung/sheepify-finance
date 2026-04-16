@@ -5,16 +5,16 @@ This directory contains the main application screens (pages), organized as tabs 
 ## 1. Diary Tab (`diary_tab.dart`)
 - **Role**: Daily spending log.
 - **Features**:
-    - Displays transactions chronological order.
-    - Groups transactions by date.
+    - Displays transactions in chronological order.
+    - **Goal Isolation**: Goal-related deposits are identified with a badge and excluded from balance/summary totals to ensure disposable income accuracy.
     - Allows direct deletion/editing of transactions.
 
 ## 2. Category Tab (`category_tab.dart`)
-- **Role**: Category and budget management.
+- **Role**: Budget and Goal management.
 - **Features**:
-    - Flat (1-level) view for both Income and Expenses.
-    - Displays remaining budget based on actual monthly transaction data.
-    - View detailed transaction history for specific categories via Bottom Sheets.
+    - Unified view for Expenses, Income, and **Goals**.
+    - Rich progress bars for 3 goal types: Monthly, Short-term, and Long-term.
+    - Intelligent dashboards in category details for planning financial milestones.
 
 ## 3. Stats Tab (`stats_tab.dart`)
 - **Role**: Financial data analysis.

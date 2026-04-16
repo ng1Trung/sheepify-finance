@@ -20,11 +20,17 @@
 
 ### 3. Reporting & Statistics
 - **Visual Pie Charts**: Analyze spending ratios by category at a glance.
-- **Accumulated Balance**: Calculate wallet balance based on historical totals or monthly snapshots.
+- **Spending Summary**: Track Daily/Monthly balance without being mixed with long-term goals.
 - **Income/Expense Views**: Flexible toggles for deep analysis of different cash flows.
 
-### 4. Premium Design
-- **Sheep Design System**: Custom widget system (SheepCard, SheepButton, SheepListTile) ensures consistency and elegance.
+### 4. Advanced Goal Tracking (Hệ thống Mục tiêu)
+- **3-Tier Strategy**: Support for **Monthly** (daily habit), **Short-term** (specific Month/Year), and **Long-term** (Yearly milestones).
+- **Intelligent Dashboard**: Automatically calculates required monthly contributions and time remaining (e.g., "Save 7M/month for Korea trip in Nov 2026").
+- **Isolated Balance Logic**: Goal deposits appear in records but are excluded from the main "Disposable Income" balance to ensure financial accuracy.
+- **Dynamic Day Picker**: SMART month-aware day picker (detects 28/30/31 days).
+
+### 5. Premium Design
+- **Sheep Design System**: Custom widget system (SheepCard, SheepButton, SheepListTile/Widget) ensures consistency and elegance.
 - **Micro-animations**: Smooth transitions that make the user experience feel alive.
 - **Glassmorphism**: Subtle blur effects and soft shadows for a modern aesthetic.
 

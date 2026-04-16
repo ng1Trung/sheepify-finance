@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
@@ -22,9 +23,16 @@ class CategoryForm extends StatefulWidget {
 class _CategoryFormState extends State<CategoryForm> {
   final _nameController = TextEditingController();
   final _budgetController = TextEditingController();
+  final _goalAmountController = TextEditingController(); // NEW
   final _catBox = Hive.box<CategoryModel>(kCatBox);
 
-  late bool _isExpense;
+  late int _selectedTypeIndex; // 0: expense, 1: income, 2: savings
+  int _selectedGoalTypeIndex = 1; // 1: monthly, 2: short-term, 3: long-term
+  int _selectedReminderDay = DateTime.now().day;
+  int _selectedTargetMonth = DateTime.now().month;
+  int _selectedTargetYear = DateTime.now().year + 1;
+  
+  DateTime? _selectedTargetDate;
   late int _selectedIcon;
   late Color _selectedColor;
 
@@ -100,17 +108,26 @@ class _CategoryFormState extends State<CategoryForm> {
     if (widget.category != null) {
       final cat = widget.category!;
       _nameController.text = cat.name;
-      _isExpense = cat.isExpense;
+      _selectedTypeIndex = cat.effectiveTypeIndex;
       _selectedIcon = cat.iconCode;
       _budgetController.text = cat.budget != null
           ? CurrencyUtil.formatNumber(cat.budget!)
           : '';
+      _goalAmountController.text = cat.targetAmount != null
+          ? CurrencyUtil.formatNumber(cat.targetAmount!)
+          : '';
+      _selectedTargetDate = cat.targetDate;
+      _selectedGoalTypeIndex = (cat.goalTypeIndex != null && cat.goalTypeIndex != 0) ? cat.goalTypeIndex! : 1;
+      _selectedReminderDay = cat.reminderDay ?? DateTime.now().day;
+      _selectedTargetMonth = cat.targetMonth ?? (cat.targetDate?.month ?? DateTime.now().month);
+      _selectedTargetYear = cat.targetYear ?? (cat.targetDate?.year ?? DateTime.now().year + 1);
+      
       _selectedColor = cat.colorValue != null
           ? Color(cat.colorValue!)
           : _vibrantColors[0];
     } else {
       _nameController.text = '';
-      _isExpense = true;
+      _selectedTypeIndex = 0; // Default Expense
       _selectedIcon = _iconList[0].codePoint;
       _selectedColor = _vibrantColors[0];
     }
@@ -123,14 +140,43 @@ class _CategoryFormState extends State<CategoryForm> {
     }
 
     final enteredBudget = CurrencyParsing.parseAmount(_budgetController.text);
+    final enteredGoal = CurrencyParsing.parseAmount(_goalAmountController.text);
     HapticFeedback.mediumImpact();
 
     if (widget.category != null) {
       final cat = widget.category!;
       cat.name = _nameController.text;
       cat.iconCode = _selectedIcon;
-      cat.isExpense = _isExpense;
-      cat.budget = enteredBudget;
+      cat.isExpense = _selectedTypeIndex == 0;
+      cat.typeIndex = _selectedTypeIndex;
+      cat.budget = _selectedTypeIndex == 0 ? enteredBudget : null;
+      cat.targetAmount = _selectedTypeIndex == 2 ? enteredGoal : null;
+      
+      if (_selectedTypeIndex == 2) {
+        cat.goalTypeIndex = _selectedGoalTypeIndex;
+        if (_selectedGoalTypeIndex == 1) {
+          cat.reminderDay = _selectedReminderDay;
+          cat.targetMonth = null;
+          cat.targetYear = null;
+          cat.targetDate = null;
+        } else if (_selectedGoalTypeIndex == 2) {
+          // Ngắn hạn: Month + Year
+          cat.reminderDay = null;
+          cat.targetMonth = _selectedTargetMonth;
+          cat.targetYear = _selectedTargetYear;
+          cat.targetDate = DateTime(_selectedTargetYear, _selectedTargetMonth + 1, 0); // Last day of month
+        } else {
+          // Dài hạn: Year only
+          cat.targetYear = _selectedTargetYear;
+          cat.targetDate = DateTime(_selectedTargetYear, 12, 31);
+          cat.targetMonth = null;
+          cat.reminderDay = null;
+        }
+      } else {
+        cat.goalTypeIndex = 0;
+        cat.targetDate = null;
+      }
+      
       cat.colorValue = _selectedColor.value;
       cat.save();
       
@@ -141,8 +187,19 @@ class _CategoryFormState extends State<CategoryForm> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: catName,
         iconCode: _selectedIcon,
-        isExpense: _isExpense,
-        budget: enteredBudget,
+        isExpense: _selectedTypeIndex == 0,
+        typeIndex: _selectedTypeIndex,
+        budget: _selectedTypeIndex == 0 ? enteredBudget : null,
+        targetAmount: _selectedTypeIndex == 2 ? enteredGoal : null,
+        goalTypeIndex: _selectedTypeIndex == 2 ? _selectedGoalTypeIndex : 0,
+        reminderDay: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 1) ? _selectedReminderDay : null,
+        targetMonth: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 2) ? _selectedTargetMonth : null,
+        targetYear: (_selectedTypeIndex == 2 && (_selectedGoalTypeIndex == 2 || _selectedGoalTypeIndex == 3)) ? _selectedTargetYear : null,
+        targetDate: _selectedTypeIndex == 2 
+            ? (_selectedGoalTypeIndex == 2 
+                ? DateTime(_selectedTargetYear, _selectedTargetMonth + 1, 0)
+                : (_selectedGoalTypeIndex == 3 ? DateTime(_selectedTargetYear, 12, 31) : null))
+            : null,
         colorValue: _selectedColor.value,
       );
       _catBox.add(newCat);
@@ -183,11 +240,9 @@ class _CategoryFormState extends State<CategoryForm> {
 
                     _buildSectionTitle('Thông tin cơ bản'),
                     const SizedBox(height: 12),
-                    SheepTypeToggle(
-                      isExpense: _isExpense,
-                      leftLabel: "Chi phí",
-                      rightLabel: "Thu nhập",
-                      onChanged: (val) => setState(() => _isExpense = val),
+                    SheepTripleToggle(
+                      selectedIndex: _selectedTypeIndex,
+                      onChanged: (val) => setState(() => _selectedTypeIndex = val),
                     ),
                     const SizedBox(height: 15),
                     _buildTextField(
@@ -195,7 +250,7 @@ class _CategoryFormState extends State<CategoryForm> {
                       hint: 'Tên danh mục',
                       icon: LineIcons.tag,
                     ),
-                    if (_isExpense) ...[
+                    if (_selectedTypeIndex == 0) ...[
                       const SizedBox(height: 12),
                       _buildTextField(
                         controller: _budgetController,
@@ -204,6 +259,29 @@ class _CategoryFormState extends State<CategoryForm> {
                         isNumber: true,
                         suffix: 'đ',
                       ),
+                    ],
+                    if (_selectedTypeIndex == 2) ...[
+                      const SizedBox(height: 12),
+                      _buildTextField(
+                        controller: _goalAmountController,
+                        hint: _selectedGoalTypeIndex == 1 ? 'Số tiền nạp mỗi tháng' : 'Số tiền mục tiêu',
+                        icon: Icons.flag_outlined,
+                        isNumber: true,
+                        suffix: 'đ',
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSectionTitle('Hình thức'),
+                      const SizedBox(height: 12),
+                      _buildGoalTypeToggle(),
+                      const SizedBox(height: 12),
+                      if (_selectedGoalTypeIndex == 1)
+                        _buildReminderDayPicker()
+                      else if (_selectedGoalTypeIndex == 2) ...[
+                        _buildMonthPicker(),
+                        const SizedBox(height: 12),
+                        _buildYearPicker(),
+                      ] else
+                        _buildYearPicker(),
                     ],
 
                     const SizedBox(height: 30),
@@ -340,9 +418,13 @@ class _CategoryFormState extends State<CategoryForm> {
               ),
               const SizedBox(height: 4),
               Text(
-                _budgetController.text.isEmpty
-                    ? 'Không có ngân sách'
-                    : 'Ngân sách: ${_budgetController.text}đ',
+                _selectedTypeIndex != 2 
+                    ? (_budgetController.text.isEmpty ? 'Không có ngân sách' : 'Ngân sách: ${_budgetController.text}đ')
+                    : (_selectedGoalTypeIndex == 1
+                        ? 'Mục tiêu tháng: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ'
+                        : (_selectedGoalTypeIndex == 2 
+                            ? 'Mục tiêu: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - T${_selectedTargetMonth}/${_selectedTargetYear}'
+                            : 'Mục tiêu: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - Năm ${_selectedTargetYear}')),
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
@@ -351,6 +433,180 @@ class _CategoryFormState extends State<CategoryForm> {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGoalTypeToggle() {
+    return Row(
+      children: [
+        _buildSimplifiedToggleItem('Hàng tháng', _selectedGoalTypeIndex == 1, () => setState(() => _selectedGoalTypeIndex = 1)),
+        const SizedBox(width: 8),
+        _buildSimplifiedToggleItem('Ngắn hạn', _selectedGoalTypeIndex == 2, () => setState(() => _selectedGoalTypeIndex = 2)),
+        const SizedBox(width: 8),
+        _buildSimplifiedToggleItem('Dài hạn', _selectedGoalTypeIndex == 3, () => setState(() => _selectedGoalTypeIndex = 3)),
+      ],
+    );
+  }
+
+  Widget _buildSimplifiedToggleItem(String label, bool active, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: active ? AppColors.savings.withOpacity(0.1) : Colors.grey[50],
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: active ? AppColors.savings : Colors.grey[200]!,
+              width: 1,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: active ? AppColors.savings : AppColors.textSecondary,
+                fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReminderDayPicker() {
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Ngày nạp tiền hàng tháng', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 50,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: daysInMonth,
+            itemBuilder: (context, index) {
+              final day = index + 1;
+              final bool active = _selectedReminderDay == day;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedReminderDay = day),
+                child: Container(
+                  width: 45,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: active ? AppColors.savings : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: active ? AppColors.savings : Colors.grey[300]!),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$day',
+                      style: TextStyle(
+                        color: active ? Colors.white : AppColors.textPrimary,
+                        fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMonthPicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Tháng hoàn thành', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 45,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: 12,
+            itemBuilder: (context, index) {
+              final month = index + 1;
+              final bool active = _selectedTargetMonth == month;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedTargetMonth = month),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: active ? AppColors.savings : Colors.transparent,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: active ? AppColors.savings : Colors.grey[300]!),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Tháng $month',
+                      style: TextStyle(
+                        color: active ? Colors.white : AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildYearPicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _selectedGoalTypeIndex == 2 ? 'Năm hoàn thành' : 'Năm hoàn thành (Hạn 31/12)', 
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 50,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: 20,
+            itemBuilder: (context, index) {
+              final year = DateTime.now().year + index;
+              final bool active = _selectedTargetYear == year;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedTargetYear = year),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: active ? AppColors.savings : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: active ? AppColors.savings : Colors.grey[300]!),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$year',
+                      style: TextStyle(
+                        color: active ? Colors.white : AppColors.textPrimary,
+                        fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
