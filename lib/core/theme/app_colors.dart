@@ -13,6 +13,8 @@ class AppColors {
   // Status Colors
   static const Color expense = Color(0xFFFF6B6B); // Coral Red
   static const Color income = Color(0xFF20C997); // Same as primary
+  static const Color savings = Color(0xFF3498DB); // Peter River Blue
+  static const Color savingsLight = Color(0xFFE3F2FD);
   static const Color warning = Color(0xFFFFA07A); // Light Salmon
   
   // Text Colors

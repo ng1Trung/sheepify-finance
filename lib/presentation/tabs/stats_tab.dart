@@ -12,6 +12,7 @@ import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
+import '../widgets/common/sheep_toggles.dart';
 
 class StatsTab extends StatefulWidget {
   final DateTime currentMonth;
@@ -28,7 +29,7 @@ class _StatEntry {
 }
 
 class _StatsTabState extends State<StatsTab> {
-  bool _isExpenseMode = true;
+  int _selectedTypeIndex = 0; // 0: expense, 1: income, 2: savings
   int _touchedIndex = -1;
 
   @override
@@ -74,9 +75,10 @@ class _StatsTabState extends State<StatsTab> {
             double prevIncome = 0;
             double prevExpense = 0;
             for (var tx in previousTransactions) {
-              if (tx.isExpense) {
+              final cat = catBox.values.firstWhere((c) => c.id == tx.categoryId, orElse: () => CategoryModel(id: '?', name: '?', iconCode: 0, isExpense: tx.isExpense));
+              if (cat.effectiveTypeIndex == 0) {
                 prevExpense += tx.amount;
-              } else {
+              } else if (cat.effectiveTypeIndex == 1) {
                 prevIncome += tx.amount;
               }
             }
@@ -88,23 +90,24 @@ class _StatsTabState extends State<StatsTab> {
             double monthExpense = 0;
 
             for (var tx in monthTransactions) {
-              if (tx.isExpense) {
+              final cat = catBox.values.firstWhere(
+                (c) => c.id == tx.categoryId,
+                orElse: () => CategoryModel(
+                  id: 'unknown',
+                  name: 'Khác',
+                  iconCode: 58263,
+                  isExpense: tx.isExpense,
+                  typeIndex: tx.isExpense ? 0 : 1,
+                ),
+              );
+
+              if (cat.effectiveTypeIndex == 0) {
                 monthExpense += tx.amount;
-              } else {
+              } else if (cat.effectiveTypeIndex == 1) {
                 monthIncome += tx.amount;
               }
 
-              if (tx.isExpense == _isExpenseMode) {
-                final cat = catBox.values.firstWhere(
-                  (c) => c.id == tx.categoryId,
-                  orElse: () => CategoryModel(
-                    id: 'unknown',
-                    name: 'Khác',
-                    iconCode: 58263,
-                    isExpense: tx.isExpense,
-                  ),
-                );
-
+              if (cat.effectiveTypeIndex == _selectedTypeIndex) {
                 if (statsMap.containsKey(cat.id)) {
                   statsMap[cat.id]!.amount += tx.amount;
                 } else {
@@ -118,13 +121,14 @@ class _StatsTabState extends State<StatsTab> {
             if (settings.accumulateBalance) {
               availableBalance =
                   carriedOverBalance + monthIncome - monthExpense;
-
-              if (!_isExpenseMode && carriedOverBalance > 0) {
+ 
+              if (_selectedTypeIndex == 1 && carriedOverBalance > 0) {
                 final prevMonthCat = CategoryModel(
                   id: 'virtual_prev_month',
                   name: 'Số dư trước',
                   iconCode: LineIcons.history.codePoint,
                   isExpense: false,
+                  typeIndex: 1,
                 );
                 statsMap[prevMonthCat.id] = _StatEntry(
                   prevMonthCat,
@@ -160,7 +164,9 @@ class _StatsTabState extends State<StatsTab> {
                             Lottie.asset('assets/empty.json', width: 200),
                             const SizedBox(height: 20),
                             Text(
-                              'Chưa có dữ liệu ${_isExpenseMode ? "chi phí" : "thu nhập"} cho ${DateFormat('MMMM yyyy').format(widget.currentMonth)}!',
+                              _selectedTypeIndex == 0 
+                                  ? 'Chưa có dữ liệu chi phí cho ${DateFormat('MM/yyyy').format(widget.currentMonth)}!'
+                                  : (_selectedTypeIndex == 1 ? 'Chưa có dữ liệu thu nhập!' : 'Chưa có dữ liệu tích luỹ!'),
                               style: Theme.of(context).textTheme.labelSmall,
                               textAlign: TextAlign.center,
                             ),
@@ -247,9 +253,12 @@ class _StatsTabState extends State<StatsTab> {
 
                 ...sortedStats.map((stat) {
                   bool isVirtual = stat.category.id == 'virtual_prev_month';
-                  final color = stat.category.colorValue != null
-                      ? Color(stat.category.colorValue!)
-                      : (_isExpenseMode ? AppColors.expense : AppColors.income);
+                  Color color;
+                  if (_selectedTypeIndex == 0) color = AppColors.expense;
+                  else if (_selectedTypeIndex == 1) color = AppColors.income;
+                  else color = AppColors.savings;
+                  
+                  if (stat.category.colorValue != null) color = Color(stat.category.colorValue!);
 
                   return SheepListTile(
                     onTap: () {},
@@ -272,7 +281,10 @@ class _StatsTabState extends State<StatsTab> {
                     ),
                     title: stat.category.name,
                     subtitle: isVirtual
-                        ? 'Số dư tích lũy từ các tháng trước'
+                        ? const Text(
+                            'Số dư tích lũy từ các tháng trước',
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                          )
                         : null,
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -281,9 +293,7 @@ class _StatsTabState extends State<StatsTab> {
                         Text(
                           CurrencyUtil.formatMoney(stat.amount),
                           style: TextStyle(
-                            color: _isExpenseMode
-                                ? AppColors.expense
-                                : AppColors.income,
+                            color: color,
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                           ),
@@ -322,67 +332,32 @@ class _StatsTabState extends State<StatsTab> {
   }
 
   Widget _buildToggleButton() {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildToggleItem(
-              "Chi phí",
-              _isExpenseMode,
-              AppColors.expense,
-            ),
-          ),
-          Expanded(
-            child: _buildToggleItem(
-              "Thu nhập",
-              !_isExpenseMode,
-              AppColors.income,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleItem(String title, bool isActive, Color color) {
-    return GestureDetector(
-      onTap: () => setState(() {
-        _isExpenseMode = (title.startsWith("Exp"));
+    return SheepTripleToggle(
+      selectedIndex: _selectedTypeIndex,
+      onChanged: (val) => setState(() {
+        _selectedTypeIndex = val;
         _touchedIndex = -1;
       }),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(21),
-          boxShadow: isActive ? AppColors.softShadow : null,
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: isActive ? color : AppColors.textSecondary,
-          ),
-        ),
-      ),
     );
   }
 
   Widget _buildCenterInfo(List<_StatEntry> sortedStats, double total) {
-    String label = _isExpenseMode ? "TỔNG CHI PHÍ" : "TỔNG THU NHẬP";
+    String label;
+    Color color;
+    switch (_selectedTypeIndex) {
+      case 0: label = "TỔNG CHI PHÍ"; color = AppColors.expense; break;
+      case 1: label = "TỔNG THU NHẬP"; color = AppColors.income; break;
+      default: label = "TỔNG TÍCH LUỸ"; color = AppColors.savings; break;
+    }
+    
     String amount = CurrencyUtil.formatMoney(total);
-    Color color = _isExpenseMode ? AppColors.expense : AppColors.income;
-
+ 
     if (_touchedIndex != -1 && _touchedIndex < sortedStats.length) {
       label = sortedStats[_touchedIndex].category.name;
       amount = CurrencyUtil.formatMoney(sortedStats[_touchedIndex].amount);
+      if (sortedStats[_touchedIndex].category.colorValue != null) {
+        color = Color(sortedStats[_touchedIndex].category.colorValue!);
+      }
     }
 
     return Column(

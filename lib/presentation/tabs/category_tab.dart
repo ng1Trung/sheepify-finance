@@ -22,7 +22,7 @@ class CategoryTab extends StatefulWidget {
 }
 
 class _CategoryTabState extends State<CategoryTab> {
-  bool _isExpenseMode = true;
+  int _selectedTypeIndex = 0; // 0: expense, 1: income, 2: savings
 
   @override
   Widget build(BuildContext context) {
@@ -31,11 +31,9 @@ class _CategoryTabState extends State<CategoryTab> {
         // --- 1. MODE TOGGLE ---
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: SheepTypeToggle(
-            isExpense: _isExpenseMode,
-            leftLabel: "Chi phí",
-            rightLabel: "Thu nhập",
-            onChanged: (val) => setState(() => _isExpenseMode = val),
+          child: SheepTripleToggle(
+            selectedIndex: _selectedTypeIndex,
+            onChanged: (val) => setState(() => _selectedTypeIndex = val),
           ),
         ),
 
@@ -50,22 +48,36 @@ class _CategoryTabState extends State<CategoryTab> {
               final txBox = Hive.box<Transaction>(kMoneyBox);
               final now = DateTime.now();
 
-              // Calculate spent per category
+              List<Transaction> allTransactions = txBox.values.toList();
+              
+              // Map to store relevant spent amount based on category's goal type
               Map<String, double> categorySpent = {};
-              List<Transaction> monthTxs = txBox.values
-                  .where(
-                    (tx) => tx.date.month == now.month && tx.date.year == now.year,
-                  )
-                  .toList();
-
-              for (var tx in monthTxs) {
-                categorySpent[tx.categoryId] =
-                    (categorySpent[tx.categoryId] ?? 0) + tx.amount;
-              }
 
               final categories = box.values
-                  .where((c) => c.isExpense == _isExpenseMode)
+                  .where((c) => c.effectiveTypeIndex == _selectedTypeIndex)
                   .toList();
+
+              for (var cat in categories) {
+                double spent = 0;
+                final goalType = cat.effectiveGoalTypeIndex;
+                if (goalType == 1) {
+                  // Monthly goal: only current month
+                  spent = allTransactions
+                      .where((tx) => tx.categoryId == cat.id && tx.date.month == now.month && tx.date.year == now.year)
+                      .fold(0.0, (sum, tx) => sum + tx.amount);
+                } else if (goalType == 2) {
+                  // Long-term goal: all history
+                  spent = allTransactions
+                      .where((tx) => tx.categoryId == cat.id)
+                      .fold(0.0, (sum, tx) => sum + tx.amount);
+                } else {
+                  // Standard Income/Expense: usually current month
+                  spent = allTransactions
+                      .where((tx) => tx.categoryId == cat.id && tx.date.month == now.month && tx.date.year == now.year)
+                      .fold(0.0, (sum, tx) => sum + tx.amount);
+                }
+                categorySpent[cat.id] = spent;
+              }
 
               if (categories.isEmpty) {
                 return _buildEmptyState(context);
@@ -95,7 +107,7 @@ class _CategoryTabState extends State<CategoryTab> {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: EdgeInsets.zero,
                       child: InkWell(
-                        onTap: () => _showTransactionHistory(context, cat, monthTxs),
+                        onTap: () => _showTransactionHistory(context, cat, allTransactions),
                         borderRadius: BorderRadius.circular(20),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -131,7 +143,9 @@ class _CategoryTabState extends State<CategoryTab> {
           Icon(LineIcons.tags, size: 60, color: Colors.grey[300]),
           const SizedBox(height: 10),
           Text(
-            'Chưa có danh mục ${_isExpenseMode ? "chi phí" : "thu nhập"}',
+            _selectedTypeIndex == 0 
+                ? 'Chưa có danh mục chi phí' 
+                : (_selectedTypeIndex == 1 ? 'Chưa có danh mục thu nhập' : 'Chưa có mục tiêu tích luỹ nào'),
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
@@ -140,7 +154,13 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Widget _buildIcon(CategoryModel cat) {
-    final color = cat.colorValue != null ? Color(cat.colorValue!) : (_isExpenseMode ? AppColors.expense : AppColors.income);
+    Color color;
+    if (_selectedTypeIndex == 0) color = AppColors.expense;
+    else if (_selectedTypeIndex == 1) color = AppColors.income;
+    else color = AppColors.savings;
+    
+    if (cat.colorValue != null) color = Color(cat.colorValue!);
+    
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -156,7 +176,24 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Widget _buildInfo(CategoryModel cat, double spent) {
-    final remaining = (cat.budget ?? 0) - spent;
+    bool isSavings = _selectedTypeIndex == 2;
+    double? target = isSavings ? cat.targetAmount : cat.budget;
+    final remaining = (target ?? 0) - spent;
+    
+    String goalSubtitle = '';
+    if (isSavings) {
+      final goalType = cat.effectiveGoalTypeIndex;
+      if (goalType == 1) {
+        goalSubtitle = 'Mục tiêu tháng: ${CurrencyUtil.formatMoney(cat.targetAmount!)}';
+      } else if (goalType == 2) {
+        goalSubtitle = 'Hạn T${cat.targetMonth}/${cat.targetYear}: ${CurrencyUtil.formatMoney(cat.targetAmount!)}';
+      } else {
+        goalSubtitle = 'Mục tiêu ${cat.targetYear}: ${CurrencyUtil.formatMoney(cat.targetAmount!)}';
+      }
+    } else {
+      goalSubtitle = 'Ngân sách: ${CurrencyUtil.formatMoney(cat.budget ?? 0)}';
+    }
+
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,7 +205,7 @@ class _CategoryTabState extends State<CategoryTab> {
                 cat.name,
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              if (_isExpenseMode && cat.budget != null && remaining < 0)
+              if (_selectedTypeIndex == 0 && cat.budget != null && remaining < 0)
                 Text(
                   CurrencyUtil.formatMoney(remaining),
                   style: const TextStyle(
@@ -177,22 +214,34 @@ class _CategoryTabState extends State<CategoryTab> {
                     color: AppColors.expense,
                   ),
                 ),
+              if (isSavings && cat.targetAmount != null && remaining <= 0)
+                const Icon(Icons.check_circle, color: AppColors.savings, size: 20),
             ],
           ),
-          if (_isExpenseMode && cat.budget != null && cat.budget! > 0) ...[
+          if (target != null && target > 0) ...[
             const SizedBox(height: 10),
             _buildProgressBar(cat, spent),
             const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  remaining < 0 ? 'Vượt quá' : '',
-                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                Expanded(
+                  child: Text(
+                    isSavings 
+                        ? (remaining <= 0 ? 'Đã đạt mục tiêu!' : (cat.effectiveGoalTypeIndex == 1 ? 'Tiến độ tháng' : 'Hành trình'))
+                        : (remaining < 0 ? 'Vượt quá' : ''),
+                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                Text(
-                  'Ngân sách: ${CurrencyUtil.formatMoney(cat.budget!)}',
-                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    goalSubtitle,
+                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -203,14 +252,15 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Widget _buildProgressBar(CategoryModel cat, double spent) {
-    double progress = (cat.budget != null && cat.budget! > 0)
-        ? (spent / cat.budget!)
+    double? target = _selectedTypeIndex == 2 ? cat.targetAmount : cat.budget;
+    double progress = (target != null && target > 0)
+        ? (spent / target)
         : 0.0;
     if (progress > 1.0) progress = 1.0;
     if (progress < 0) progress = 0;
 
-    final baseColor = cat.colorValue != null ? Color(cat.colorValue!) : AppColors.primary;
-    final barColor = (spent > (cat.budget ?? 0)) ? AppColors.expense : baseColor;
+    final baseColor = cat.colorValue != null ? Color(cat.colorValue!) : (_selectedTypeIndex == 2 ? AppColors.savings : AppColors.primary);
+    final barColor = (_selectedTypeIndex == 0 && spent > (cat.budget ?? 0)) ? AppColors.expense : baseColor;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),

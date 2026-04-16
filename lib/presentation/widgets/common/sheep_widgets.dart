@@ -85,7 +85,7 @@ class SheepButton extends StatelessWidget {
 class SheepListTile extends StatelessWidget {
   final Widget? leading;
   final String title;
-  final String? subtitle;
+  final Widget? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
 
@@ -122,14 +122,7 @@ class SheepListTile extends StatelessWidget {
                       fontSize: 15,
                     ),
                   ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle!,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
+                  if (subtitle != null) subtitle!,
                 ],
               ),
             ),

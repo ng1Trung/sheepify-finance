@@ -105,7 +105,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildModeToggleItem(String title, bool isActive) {
     return GestureDetector(
-      onTap: () => setState(() => _isMonthlyView = (title == 'Month')),
+      onTap: () => setState(() => _isMonthlyView = (title == 'Tháng')),
       child: Container(
         width: 80,
         alignment: Alignment.center,

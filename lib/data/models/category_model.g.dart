@@ -23,13 +23,20 @@ class CategoryModelAdapter extends TypeAdapter<CategoryModel> {
       isExpense: fields[3] as bool,
       budget: fields[4] as double?,
       colorValue: fields[5] as int?,
+      typeIndex: fields[6] as int?,
+      targetAmount: fields[7] as double?,
+      targetDate: fields[8] as DateTime?,
+      goalTypeIndex: fields[10] as int?,
+      reminderDay: fields[11] as int?,
+      targetYear: fields[12] as int?,
+      targetMonth: fields[13] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CategoryModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +48,21 @@ class CategoryModelAdapter extends TypeAdapter<CategoryModel> {
       ..writeByte(4)
       ..write(obj.budget)
       ..writeByte(5)
-      ..write(obj.colorValue);
+      ..write(obj.colorValue)
+      ..writeByte(6)
+      ..write(obj.typeIndex)
+      ..writeByte(7)
+      ..write(obj.targetAmount)
+      ..writeByte(8)
+      ..write(obj.targetDate)
+      ..writeByte(10)
+      ..write(obj.goalTypeIndex)
+      ..writeByte(11)
+      ..write(obj.reminderDay)
+      ..writeByte(12)
+      ..write(obj.targetYear)
+      ..writeByte(13)
+      ..write(obj.targetMonth);
   }
 
   @override

@@ -34,7 +34,7 @@ class _TransactionFormState extends State<TransactionForm> {
   final _amountController = TextEditingController();
 
   late DateTime _selectedDate;
-  late bool _isExpense;
+  late int _selectedTypeIndex; // 0: expense, 1: income, 2: savings
 
   String? _selectedCategoryId;
   String? _imagePath;
@@ -51,13 +51,19 @@ class _TransactionFormState extends State<TransactionForm> {
       _amountController.text = CurrencyUtil.formatNumber(tx.amount);
       _noteController.text = tx.note;
       _selectedDate = tx.date;
-      _isExpense = tx.isExpense;
+      _selectedTypeIndex = tx.isExpense ? 0 : 1; // Default fallback
       _selectedCategoryId = tx.categoryId;
       _imagePath = tx.imagePath;
+      
+      // If we can find the category, get the exact type
+      try {
+        final cat = _catBox.values.firstWhere((c) => c.id == tx.categoryId);
+        _selectedTypeIndex = cat.effectiveTypeIndex;
+      } catch (_) {}
     } else {
       // Default state for new transaction
       _selectedDate = widget.initialDate ?? DateTime.now();
-      _isExpense = true;
+      _selectedTypeIndex = 0; // Default Expense
       _imagePath = null;
       _amountController.text = ''; // Start empty to show hint '0'
     }
@@ -170,7 +176,7 @@ class _TransactionFormState extends State<TransactionForm> {
         tx.amount = enteredAmount;
         tx.note = _noteController.text;
         tx.date = _selectedDate;
-        tx.isExpense = _isExpense;
+        tx.isExpense = _selectedTypeIndex == 0;
         tx.categoryId = _selectedCategoryId!;
         tx.imagePath = _imagePath;
         tx.save();
@@ -181,7 +187,7 @@ class _TransactionFormState extends State<TransactionForm> {
           note: _noteController.text,
           amount: enteredAmount,
           date: _selectedDate,
-          isExpense: _isExpense,
+          isExpense: _selectedTypeIndex == 0,
           categoryId: _selectedCategoryId!,
           imagePath: _imagePath,
         );
@@ -196,7 +202,7 @@ class _TransactionFormState extends State<TransactionForm> {
 
   // Open the custom category picker dialog
   void _showCategoryPicker() {
-    final cats = _catBox.values.where((c) => c.isExpense == _isExpense).toList();
+    final cats = _catBox.values.where((c) => c.effectiveTypeIndex == _selectedTypeIndex).toList();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -208,7 +214,7 @@ class _TransactionFormState extends State<TransactionForm> {
           final selected = _catBox.values.firstWhere((c) => c.id == id);
           setState(() {
             _selectedCategoryId = id;
-            _isExpense = selected.isExpense;
+            _selectedTypeIndex = selected.effectiveTypeIndex;
           });
           Navigator.pop(context);
         },
@@ -238,17 +244,18 @@ class _TransactionFormState extends State<TransactionForm> {
             const SizedBox(height: 25),
             TransactionImageArea(
               imagePath: _imagePath,
-              isExpense: _isExpense,
+              isExpense: _selectedTypeIndex == 0,
+              selectedIndex: _selectedTypeIndex, // PASSING NEW PROP
               selectedCategory: selectedCategory,
               categoryColor: selectedCategory?.colorValue != null ? Color(selectedCategory!.colorValue!) : null,
               amountController: _amountController,
               noteController: _noteController,
               onPickImage: _pickImage,
               onRemoveImage: () => setState(() => _imagePath = null),
-              onToggleType: () {
+              onToggleType: (index) {
                 HapticFeedback.lightImpact();
                 setState(() {
-                  _isExpense = !_isExpense;
+                  _selectedTypeIndex = index;
                   _selectedCategoryId = null;
                 });
               },

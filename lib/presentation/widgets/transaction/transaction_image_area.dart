@@ -10,19 +10,21 @@ import '../../../data/models/category_model.dart';
 class TransactionImageArea extends StatelessWidget {
   final String? imagePath;
   final bool isExpense;
+  final int selectedIndex; // NEW
   final CategoryModel? selectedCategory;
   final Color? categoryColor;
   final TextEditingController amountController;
   final TextEditingController noteController;
   final VoidCallback onPickImage;
   final VoidCallback onRemoveImage;
-  final VoidCallback onToggleType;
+  final Function(int) onToggleType; // CHANGED to accept index
   final VoidCallback onShowCategoryPicker;
 
   const TransactionImageArea({
     super.key,
     required this.imagePath,
     required this.isExpense,
+    required this.selectedIndex,
     required this.selectedCategory,
     this.categoryColor,
     required this.amountController,
@@ -66,15 +68,17 @@ class TransactionImageArea extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: !hasCategory
-                              ? [const Color(0xFFBDBDBD), const Color(0xFF757575)]
+                                ? [const Color(0xFFBDBDBD), const Color(0xFF757575)]
                               : (categoryColor != null
                                   ? [
                                       categoryColor!,
                                       categoryColor!.withOpacity(0.7),
                                     ]
-                                  : (isExpense
+                                  : (selectedIndex == 0
                                       ? [const Color(0xFFC62828), const Color(0xFF8E24AA)]
-                                      : [const Color(0xFF2E7D32), const Color(0xFF00ACC1)])),
+                                      : (selectedIndex == 1 
+                                          ? [const Color(0xFF2E7D32), const Color(0xFF00ACC1)]
+                                          : [const Color(0xFF1976D2), const Color(0xFF00BCD4)]))),
                         ),
                       ),
                       child: Center(
@@ -153,7 +157,9 @@ class TransactionImageArea extends StatelessWidget {
     } else {
       contentColor = isZeroValue
           ? Colors.white24
-          : (isExpense ? const Color(0xFFFF8A80) : const Color(0xFFB9F6CA));
+          : (selectedIndex == 0 
+              ? const Color(0xFFFF8A80) 
+              : (selectedIndex == 1 ? const Color(0xFFB9F6CA) : const Color(0xFFBBDEFB)));
     }
 
     return Container(
@@ -174,7 +180,7 @@ class TransactionImageArea extends StatelessWidget {
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
-                  isExpense ? '-' : '+',
+                  selectedIndex == 0 ? '-' : (selectedIndex == 1 ? '+' : '±'),
                   style: TextStyle(
                     color: contentColor,
                     fontSize: 32,
@@ -264,18 +270,24 @@ class TransactionImageArea extends StatelessWidget {
   }
 
   Widget _buildTypeToggle() {
+    String label;
+    Color color;
+    switch (selectedIndex) {
+      case 0: label = 'Chi tiêu'; color = AppColors.expense; break;
+      case 1: label = 'Thu nhập'; color = AppColors.income; break;
+      default: label = 'Mục tiêu'; color = AppColors.savings; break;
+    }
+
     return GestureDetector(
-      onTap: onToggleType,
+      onTap: () => onToggleType((selectedIndex + 1) % 3),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: (isExpense ? AppColors.expense : AppColors.income).withOpacity(
-            0.9,
-          ),
+          color: color.withOpacity(0.9),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          isExpense ? 'Expense' : 'Income',
+          label,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 12,
