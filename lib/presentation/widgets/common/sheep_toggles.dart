@@ -40,9 +40,9 @@ class SheepTypeToggle extends StatelessWidget {
                 bottom: 0,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).brightness == Brightness.light ? Colors.white : AppColors.getSurface(Theme.of(context).brightness),
                     borderRadius: BorderRadius.circular(21),
-                    boxShadow: AppColors.softShadow,
+                    boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
                   ),
                 ),
               ),
@@ -126,7 +126,7 @@ class SheepTripleToggle extends StatelessWidget {
                         width: itemWidth,
                         top: 0,
                         bottom: 0,
-                        child: _buildIndicator(),
+                        child: _buildIndicator(context),
                       );
                     },
                   )
@@ -137,7 +137,7 @@ class SheepTripleToggle extends StatelessWidget {
                     width: itemWidth,
                     top: 0,
                     bottom: 0,
-                    child: _buildIndicator(),
+                    child: _buildIndicator(context),
                   ),
               
               // TEXT LABELS
@@ -177,12 +177,12 @@ class SheepTripleToggle extends StatelessWidget {
     );
   }
 
-  Widget _buildIndicator() {
+  Widget _buildIndicator(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.light ? Colors.white : AppColors.getSurface(Theme.of(context).brightness),
         borderRadius: BorderRadius.circular(21),
-        boxShadow: AppColors.softShadow,
+        boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
       ),
     );
   }

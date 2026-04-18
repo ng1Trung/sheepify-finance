@@ -233,10 +233,11 @@ class _CategoryTabState extends State<CategoryTab> {
               if (typeIndex == 0 && cat.budget != null && remaining < 0)
                 Text(
                   CurrencyUtil.formatMoney(remaining),
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: TextStyle(
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.expense,
+                    color: AppColors.textPrimary,
+                    letterSpacing: 0.5,
                   ),
                 ),
               if (isSavings && cat.targetAmount != null && remaining <= 0)
@@ -255,7 +256,7 @@ class _CategoryTabState extends State<CategoryTab> {
                     isSavings 
                         ? (remaining <= 0 ? 'Đã đạt mục tiêu!' : (cat.effectiveGoalTypeIndex == 1 ? 'Tiến độ tháng' : 'Hành trình'))
                         : (remaining < 0 ? 'Vượt quá' : ''),
-                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -263,7 +264,7 @@ class _CategoryTabState extends State<CategoryTab> {
                 Flexible(
                   child: Text(
                     goalSubtitle,
-                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
                     textAlign: TextAlign.right,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -353,7 +354,7 @@ class _CategoryTabState extends State<CategoryTab> {
             children: [
               TextSpan(
                 text: '"${item.name}"',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
@@ -362,7 +363,7 @@ class _CategoryTabState extends State<CategoryTab> {
                 const TextSpan(text: ' hiện đang chứa '),
                 TextSpan(
                   text: '$relatedTxsCount giao dịch',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
@@ -376,7 +377,7 @@ class _CategoryTabState extends State<CategoryTab> {
             ],
           ),
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             color: AppColors.textSecondary,
             height: 1.5,

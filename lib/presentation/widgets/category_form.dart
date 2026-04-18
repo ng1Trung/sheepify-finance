@@ -409,8 +409,8 @@ class _CategoryFormState extends State<CategoryForm> {
                 _nameController.text.isEmpty
                     ? 'TÊN DANH MỤC'
                     : _nameController.text.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                   letterSpacing: 0.5,
@@ -425,8 +425,8 @@ class _CategoryFormState extends State<CategoryForm> {
                         : (_selectedGoalTypeIndex == 2 
                             ? 'Mục tiêu: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - T${_selectedTargetMonth}/${_selectedTargetYear}'
                             : 'Mục tiêu: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - Năm ${_selectedTargetYear}')),
-                style: const TextStyle(
-                  fontSize: 13,
+                style: TextStyle(
+                  fontSize: 12,
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
@@ -487,7 +487,7 @@ class _CategoryFormState extends State<CategoryForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ngày nạp tiền hàng tháng', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text('Ngày nạp tiền hàng tháng', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         const SizedBox(height: 8),
         SizedBox(
           height: 50,
@@ -529,7 +529,7 @@ class _CategoryFormState extends State<CategoryForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Tháng hoàn thành', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text('Tháng hoàn thành', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         const SizedBox(height: 8),
         SizedBox(
           height: 45,
@@ -574,7 +574,7 @@ class _CategoryFormState extends State<CategoryForm> {
       children: [
         Text(
           _selectedGoalTypeIndex == 2 ? 'Năm hoàn thành' : 'Năm hoàn thành (Hạn 31/12)', 
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary)
         ),
         const SizedBox(height: 8),
         SizedBox(

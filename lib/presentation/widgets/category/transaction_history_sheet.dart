@@ -37,9 +37,9 @@ class TransactionHistorySheet extends StatelessWidget {
       maxChildSize: 0.95,
       expand: false,
       builder: (_, scrollController) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Column(
           children: [
@@ -117,7 +117,7 @@ class TransactionHistorySheet extends StatelessWidget {
               children: [
                 Text(
                   category.effectiveTypeIndex == 2 ? 'TỔNG MỤC TIÊU' : 'TỔNG CHI TIÊU',
-                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: AppColors.textSecondary),
                 ),
                 Text(
                   CurrencyUtil.formatMoney(total),
@@ -173,7 +173,7 @@ class TransactionHistorySheet extends StatelessWidget {
           title: tx.note.isNotEmpty ? tx.note : 'Giao dịch chưa đặt tên',
           subtitle: Text(
             DateFormat('dd/MM/yyyy').format(tx.date),
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
           trailing: Text(
             '${tx.isExpense ? '-' : '+'}${CurrencyUtil.formatMoney(tx.amount)}',
@@ -306,7 +306,7 @@ class TransactionHistorySheet extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               subtitle,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 12),
             ClipRRect(
@@ -335,8 +335,8 @@ class TransactionHistorySheet extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(footerLeft, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                Text(footerRight, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                Text(footerLeft, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                Text(footerRight, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
               ],
             ),
           ],

@@ -19,13 +19,14 @@ class SheepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Container(
       margin: margin,
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color ?? AppColors.surface,
+        color: color ?? AppColors.getSurface(brightness),
         borderRadius: BorderRadius.circular(borderRadius ?? 20),
-        boxShadow: AppColors.softShadow,
+        boxShadow: AppColors.getSoftShadow(brightness),
       ),
       child: child,
     );

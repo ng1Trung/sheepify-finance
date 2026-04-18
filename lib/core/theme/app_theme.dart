@@ -3,70 +3,103 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
-  static ThemeData get lightTheme {
+  static ThemeData getTheme(ThemePreset preset, String fontFamily) {
+    final brightness = preset.brightness;
+    final primary = preset.primary;
+    final background = AppColors.getBackground(brightness);
+    final surface = AppColors.getSurface(brightness);
+    final textPrimary = AppColors.getTextPrimary(brightness);
+    final textSecondary = AppColors.getTextSecondary(brightness);
+
+    TextTheme resolveTextTheme(String font) {
+      switch (font) {
+        case 'Inter':
+          return GoogleFonts.interTextTheme();
+        case 'Montserrat':
+          return GoogleFonts.montserratTextTheme();
+        case 'Roboto':
+          return GoogleFonts.robotoTextTheme();
+        case 'Be Vietnam Pro':
+          return GoogleFonts.beVietnamProTextTheme();
+        case 'Quicksand':
+        default:
+          return GoogleFonts.quicksandTextTheme();
+      }
+    }
+
+    final baseTextTheme = resolveTextTheme(fontFamily);
+
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: AppColors.background,
+      brightness: brightness,
+      scaffoldBackgroundColor: background,
+      primaryColor: primary,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
-        primary: AppColors.primary,
-        secondary: AppColors.secondary,
-        surface: AppColors.surface,
+        seedColor: primary,
+        brightness: brightness,
+        primary: primary,
+        secondary: preset.secondary,
+        surface: surface,
         error: AppColors.expense,
       ),
-      textTheme: GoogleFonts.quicksandTextTheme().copyWith(
-        displayLarge: const TextStyle(
-          color: AppColors.textPrimary,
+      textTheme: baseTextTheme.copyWith(
+        displayLarge: TextStyle(
+          color: textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 28,
+          fontFamily: fontFamily,
         ),
-        titleLarge: const TextStyle(
-          color: AppColors.textPrimary,
+        titleLarge: TextStyle(
+          color: textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 18,
+          fontFamily: fontFamily,
         ),
-        bodyLarge: const TextStyle(
-          color: AppColors.textPrimary,
+        bodyLarge: TextStyle(
+          color: textPrimary,
           fontSize: 16,
+          fontFamily: fontFamily,
         ),
-        bodyMedium: const TextStyle(
-          color: AppColors.textPrimary,
+        bodyMedium: TextStyle(
+          color: textPrimary,
           fontSize: 14,
+          fontFamily: fontFamily,
         ),
-        labelSmall: const TextStyle(
-          color: AppColors.textSecondary,
+        labelSmall: TextStyle(
+          color: textSecondary,
           fontSize: 12,
+          fontFamily: fontFamily,
         ),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
-          color: AppColors.textPrimary,
+          color: textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 18,
-          fontFamily: 'Quicksand',
+          fontFamily: fontFamily,
         ),
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        iconTheme: IconThemeData(color: textPrimary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          textStyle: const TextStyle(
+          textStyle: TextStyle(
             fontWeight: FontWeight.bold,
-            fontFamily: 'Quicksand',
+            fontFamily: fontFamily,
           ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: surface,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -78,26 +111,28 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: primary, width: 1.5),
         ),
-        labelStyle: const TextStyle(color: AppColors.textSecondary),
-        hintStyle: const TextStyle(color: AppColors.textSecondary),
+        labelStyle: TextStyle(color: textSecondary),
+        hintStyle: TextStyle(color: textSecondary),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: Colors.white,
-        selectedColor: AppColors.primary,
+        backgroundColor: surface,
+        selectedColor: primary,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.grey.shade200),
+          side: BorderSide(color: textSecondary.withOpacity(0.2)),
         ),
-        labelStyle: const TextStyle(
-          color: AppColors.textPrimary,
+        labelStyle: TextStyle(
+          color: textPrimary,
           fontWeight: FontWeight.w600,
+          fontFamily: fontFamily,
         ),
-        secondaryLabelStyle: const TextStyle(
+        secondaryLabelStyle: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w600,
+          fontFamily: fontFamily,
         ),
       ),
     );

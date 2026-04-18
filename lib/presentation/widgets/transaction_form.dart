@@ -11,7 +11,9 @@ import 'package:intl/intl.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
+import '../../data/models/settings_model.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/l10n.dart';
 import '../../core/utils/currency_util.dart';
 import 'common/sheep_widgets.dart';
 import 'transaction/transaction_image_area.dart';
@@ -19,6 +21,7 @@ import 'transaction/transaction_category_picker.dart';
 
 import 'common/sheep_notifications.dart';
 import 'common/sheep_dialogs.dart';
+import '../../core/utils/l10n.dart';
 import '../../core/utils/category_util.dart';
 
 class TransactionForm extends StatefulWidget {
@@ -57,6 +60,10 @@ class _TransactionFormState extends State<TransactionForm> {
       _selectedCategoryId = tx.categoryId;
       _imagePath = tx.imagePath;
       
+      // Load current settings for currency
+      final settings = Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+      _amountController.text = CurrencyUtil.formatNumber(tx.amount, locale: settings.languageCode == 'vi' ? 'vi_VN' : 'en_US');
+      
       // If we can find the category, get the exact type
       try {
         final cat = _catBox.values.firstWhere((c) => c.id == tx.categoryId);
@@ -84,10 +91,10 @@ class _TransactionFormState extends State<TransactionForm> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
+            colorScheme: ColorScheme.light(
               primary: AppColors.primary,
               onPrimary: Colors.white,
-              onSurface: AppColors.textPrimary,
+              onSurface: AppColors.getTextPrimary(Theme.of(context).brightness),
             ),
           ),
           child: child!,
@@ -104,6 +111,8 @@ class _TransactionFormState extends State<TransactionForm> {
   // Upload image from camera or gallery
   Future<void> _pickImage() async {
     final picker = ImagePicker();
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -114,15 +123,15 @@ class _TransactionFormState extends State<TransactionForm> {
         children: [
           const SizedBox(height: 12),
           _buildDragHandle(),
-          _buildPickerTitle(context),
+          _buildPickerTitle(context, l10n.uploadImage),
           ListTile(
-            leading: const Icon(LineIcons.camera, color: AppColors.primary),
-            title: const Text('Chụp ảnh'),
+            leading: Icon(LineIcons.camera, color: theme.primaryColor),
+            title: Text(l10n.takePhoto),
             onTap: () => Navigator.pop(ctx, ImageSource.camera),
           ),
           ListTile(
-            leading: const Icon(LineIcons.image, color: AppColors.primary),
-            title: const Text('Chọn từ thư viện'),
+            leading: Icon(LineIcons.image, color: theme.primaryColor),
+            title: Text(l10n.chooseGallery),
             onTap: () => Navigator.pop(ctx, ImageSource.gallery),
           ),
           const SizedBox(height: 20),
@@ -149,11 +158,11 @@ class _TransactionFormState extends State<TransactionForm> {
     );
   }
 
-  Widget _buildPickerTitle(BuildContext context) {
+  Widget _buildPickerTitle(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Text(
-        'TẢI ẢNH LÊN',
+        title,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
       ),
     );
@@ -161,8 +170,9 @@ class _TransactionFormState extends State<TransactionForm> {
 
   // Validate and persist transaction data
   Future<void> _submit() async {
+    final l10n = L10n.of(context);
     if (_amountController.text.isEmpty || _selectedCategoryId == null) {
-      SheepNotifications.showError(context, 'Vui lòng nhập số tiền và chọn danh mục!');
+      SheepNotifications.showError(context, l10n.get('error_input'));
       return;
     }
 
@@ -182,7 +192,7 @@ class _TransactionFormState extends State<TransactionForm> {
         tx.categoryId = _selectedCategoryId!;
         tx.imagePath = _imagePath;
         tx.save();
-        SheepNotifications.showSuccess(context, 'Đã cập nhật giao dịch');
+        SheepNotifications.showSuccess(context, l10n.get('tx_updated'));
       } else {
         // Create and add new transaction to Hive
         final newTx = Transaction(
@@ -194,7 +204,7 @@ class _TransactionFormState extends State<TransactionForm> {
           imagePath: _imagePath,
         );
         _box.add(newTx);
-        SheepNotifications.showSuccess(context, 'Đã thêm giao dịch thành công');
+        SheepNotifications.showSuccess(context, l10n.get('tx_added'));
       }
 
       // Check if we hit budget or reached goal
@@ -207,11 +217,11 @@ class _TransactionFormState extends State<TransactionForm> {
             await showDialog(
               context: context,
               builder: (_) => SheepGoalDialog(
-                title: 'Cảnh báo ngân sách!',
-                message: 'Bạn đã tiêu quá hạn mức của danh mục "${cat.name}". Hãy cân nhắc chi tiêu nhé!',
+                title: l10n.get('budget_warning'),
+                message: l10n.get('budget_msg', params: {'name': cat.name}),
                 color: AppColors.expense,
                 isSuccess: false,
-                buttonLabel: 'Đã hiểu',
+                buttonLabel: l10n.get('understood'),
               ),
             );
           }
@@ -219,12 +229,12 @@ class _TransactionFormState extends State<TransactionForm> {
           if (cat.targetAmount != null && cat.targetAmount! > 0 && spent >= cat.targetAmount!) {
             await showDialog(
               context: context,
-              builder: (_) => const SheepGoalDialog(
-                title: 'Chúc mừng!',
-                message: 'Tuyệt vời! Bạn đã đạt mục tiêu tích luỹ. Tiếp tục phát huy nhé!',
+              builder: (_) => SheepGoalDialog(
+                title: l10n.get('goal_congrats'),
+                message: l10n.get('goal_msg'),
                 color: AppColors.savings,
                 isSuccess: true,
-                buttonLabel: 'Tuyệt vời!',
+                buttonLabel: l10n.get('awesome'),
               ),
             );
           }
@@ -272,8 +282,12 @@ class _TransactionFormState extends State<TransactionForm> {
       } catch (_) {}
     }
 
+    final theme = Theme.of(context);
     return Container(
-      decoration: const BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.vertical(top: Radius.circular(35))),
+      decoration: BoxDecoration(
+        color: AppColors.getSurface(theme.brightness),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
+      ),
       padding: EdgeInsets.only(top: 20, left: 20, right: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
       child: SingleChildScrollView(
         child: Column(
@@ -329,9 +343,9 @@ class _TransactionFormState extends State<TransactionForm> {
             const Icon(LineIcons.calendar, size: 14, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
-              DateFormat('dd MMMM, yyyy', 'en_US').format(_selectedDate),
-              style: const TextStyle(
-                color: AppColors.primary,
+              DateFormat('dd MMMM, yyyy', Localizations.localeOf(context).toString()).format(_selectedDate),
+              style: TextStyle(
+                color: Theme.of(context).primaryColor,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -343,11 +357,12 @@ class _TransactionFormState extends State<TransactionForm> {
   }
 
   Widget _buildSaveButton() {
+    final l10n = L10n.of(context);
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: SheepButton(
-        label: widget.transaction == null ? 'LƯU' : 'CẬP NHẬT',
+        label: widget.transaction == null ? l10n.save : l10n.updateLabel,
         onPressed: _submit,
       ),
     );

@@ -29,11 +29,25 @@ class CurrencyUtil {
 
   /// Formats amount based on currency code
   static String formatByCurrency(double amount, String currencyCode) {
-    if (currencyCode.toUpperCase() == 'VND') {
-      return formatVND(amount);
+    switch (currencyCode.toUpperCase()) {
+      case 'VND':
+        return formatVND(amount);
+      case 'USD':
+        return NumberFormat.simpleCurrency(locale: 'en_US', name: 'USD').format(amount);
+      case 'EUR':
+        return NumberFormat.simpleCurrency(locale: 'fr_FR', name: 'EUR').format(amount);
+      default:
+        return NumberFormat.simpleCurrency(name: currencyCode.toUpperCase()).format(amount);
     }
-    // For other currencies, use simpleCurrency which handles symbols automatically
-    return NumberFormat.simpleCurrency(name: currencyCode.toUpperCase()).format(amount);
+  }
+
+  static String getCurrencySymbol(String currencyCode) {
+    switch (currencyCode.toUpperCase()) {
+      case 'VND': return 'đ';
+      case 'USD': return '\$';
+      case 'EUR': return '€';
+      default: return currencyCode;
+    }
   }
 }
 
