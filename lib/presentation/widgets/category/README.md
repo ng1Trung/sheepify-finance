@@ -20,8 +20,9 @@ Stored in Hive using the `kCatBox` key.
 - `id`: Unique identifier.
 - `name`: Human-readable name.
 - `iconCode`: Unicode for the selected icon.
-- `isExpense`: Boolean flag for classification.
-- `budget`: Optional monthly limit.
+- `effectiveTypeIndex`: 0: Expense, 1: Income, 2: Savings/Goal.
+- `budget`: Optional monthly limit for Expenses.
+- `targetAmount`: Required amount for Savings/Goals.
 
 ## 📐 Architecture
 - **Flat Structure**: Sheepify avoids sub-categories to keep the experience fast and focused.
