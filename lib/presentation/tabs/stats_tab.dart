@@ -286,7 +286,7 @@ class _StatsTabState extends State<StatsTab> {
                     subtitle: isVirtual
                         ? Text(
                             l10n.get('accumulated_from_prev'),
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 12),
                           )
                         : null,
                     trailing: Column(
@@ -295,7 +295,7 @@ class _StatsTabState extends State<StatsTab> {
                       children: [
                         Text(
                           CurrencyUtil.formatByCurrency(stat.amount, settings.currencyCode),
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: color,
                             fontWeight: FontWeight.bold,
                             fontSize: 15,

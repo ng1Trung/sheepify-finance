@@ -47,8 +47,8 @@ class SheepifyApp extends StatelessWidget {
         final settings = box.get('current') ?? AppSettings();
         
         // Resolve Theme
-        final preset = AppColors.getPreset(settings.themePresetName);
-        final theme = AppTheme.getTheme(preset, settings.fontFamily);
+        final palette = AppColors.getPalette(settings.themePresetName);
+        final theme = AppTheme.getTheme(palette, settings.isDarkMode, settings.fontFamily);
         
         // Resolve Locale
         final locale = Locale(settings.languageCode);

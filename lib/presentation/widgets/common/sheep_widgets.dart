@@ -7,6 +7,7 @@ class SheepCard extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final double? borderRadius;
   final Color? color;
+  final BoxBorder? border;
 
   const SheepCard({
     super.key,
@@ -15,6 +16,7 @@ class SheepCard extends StatelessWidget {
     this.margin,
     this.borderRadius,
     this.color,
+    this.border,
   });
 
   @override
@@ -26,6 +28,7 @@ class SheepCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color ?? AppColors.getSurface(brightness),
         borderRadius: BorderRadius.circular(borderRadius ?? 20),
+        border: border,
         boxShadow: AppColors.getSoftShadow(brightness),
       ),
       child: child,
@@ -53,8 +56,9 @@ class SheepButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final style = ElevatedButton.styleFrom(
-      backgroundColor: backgroundColor ?? AppColors.primary,
+      backgroundColor: backgroundColor ?? theme.primaryColor,
       foregroundColor: foregroundColor ?? Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
     );
@@ -118,7 +122,7 @@ class SheepListTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),

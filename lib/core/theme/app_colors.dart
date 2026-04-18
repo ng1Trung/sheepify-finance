@@ -1,34 +1,31 @@
 import 'package:flutter/material.dart';
 
-class ThemePreset {
+class ColorPalette {
   final String name;
-  final Brightness brightness;
   final Color primary;
   final Color secondary;
 
-  const ThemePreset({
+  const ColorPalette({
     required this.name,
-    required this.brightness,
     required this.primary,
     this.secondary = const Color(0xFF00B4D8),
   });
 }
 
 class AppColors {
-  // Preset definitions
-  static const List<ThemePreset> presets = [
-    ThemePreset(name: 'Sheep Light', brightness: Brightness.light, primary: Color(0xFF20C997)),
-    ThemePreset(name: 'Sheep Dark', brightness: Brightness.dark, primary: Color(0xFF20C997)),
-    ThemePreset(name: 'Rose Petal', brightness: Brightness.light, primary: Color(0xFFFF85A1)),
-    ThemePreset(name: 'Sunset Glow', brightness: Brightness.light, primary: Color(0xFFFF9E7D)),
-    ThemePreset(name: 'Ruby Red', brightness: Brightness.light, primary: Color(0xFFEE6055)),
-    ThemePreset(name: 'Golden Hour', brightness: Brightness.light, primary: Color(0xFFFFD97D)),
-    ThemePreset(name: 'Deep Ocean', brightness: Brightness.light, primary: Color(0xFF4EA8DE)),
-    ThemePreset(name: 'Lavender Night', brightness: Brightness.dark, primary: Color(0xFFB79CED)),
+  // Palette definitions
+  static const List<ColorPalette> palettes = [
+    ColorPalette(name: 'Sheep Green', primary: Color(0xFF20C997)),
+    ColorPalette(name: 'Rose Petal', primary: Color(0xFFFF85A1)),
+    ColorPalette(name: 'Sunset Glow', primary: Color(0xFFFF9E7D)),
+    ColorPalette(name: 'Ruby Red', primary: Color(0xFFEE6055)),
+    ColorPalette(name: 'Golden Hour', primary: Color(0xFFFFD97D)),
+    ColorPalette(name: 'Deep Ocean', primary: Color(0xFF4EA8DE)),
+    ColorPalette(name: 'Lavender Night', primary: Color(0xFFB79CED)),
   ];
 
-  static ThemePreset getPreset(String name) {
-    return presets.firstWhere((p) => p.name == name, orElse: () => presets[0]);
+  static ColorPalette getPalette(String name) {
+    return palettes.firstWhere((p) => p.name == name, orElse: () => palettes[0]);
   }
 
   // Base Colors
@@ -45,17 +42,10 @@ class AppColors {
   static const Color textSecLight = Color(0xFF8D99AE);
 
   // Dynamic Background & Surface
-  static Color getBackground(Brightness b) => b == Brightness.light ? bgLight : const Color(0xFF121212);
-  static Color getSurface(Brightness b) => b == Brightness.light ? surfLight : const Color(0xFF1E1E1E);
-  static Color getTextPrimary(Brightness b) => b == Brightness.light ? textPriLight : const Color(0xFFF1F1F1);
-  static Color getTextSecondary(Brightness b) => b == Brightness.light ? textSecLight : const Color(0xFFABABAB);
-
-  // Compatibility getters (proxies to methods, but might need context or brightness)
-  // For static access without context, we default to Light.
-  static Color get background => bgLight;
-  static Color get surface => surfLight;
-  static Color get textPrimary => textPriLight;
-  static Color get textSecondary => textSecLight;
+  static Color getBackground(Brightness b) => b == Brightness.light ? bgLight : const Color(0xFF0D0D0D);
+  static Color getSurface(Brightness b) => b == Brightness.light ? surfLight : const Color(0xFF1A1A1A);
+  static Color getTextPrimary(Brightness b) => b == Brightness.light ? textPriLight : const Color(0xFFFFFFFF);
+  static Color getTextSecondary(Brightness b) => b == Brightness.light ? textSecLight : const Color(0xFFAAAAAA);
 
   // Effects
   static List<BoxShadow> getSoftShadow(Brightness b) => [

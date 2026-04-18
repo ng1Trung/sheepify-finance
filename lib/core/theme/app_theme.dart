@@ -3,27 +3,42 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
-  static ThemeData getTheme(ThemePreset preset, String fontFamily) {
-    final brightness = preset.brightness;
-    final primary = preset.primary;
+  static ThemeData getTheme(ColorPalette palette, bool isDarkMode, String fontFamily) {
+    final brightness = isDarkMode ? Brightness.dark : Brightness.light;
+    final primary = palette.primary;
     final background = AppColors.getBackground(brightness);
     final surface = AppColors.getSurface(brightness);
     final textPrimary = AppColors.getTextPrimary(brightness);
     final textSecondary = AppColors.getTextSecondary(brightness);
 
+    final baseTheme = isDarkMode ? ThemeData.dark() : ThemeData.light();
+
     TextTheme resolveTextTheme(String font) {
+      final baseText = baseTheme.textTheme;
       switch (font) {
         case 'Inter':
-          return GoogleFonts.interTextTheme();
+          return GoogleFonts.interTextTheme(baseText);
         case 'Montserrat':
-          return GoogleFonts.montserratTextTheme();
+          return GoogleFonts.montserratTextTheme(baseText);
         case 'Roboto':
-          return GoogleFonts.robotoTextTheme();
+          return GoogleFonts.robotoTextTheme(baseText);
         case 'Be Vietnam Pro':
-          return GoogleFonts.beVietnamProTextTheme();
+          return GoogleFonts.beVietnamProTextTheme(baseText);
+        case 'Comfortaa':
+          return GoogleFonts.comfortaaTextTheme(baseText);
+        case 'Lexend':
+          return GoogleFonts.lexendTextTheme(baseText);
+        case 'Bungee':
+          return GoogleFonts.bungeeTextTheme(baseText);
+        case 'Righteous':
+          return GoogleFonts.righteousTextTheme(baseText);
+        case 'Pacifico':
+          return GoogleFonts.pacificoTextTheme(baseText);
+        case 'Special Elite':
+          return GoogleFonts.specialEliteTextTheme(baseText);
         case 'Quicksand':
         default:
-          return GoogleFonts.quicksandTextTheme();
+          return GoogleFonts.quicksandTextTheme(baseText);
       }
     }
 
@@ -32,54 +47,49 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
+      fontFamily: fontFamily,
       scaffoldBackgroundColor: background,
       primaryColor: primary,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         brightness: brightness,
         primary: primary,
-        secondary: preset.secondary,
+        secondary: palette.secondary,
         surface: surface,
         error: AppColors.expense,
       ),
       textTheme: baseTextTheme.copyWith(
-        displayLarge: TextStyle(
+        displayLarge: baseTextTheme.displayLarge?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 28,
-          fontFamily: fontFamily,
         ),
-        titleLarge: TextStyle(
+        titleLarge: baseTextTheme.titleLarge?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 18,
-          fontFamily: fontFamily,
         ),
-        bodyLarge: TextStyle(
+        bodyLarge: baseTextTheme.bodyLarge?.copyWith(
           color: textPrimary,
           fontSize: 16,
-          fontFamily: fontFamily,
         ),
-        bodyMedium: TextStyle(
+        bodyMedium: baseTextTheme.bodyMedium?.copyWith(
           color: textPrimary,
           fontSize: 14,
-          fontFamily: fontFamily,
         ),
-        labelSmall: TextStyle(
+        labelSmall: baseTextTheme.labelSmall?.copyWith(
           color: textSecondary,
           fontSize: 12,
-          fontFamily: fontFamily,
         ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: TextStyle(
+        titleTextStyle: baseTextTheme.titleLarge?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 18,
-          fontFamily: fontFamily,
         ),
         iconTheme: IconThemeData(color: textPrimary),
       ),
@@ -91,9 +101,8 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          textStyle: TextStyle(
+          textStyle: baseTextTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            fontFamily: fontFamily,
           ),
         ),
       ),
@@ -113,8 +122,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: primary, width: 1.5),
         ),
-        labelStyle: TextStyle(color: textSecondary),
-        hintStyle: TextStyle(color: textSecondary),
+        labelStyle: baseTextTheme.bodyMedium?.copyWith(color: textSecondary),
+        hintStyle: baseTextTheme.bodyMedium?.copyWith(color: textSecondary),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: surface,
@@ -124,15 +133,13 @@ class AppTheme {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: textSecondary.withOpacity(0.2)),
         ),
-        labelStyle: TextStyle(
+        labelStyle: baseTextTheme.bodyMedium?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.w600,
-          fontFamily: fontFamily,
         ),
-        secondaryLabelStyle: TextStyle(
+        secondaryLabelStyle: baseTextTheme.bodyMedium?.copyWith(
           color: Colors.white,
           fontWeight: FontWeight.w600,
-          fontFamily: fontFamily,
         ),
       ),
     );

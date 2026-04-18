@@ -8,7 +8,7 @@ class AppSettings extends HiveObject {
   bool accumulateBalance;
 
   @HiveField(1)
-  String themePresetName;
+  String themePresetName; // Will be used for activePaletteName
 
   @HiveField(2)
   String languageCode;
@@ -19,11 +19,15 @@ class AppSettings extends HiveObject {
   @HiveField(4)
   String fontFamily;
 
+  @HiveField(5)
+  bool isDarkMode;
+
   AppSettings({
     this.accumulateBalance = true,
-    this.themePresetName = 'Sheep Light',
+    this.themePresetName = 'Sheep Green',
     this.languageCode = 'vi',
     this.currencyCode = 'VND',
     this.fontFamily = 'Quicksand',
+    this.isDarkMode = false,
   });
 }

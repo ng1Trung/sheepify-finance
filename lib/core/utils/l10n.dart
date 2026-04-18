@@ -16,6 +16,7 @@ class L10n {
       'categories': 'Danh mục',
       'stats': 'Thống kê',
       'diary': 'Nhật ký',
+      'balance': 'Số dư',
       'total_balance': 'Tổng số dư',
       'income': 'Thu nhập',
       'expense': 'Chi tiêu',
@@ -65,6 +66,50 @@ class L10n {
       'goal_msg': 'Tuyệt vời! Bạn đã đạt mục tiêu tích luỹ. Tiếp tục phát huy nhé!',
       'understood': 'Đã hiểu',
       'awesome': 'Tuyệt vời!',
+      'savings': 'Tích luỹ',
+      'total_target': 'TỔNG MỤC TIÊU',
+      'total_spent_cat': 'TỔNG CHI TIÊU',
+      'num_transactions': '{count} giao dịch',
+      'no_transactions': 'Chưa có giao dịch nào',
+      'unnamed_transaction': 'Giao dịch chưa đặt tên',
+      'monthly_goal_label': 'Mục tiêu tháng',
+      'short_term_goal': 'Kế hoạch ngắn hạn',
+      'long_term_goal': 'Hành trình dài hạn',
+      'target_amount': 'Số tiền mục tiêu',
+      'target_date': 'Hạn hoàn thành',
+      'days_left': 'còn {count} ngày',
+      'months_left': 'còn {count} tháng',
+      'need_more': 'Cần nạp thêm {amount} / ngày',
+      'done_this_month': 'Bạn đã hoàn thành chỉ tiêu tháng này.',
+      'overdue': 'Hạn đã qua',
+      'basic_info': 'THÔNG TIN CƠ BẢN',
+      'category_name': 'Tên danh mục',
+      'budget_monthly': 'Ngân sách hàng tháng (Tùy chọn)',
+      'goal_amount_monthly': 'Số tiền nạp mỗi tháng',
+      'goal_type': 'HÌNH THỨC',
+      'recurring_monthly': 'Hàng tháng',
+      'short_term': 'Ngắn hạn',
+      'long_term': 'Dài hạn',
+      'reminder_day': 'Ngày nạp tiền hàng tháng',
+      'target_month': 'Tháng hoàn thành',
+      'target_year': 'Năm hoàn thành',
+      'colors': 'MÀU SẮC',
+      'icons': 'BIỂU TƯỢNG',
+      'create_category': 'TẠO DANH MỤC',
+      'save_changes': 'LƯU THAY ĐỔI',
+      'delete_cat_confirm': 'Xoá danh mục & dữ liệu?',
+      'delete_cat_confirm_msg': 'Danh mục "{name}" hiện đang chứa {count} giao dịch. Nếu xoá, toàn bộ dữ liệu sẽ bị mất vĩnh viễn.',
+      'delete_cat_simple': 'Xoá danh mục?',
+      'delete_cat_simple_msg': 'Bạn có chắc chắn muốn xoá danh mục {name}?',
+      'no_cat_expense': 'Chưa có danh mục chi phí',
+      'no_cat_income': 'Chưa có danh mục thu nhập',
+      'no_cat_savings': 'Chưa có mục tiêu tích luỹ nào',
+      'over_budget': 'Vượt quá',
+      'target_achieved': 'Đã đạt mục tiêu!',
+      'monthly_progress': 'Tiến độ tháng',
+      'journey': 'Hành trình',
+      'delete_cat_success': 'Đã xoá danh mục "{name}"',
+      'enter_cat_name': 'Vui lòng nhập tên danh mục!',
     },
     'en': {
       'app_title': 'Sheepify',
@@ -73,6 +118,7 @@ class L10n {
       'categories': 'Categories',
       'stats': 'Statistics',
       'diary': 'Diary',
+      'balance': 'Balance',
       'total_balance': 'Total Balance',
       'income': 'Income',
       'expense': 'Expense',
@@ -122,6 +168,50 @@ class L10n {
       'goal_msg': 'Awesome! You have reached your savings goal. Keep it up!',
       'understood': 'Understood',
       'awesome': 'Awesome!',
+      'savings': 'Savings',
+      'total_target': 'TOTAL TARGET',
+      'total_spent_cat': 'TOTAL SPENT',
+      'num_transactions': '{count} transactions',
+      'no_transactions': 'No transactions found',
+      'unnamed_transaction': 'Unnamed transaction',
+      'monthly_goal_label': 'Monthly Goal',
+      'short_term_goal': 'Short-term plan',
+      'long_term_goal': 'Long-term journey',
+      'target_amount': 'Target amount',
+      'target_date': 'Target date',
+      'days_left': '{count} days left',
+      'months_left': '{count} months left',
+      'need_more': 'Needs {amount} / day more',
+      'done_this_month': 'You have reached your goal for this month.',
+      'overdue': 'Overdue',
+      'basic_info': 'BASIC INFO',
+      'category_name': 'Category Name',
+      'budget_monthly': 'Monthly Budget (Optional)',
+      'goal_amount_monthly': 'Monthly savings goal',
+      'goal_type': 'GOAL TYPE',
+      'recurring_monthly': 'Monthly',
+      'short_term': 'Short-term',
+      'long_term': 'Long-term',
+      'reminder_day': 'Monthly deposit day',
+      'target_month': 'Target month',
+      'target_year': 'Target year',
+      'colors': 'COLORS',
+      'icons': 'ICONS',
+      'create_category': 'CREATE CATEGORY',
+      'save_changes': 'SAVE CHANGES',
+      'delete_cat_confirm': 'Delete category & data?',
+      'delete_cat_confirm_msg': 'Category "{name}" contains {count} transactions. If deleted, data will be lost forever.',
+      'delete_cat_simple': 'Delete category?',
+      'delete_cat_simple_msg': 'Are you sure you want to delete category {name}?',
+      'no_cat_expense': 'No expense categories yet',
+      'no_cat_income': 'No income categories yet',
+      'no_cat_savings': 'No savings goals yet',
+      'over_budget': 'Over budget',
+      'target_achieved': 'Goal achieved!',
+      'monthly_progress': 'Monthly progress',
+      'journey': 'Journey',
+      'delete_cat_success': 'Category "{name}" deleted',
+      'enter_cat_name': 'Please enter category name!',
     },
   };
 
@@ -145,6 +235,7 @@ class L10n {
   String get totalBalance => get('total_balance');
   String get income => get('income');
   String get expense => get('expense');
+  String get savings => get('savings');
   String get accumulateBalance => get('accumulate_balance');
   String get accumulateSubtitle => get('accumulate_subtitle');
   String get systemSettings => get('system_settings');
@@ -163,6 +254,15 @@ class L10n {
   String get uploadImage => get('upload_image');
   String get takePhoto => get('take_photo');
   String get chooseGallery => get('choose_gallery');
+  String get targetAchieved => get('target_achieved');
+  String get travel => get('journey');
+  String get monthlyProgress => get('monthly_progress');
+  String get unnamedTransaction => get('unnamed_transaction');
+  String get overBudget => get('over_budget');
+  String get recurringMonthly => get('recurring_monthly');
+  String get shortTerm => get('short_term');
+  String get longTerm => get('long_term');
+  String get balance => get('balance');
 }
 
 class L10nDelegate extends LocalizationsDelegate<L10n> {

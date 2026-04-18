@@ -196,7 +196,7 @@ class SheepGoalDialog extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
-                color: AppColors.textSecondary,
+                color: AppColors.getTextSecondary(brightness),
                 height: 1.5,
               ),
             ),

@@ -18,17 +18,18 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
     };
     return AppSettings(
       accumulateBalance: fields[0] as bool? ?? true,
-      themePresetName: fields[1] as String? ?? 'Sheep Light',
+      themePresetName: fields[1] as String? ?? 'Sheep Green',
       languageCode: fields[2] as String? ?? 'vi',
       currencyCode: fields[3] as String? ?? 'VND',
       fontFamily: fields[4] as String? ?? 'Quicksand',
+      isDarkMode: fields[5] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.accumulateBalance)
       ..writeByte(1)
@@ -38,7 +39,9 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(3)
       ..write(obj.currencyCode)
       ..writeByte(4)
-      ..write(obj.fontFamily);
+      ..write(obj.fontFamily)
+      ..writeByte(5)
+      ..write(obj.isDarkMode);
   }
 
   @override

@@ -37,11 +37,12 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      decoration: BoxDecoration(
+        color: AppColors.getSurface(theme.brightness),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -111,7 +112,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? (c.colorValue != null ? Color(c.colorValue!) : AppColors.primary)
-                            : (c.colorValue != null ? Color(c.colorValue!).withOpacity(0.12) : Colors.grey[50]),
+                            : (c.colorValue != null ? Color(c.colorValue!).withOpacity(0.12) : theme.cardColor),
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
                           color: isSelected
@@ -122,11 +123,11 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                       ),
                       child: Text(
                         c.name,
-                        style: TextStyle(
+                        style: theme.textTheme.labelSmall?.copyWith(
                           fontSize: 12,
                           color: isSelected
                               ? Colors.white
-                              : (c.colorValue != null ? Color(c.colorValue!) : AppColors.textPrimary),
+                              : (c.colorValue != null ? Color(c.colorValue!) : theme.textTheme.bodyLarge?.color),
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                         ),
                       ),

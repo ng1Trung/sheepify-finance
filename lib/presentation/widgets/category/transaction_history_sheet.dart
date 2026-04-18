@@ -7,6 +7,7 @@ import '../../../core/utils/currency_util.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/transaction.dart';
 import '../common/sheep_widgets.dart';
+import '../../../core/utils/l10n.dart';
 
 class TransactionHistorySheet extends StatelessWidget {
   final CategoryModel category;
@@ -20,6 +21,7 @@ class TransactionHistorySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
     final Color catColor = category.colorValue != null 
         ? Color(category.colorValue!) 
         : AppColors.primary;
@@ -38,7 +40,7 @@ class TransactionHistorySheet extends StatelessWidget {
       expand: false,
       builder: (_, scrollController) => Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.getSurface(Theme.of(context).brightness),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Column(
@@ -47,16 +49,16 @@ class TransactionHistorySheet extends StatelessWidget {
             _buildDragHandle(),
             const SizedBox(height: 15),
             
-            _buildHeader(catColor, totalAccumulated),
+            _buildHeader(context, catColor, totalAccumulated),
             
             if (isSavings && category.targetAmount != null) ...[
               const SizedBox(height: 15),
-              _buildGoalDashboard(catColor, totalAccumulated),
+              _buildGoalDashboard(context, catColor, totalAccumulated),
             ],
             
             const SizedBox(height: 15),
             Expanded(
-              child: _buildTransactionList(scrollController, catColor),
+              child: _buildTransactionList(context, scrollController, catColor),
             ),
           ],
         ),
@@ -75,13 +77,14 @@ class TransactionHistorySheet extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(Color catColor, double total) {
+  Widget _buildHeader(BuildContext context, Color catColor, double total) {
+    final l10n = L10n.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.getBackground(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
@@ -102,11 +105,11 @@ class TransactionHistorySheet extends StatelessWidget {
                 children: [
                   Text(
                     category.name,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                     Text(
-                      '${transactions.length} giao dịch',
-                      style: TextStyle(fontSize: 10, color: AppColors.textSecondary.withOpacity(0.7)),
+                      l10n.get('num_transactions', params: {'count': transactions.length.toString()}),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
                     ),
                 ],
               ),
@@ -115,10 +118,10 @@ class TransactionHistorySheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  category.effectiveTypeIndex == 2 ? 'TỔNG MỤC TIÊU' : 'TỔNG CHI TIÊU',
-                  style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: AppColors.textSecondary),
-                ),
+                  Text(
+                    category.effectiveTypeIndex == 2 ? l10n.get('total_target') : l10n.get('total_spent_cat'),
+                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Theme.of(context).hintColor),
+                  ),
                 Text(
                   CurrencyUtil.formatMoney(total),
                   style: TextStyle(
@@ -137,7 +140,8 @@ class TransactionHistorySheet extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionList(ScrollController controller, Color catColor) {
+  Widget _buildTransactionList(BuildContext context, ScrollController controller, Color catColor) {
+    final l10n = L10n.of(context);
     if (transactions.isEmpty) {
       return Center(
         child: Column(
@@ -146,7 +150,7 @@ class TransactionHistorySheet extends StatelessWidget {
             Icon(LineIcons.history, size: 50, color: Colors.grey[200]),
             const SizedBox(height: 10),
             Text(
-              'Chưa có giao dịch nào',
+              l10n.get('no_transactions'),
               style: TextStyle(color: Colors.grey[400]),
             ),
           ],
@@ -170,14 +174,14 @@ class TransactionHistorySheet extends StatelessWidget {
             ),
             child: Icon(category.iconData, color: catColor, size: 18),
           ),
-          title: tx.note.isNotEmpty ? tx.note : 'Giao dịch chưa đặt tên',
+          title: tx.note.isNotEmpty ? tx.note : l10n.get('unnamed_transaction'),
           subtitle: Text(
             DateFormat('dd/MM/yyyy').format(tx.date),
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            style: Theme.of(context).textTheme.labelSmall,
           ),
           trailing: Text(
             '${tx.isExpense ? '-' : '+'}${CurrencyUtil.formatMoney(tx.amount)}',
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: tx.isExpense ? AppColors.expense : AppColors.income,
             ),
@@ -187,7 +191,9 @@ class TransactionHistorySheet extends StatelessWidget {
     );
   }
 
-  Widget _buildGoalDashboard(Color catColor, double totalAllTime) {
+  Widget _buildGoalDashboard(BuildContext context, Color catColor, double totalAllTime) {
+    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
     final now = DateTime.now();
     final totalInMonth = transactions
         .where((tx) => tx.date.month == now.month && tx.date.year == now.year)
@@ -212,21 +218,22 @@ class TransactionHistorySheet extends StatelessWidget {
       
       if (daysLeft > 0 && remaining > 0) {
         final daily = remaining / daysLeft;
-        infoText = "Cần nạp thêm ${CurrencyUtil.formatMoney(daily)} / ngày";
-        planningText = "Hạn nạp: Ngày $reminderDay tháng này (còn $daysLeft ngày)";
+        infoText = l10n.get('need_more', params: {'amount': CurrencyUtil.formatMoney(daily)});
+        planningText = '${l10n.get('target_date')}: ${l10n.get('day')} $reminderDay ${l10n.get('month')} ${now.month} (${l10n.get('days_left', params: {'count': daysLeft.toString()})})';
       } else if (remaining <= 0) {
-        planningText = "Tuyệt vời! Bạn đã hoàn thành chỉ tiêu tháng này.";
+        planningText = l10n.get('done_this_month');
       } else {
-        planningText = "Lẽ ra bạn phải hoàn thành vào ngày $reminderDay.";
+        planningText = '${l10n.get('overdue')} (${l10n.get('day')} $reminderDay)';
       }
 
       return _buildDashboardCard(
-        title: "MỤC TIÊU THÁNG ${now.month}",
+        context,
+        title: '${l10n.get('monthly_goal_label').toUpperCase()} ${l10n.get('month').toUpperCase()} ${now.month}',
         subtitle: planningText,
         progress: progress,
         info: infoText,
-        footerLeft: "Đã có: ${CurrencyUtil.formatMoney(totalInMonth)}",
-        footerRight: "Mục tiêu: ${CurrencyUtil.formatMoney(target)}",
+        footerLeft: '${l10n.get('total_balance').split(' ')[0]} ${l10n.get('income').toLowerCase()}: ${CurrencyUtil.formatMoney(totalInMonth)}',
+        footerRight: '${l10n.get('monthly_goal_label')}: ${CurrencyUtil.formatMoney(target)}',
       );
     } else if (goalType == 2 || goalType == 3) {
       // --- LOẠI: MỤC TIÊU DÀI HẠN / NGẮN HẠN ---
@@ -241,29 +248,29 @@ class TransactionHistorySheet extends StatelessWidget {
       String planningText = "";
       
       if (monthsLeft > 0 && remaining > 0) {
-        final monthly = remaining / monthsLeft;
-        infoText = "Mỗi tháng nên cất đi: ${CurrencyUtil.formatMoney(monthly)}";
-        planningText = "Hạn hoàn thành: ${DateFormat('MM/yyyy').format(targetDate)} (còn $monthsLeft tháng)";
+        planningText = '${l10n.get('target_date')}: ${DateFormat('MM/yyyy').format(targetDate)} (${l10n.get('months_left', params: {'count': monthsLeft.toString()})})';
       } else if (remaining <= 0) {
-        planningText = "Chúc mừng! Bạn đã đạt mục tiêu lớn.";
+        planningText = l10n.get('target_achieved');
       } else {
-        planningText = "Hạn đã qua (${DateFormat('MM/yyyy').format(targetDate)})";
+        planningText = '${l10n.get('overdue')} (${DateFormat('MM/yyyy').format(targetDate)})';
       }
 
       return _buildDashboardCard(
-        title: goalType == 2 ? "KẾ HOẠCH NGẮN HẠN" : "HÀNH TRÌNH DÀI HẠN",
+        context,
+        title: goalType == 2 ? l10n.get('short_term_goal').toUpperCase() : l10n.get('long_term_goal').toUpperCase(),
         subtitle: planningText,
         progress: progress,
         info: infoText,
-        footerLeft: "Đã có: ${CurrencyUtil.formatMoney(totalAllTime)}",
-        footerRight: "Mục tiêu: ${CurrencyUtil.formatMoney(target)}",
+        footerLeft: '${l10n.get('total_balance').split(' ')[0]} ${l10n.get('income').toLowerCase()}: ${CurrencyUtil.formatMoney(totalAllTime)}',
+        footerRight: '${l10n.get('target_amount')}: ${CurrencyUtil.formatMoney(target)}',
       );
     }
     
     return const SizedBox.shrink();
   }
 
-  Widget _buildDashboardCard({
+  Widget _buildDashboardCard(
+    BuildContext context, {
     required String title,
     required String subtitle,
     required double progress,
@@ -271,6 +278,7 @@ class TransactionHistorySheet extends StatelessWidget {
     required String footerLeft,
     required String footerRight,
   }) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -306,7 +314,7 @@ class TransactionHistorySheet extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             ClipRRect(
@@ -335,8 +343,8 @@ class TransactionHistorySheet extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(footerLeft, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                Text(footerRight, style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                Text(footerLeft, style: TextStyle(fontSize: 10, color: Theme.of(context).hintColor)),
+                Text(footerRight, style: TextStyle(fontSize: 10, color: Theme.of(context).hintColor)),
               ],
             ),
           ],

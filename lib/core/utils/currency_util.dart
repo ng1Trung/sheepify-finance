@@ -49,6 +49,27 @@ class CurrencyUtil {
       default: return currencyCode;
     }
   }
+
+  /// Compact formatting for amounts (e.g., 8.000.000 -> 8M or 8Tr)
+  static String formatCompact(double amount, {String locale = 'vi_VN'}) {
+    bool isNegative = amount < 0;
+    double absAmount = amount.abs();
+    bool isVi = locale.startsWith('vi');
+    
+    String result;
+    if (absAmount >= 1000000) {
+      double value = absAmount / 1000000;
+      String suffix = isVi ? 'Tr' : 'M';
+      result = value % 1 == 0 ? '${value.toInt()}$suffix' : '${value.toStringAsFixed(1)}$suffix';
+    } else if (absAmount >= 1000) {
+      double value = absAmount / 1000;
+      result = value % 1 == 0 ? '${value.toInt()}K' : '${value.toStringAsFixed(1)}K';
+    } else {
+      result = absAmount.toInt().toString();
+    }
+
+    return (isNegative ? '-' : '') + result;
+  }
 }
 
 /// A Custom TextInputFormatter to format numbers as the user types

@@ -105,6 +105,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildModeToggleItem(String title, bool isActive) {
+    final theme = Theme.of(context);
     final l10n = L10n.of(context);
     final displayTitle = title == 'Ngày' ? l10n.get('day') : (title == 'Tháng' ? l10n.get('month') : title);
     
@@ -128,10 +129,10 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: Text(
           displayTitle,
-          style: TextStyle(
+          style: theme.textTheme.labelSmall?.copyWith(
             fontSize: 12,
             fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-            color: isActive ? Theme.of(context).primaryColor : AppColors.getTextSecondary(Theme.of(context).brightness),
+            color: isActive ? theme.primaryColor : AppColors.getTextSecondary(theme.brightness),
           ),
         ),
       ),
@@ -148,7 +149,7 @@ class _MainScreenState extends State<MainScreen> {
       if (_currentIndex == 2) {
         return Text(
           l10n.categories,
-          style: TextStyle(
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.primaryColor,
           ),
@@ -157,7 +158,7 @@ class _MainScreenState extends State<MainScreen> {
       if (_currentIndex == 3) {
         return Text(
           l10n.settings,
-          style: TextStyle(
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.primaryColor,
           ),
@@ -181,9 +182,9 @@ class _MainScreenState extends State<MainScreen> {
               height: 32,
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: theme.brightness == Brightness.light ? Colors.grey[100] : Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[300]!, width: 0.5),
+                border: Border.all(color: theme.dividerColor, width: 0.5),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -238,12 +239,12 @@ class _MainScreenState extends State<MainScreen> {
                       const SizedBox(width: 10),
                       Text(
                         dateText,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: theme.primaryColor,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: theme.primaryColor,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -296,7 +297,7 @@ class _MainScreenState extends State<MainScreen> {
               onPressed: _currentIndex == 1
                   ? _showAddTransactionForm
                   : _showAddCategoryForm,
-              backgroundColor: AppColors.primary,
+              backgroundColor: theme.primaryColor,
               elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),

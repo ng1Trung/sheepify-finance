@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:line_icons/line_icons.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/settings_model.dart';
 import '../../core/theme/app_colors.dart';
@@ -92,33 +93,65 @@ class SettingsTab extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // --- THEME SELECTOR ---
+              // --- THEME MODE ---
               _buildSectionTitle(context, l10n.theme),
+              const SizedBox(height: 12),
+              SheepCard(
+                padding: EdgeInsets.zero,
+                child: Row(
+                  children: [
+                    _buildModeItem(
+                      context, 
+                      'Light', 
+                      Icons.wb_sunny_rounded, 
+                      !settings.isDarkMode, 
+                      () {
+                        settings.isDarkMode = false;
+                        settings.save();
+                      }
+                    ),
+                    _buildModeItem(
+                      context, 
+                      'Dark', 
+                      Icons.nightlight_round, 
+                      settings.isDarkMode, 
+                      () {
+                        settings.isDarkMode = true;
+                        settings.save();
+                      }
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // --- COLOR PALETTE ---
+              _buildSectionTitle(context, l10n.get('colors')),
               const SizedBox(height: 12),
               SizedBox(
                 height: 100,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: AppColors.presets.length,
+                  itemCount: AppColors.palettes.length,
                   itemBuilder: (context, index) {
-                    final preset = AppColors.presets[index];
-                    final isSelected = settings.themePresetName == preset.name;
+                    final palette = AppColors.palettes[index];
+                    final isSelected = settings.themePresetName == palette.name;
                     return GestureDetector(
                       onTap: () {
-                        settings.themePresetName = preset.name;
+                        settings.themePresetName = palette.name;
                         settings.save();
                       },
                       child: Container(
                         width: 80,
                         margin: const EdgeInsets.only(right: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.getSurface(preset.brightness),
+                          color: theme.cardColor,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isSelected ? preset.primary : Colors.transparent,
+                            color: isSelected ? palette.primary : Colors.transparent,
                             width: 2,
                           ),
-                          boxShadow: AppColors.getSoftShadow(preset.brightness),
+                          boxShadow: AppColors.getSoftShadow(theme.brightness),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -127,18 +160,19 @@ class SettingsTab extends StatelessWidget {
                               width: 30,
                               height: 30,
                               decoration: BoxDecoration(
-                                color: preset.primary,
+                                color: palette.primary,
                                 shape: BoxShape.circle,
+                                border: isSelected ? Border.all(color: AppColors.getTextPrimary(theme.brightness).withOpacity(0.5), width: 2) : null,
                               ),
                               child: isSelected ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              preset.name.split(' ').last,
+                              palette.name.split(' ').last,
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                color: AppColors.getTextPrimary(preset.brightness),
+                                color: AppColors.getTextPrimary(theme.brightness),
                               ),
                             ),
                           ],
@@ -168,6 +202,8 @@ class SettingsTab extends StatelessWidget {
                         child: DropdownButton<String>(
                           value: settings.languageCode,
                           isExpanded: true,
+                          dropdownColor: theme.cardColor,
+                          style: theme.textTheme.bodyMedium,
                           items: const [
                             DropdownMenuItem(value: 'vi', child: Text('Tiếng Việt')),
                             DropdownMenuItem(value: 'en', child: Text('English')),
@@ -190,6 +226,8 @@ class SettingsTab extends StatelessWidget {
                         child: DropdownButton<String>(
                           value: settings.currencyCode,
                           isExpanded: true,
+                          dropdownColor: theme.cardColor,
+                          style: theme.textTheme.bodyMedium,
                           items: const [
                             DropdownMenuItem(value: 'VND', child: Text('VND (đ)')),
                             DropdownMenuItem(value: 'USD', child: Text('USD (\$)')),
@@ -221,6 +259,12 @@ class SettingsTab extends StatelessWidget {
                     _buildFontItem(context, 'Montserrat', settings),
                     _buildFontItem(context, 'Roboto', settings),
                     _buildFontItem(context, 'Be Vietnam Pro', settings),
+                    _buildFontItem(context, 'Comfortaa', settings),
+                    _buildFontItem(context, 'Lexend', settings),
+                    _buildFontItem(context, 'Bungee', settings),
+                    _buildFontItem(context, 'Righteous', settings),
+                    _buildFontItem(context, 'Pacifico', settings),
+                    _buildFontItem(context, 'Special Elite', settings),
                   ],
                 ),
               ),
@@ -249,13 +293,72 @@ class SettingsTab extends StatelessWidget {
 
   Widget _buildFontItem(BuildContext context, String font, AppSettings settings) {
     final isSelected = settings.fontFamily == font;
+    final theme = Theme.of(context);
+    
+    // Determine the text style for this specific font
+    TextStyle fontStyle;
+    switch (font) {
+      case 'Inter': fontStyle = GoogleFonts.inter(); break;
+      case 'Montserrat': fontStyle = GoogleFonts.montserrat(); break;
+      case 'Roboto': fontStyle = GoogleFonts.roboto(); break;
+      case 'Be Vietnam Pro': fontStyle = GoogleFonts.beVietnamPro(); break;
+      case 'Comfortaa': fontStyle = GoogleFonts.comfortaa(); break;
+      case 'Lexend': fontStyle = GoogleFonts.lexend(); break;
+      case 'Bungee': fontStyle = GoogleFonts.bungee(); break;
+      case 'Righteous': fontStyle = GoogleFonts.righteous(); break;
+      case 'Pacifico': fontStyle = GoogleFonts.pacifico(); break;
+      case 'Special Elite': fontStyle = GoogleFonts.specialElite(); break;
+      default: fontStyle = GoogleFonts.quicksand(); break;
+    }
+
     return ListTile(
-      title: Text(font, style: TextStyle(fontFamily: font, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-      trailing: isSelected ? Icon(Icons.check, color: Theme.of(context).primaryColor) : null,
+      title: Text(
+        font, 
+        style: fontStyle.copyWith(
+          fontSize: 15,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? theme.primaryColor : theme.textTheme.bodyLarge?.color,
+        )
+      ),
+      trailing: isSelected ? Icon(Icons.check, color: theme.primaryColor) : null,
       onTap: () {
         settings.fontFamily = font;
         settings.save();
       },
+    );
+  }
+
+  Widget _buildModeItem(BuildContext context, String label, IconData icon, bool isActive, VoidCallback onTap) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: isActive ? theme.primaryColor.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon, 
+                color: isActive ? theme.primaryColor : Colors.grey,
+                size: 28,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  color: isActive ? theme.primaryColor : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

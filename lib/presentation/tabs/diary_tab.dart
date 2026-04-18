@@ -33,6 +33,7 @@ class _DiaryTabState extends State<DiaryTab> {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
+    final theme = Theme.of(context);
     return ValueListenableBuilder(
       valueListenable: Hive.box<AppSettings>(kSettingsBox).listenable(),
       builder: (context, settingsBox, _) {
@@ -153,23 +154,11 @@ class _DiaryTabState extends State<DiaryTab> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildStatItem(
-                              l10n.income,
-                              totalIncome,
-                              AppColors.income,
-                              settings.currencyCode,
-                            ),
-                            Container(
-                              width: 1,
-                              height: 30,
-                              color: Colors.grey[200],
-                            ),
-                            _buildStatItem(
-                              l10n.expense,
-                              totalExpense,
-                              AppColors.expense,
-                              settings.currencyCode,
-                            ),
+                            _buildStatItem(l10n.income, totalIncome, AppColors.income, settings.languageCode),
+                            Container(width: 1, height: 20, color: theme.dividerColor),
+                            _buildStatItem(l10n.expense, totalExpense, AppColors.expense, settings.languageCode),
+                            Container(width: 1, height: 20, color: theme.dividerColor),
+                            _buildStatItem(l10n.balance, totalIncome - totalExpense, theme.primaryColor, settings.languageCode),
                           ],
                         ),
                       ],
@@ -230,9 +219,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                         'EEEE, dd/MM/yyyy',
                                         'en_US',
                                       ).format(DateTime.parse(dKey)),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
+                                      style: theme.textTheme.labelSmall
                                           ?.copyWith(
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -323,9 +310,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                                 color: AppColors.savings.withOpacity(0.1),
                                                 borderRadius: BorderRadius.circular(4),
                                               ),
-                                              child: const Text(
-                                                'MỤC TIÊU',
-                                                style: TextStyle(color: AppColors.savings, fontSize: 8, fontWeight: FontWeight.bold),
+                                              child: Text(
+                                                l10n.savings.toUpperCase(),
+                                                style: const TextStyle(color: AppColors.savings, fontSize: 8, fontWeight: FontWeight.bold),
                                               ),
                                             ),
                                           if (tx.note.isNotEmpty)
@@ -349,7 +336,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                             ),
                                           ),
                                           Text(
-                                            'Wallet: ${CurrencyUtil.formatByCurrency(runningBalances[tx.key] ?? 0, settings.currencyCode)}',
+                                            '${l10n.get('wallet_balance').split(' ')[0]}: ${CurrencyUtil.formatByCurrency(runningBalances[tx.key] ?? 0, settings.currencyCode)}',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelSmall
@@ -373,17 +360,17 @@ class _DiaryTabState extends State<DiaryTab> {
     );
   }
 
-  Widget _buildStatItem(String label, double amount, Color color, String currencyCode) {
+  Widget _buildStatItem(String label, double amount, Color color, String locale) {
     return Column(
       children: [
         Text(
           label,
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
         ),
         const SizedBox(height: 4),
         Text(
-          CurrencyUtil.formatByCurrency(amount, currencyCode),
-          style: TextStyle(
+          CurrencyUtil.formatCompact(amount, locale: locale),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: color,
             fontWeight: FontWeight.bold,
             fontSize: 14,
