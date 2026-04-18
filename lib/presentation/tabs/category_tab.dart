@@ -23,6 +23,19 @@ class CategoryTab extends StatefulWidget {
 
 class _CategoryTabState extends State<CategoryTab> {
   int _selectedTypeIndex = 0; // 0: expense, 1: income, 2: savings
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _selectedTypeIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,109 +46,121 @@ class _CategoryTabState extends State<CategoryTab> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: SheepTripleToggle(
             selectedIndex: _selectedTypeIndex,
-            onChanged: (val) => setState(() => _selectedTypeIndex = val),
+            controller: _pageController,
+            onChanged: (val) {
+              _pageController.animateToPage(
+                val,
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeInOutCubic,
+              );
+            },
           ),
         ),
 
         Expanded(
-          child: AnimatedBuilder(
-            animation: Listenable.merge([
-              Hive.box<CategoryModel>(kCatBox).listenable(),
-              Hive.box<Transaction>(kMoneyBox).listenable(),
-            ]),
-            builder: (context, _) {
-              final box = Hive.box<CategoryModel>(kCatBox);
-              final txBox = Hive.box<Transaction>(kMoneyBox);
-              final now = DateTime.now();
-
-              List<Transaction> allTransactions = txBox.values.toList();
-              
-              // Map to store relevant spent amount based on category's goal type
-              Map<String, double> categorySpent = {};
-
-              final categories = box.values
-                  .where((c) => c.effectiveTypeIndex == _selectedTypeIndex)
-                  .toList();
-
-              for (var cat in categories) {
-                double spent = 0;
-                final goalType = cat.effectiveGoalTypeIndex;
-                if (goalType == 1) {
-                  // Monthly goal: only current month
-                  spent = allTransactions
-                      .where((tx) => tx.categoryId == cat.id && tx.date.month == now.month && tx.date.year == now.year)
-                      .fold(0.0, (sum, tx) => sum + tx.amount);
-                } else if (goalType == 2) {
-                  // Long-term goal: all history
-                  spent = allTransactions
-                      .where((tx) => tx.categoryId == cat.id)
-                      .fold(0.0, (sum, tx) => sum + tx.amount);
-                } else {
-                  // Standard Income/Expense: usually current month
-                  spent = allTransactions
-                      .where((tx) => tx.categoryId == cat.id && tx.date.month == now.month && tx.date.year == now.year)
-                      .fold(0.0, (sum, tx) => sum + tx.amount);
-                }
-                categorySpent[cat.id] = spent;
-              }
-
-              if (categories.isEmpty) {
-                return _buildEmptyState(context);
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final cat = categories[index];
-                  final spent = categorySpent[cat.id] ?? 0;
-
-                  return Dismissible(
-                    key: ValueKey(cat.id),
-                    direction: DismissDirection.endToStart,
-                    background: _buildDeleteBackground(),
-                    confirmDismiss: (_) => _confirmDelete(context, cat),
-                    onDismissed: (_) {
-                      final name = cat.name;
-                      cat.delete();
-                      SheepNotifications.showSuccess(
-                        context,
-                        'Đã xoá danh mục "$name"',
-                      );
-                    },
-                    child: SheepCard(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: EdgeInsets.zero,
-                      child: InkWell(
-                        onTap: () => _showTransactionHistory(context, cat, allTransactions),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              _buildIcon(cat),
-                              const SizedBox(width: 15),
-                              _buildInfo(cat, spent),
-                              IconButton(
-                                icon: const Icon(LineIcons.edit, color: Colors.grey),
-                                onPressed: () => _showCategoryForm(context, cat),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              );
+          child: PageView(
+            controller: _pageController,
+            onPageChanged: (val) {
+              setState(() => _selectedTypeIndex = val);
             },
+            children: [
+              _buildCategoryList(0), // Expense
+              _buildCategoryList(1), // Income
+              _buildCategoryList(2), // Savings
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildCategoryList(int typeIndex) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        Hive.box<CategoryModel>(kCatBox).listenable(),
+        Hive.box<Transaction>(kMoneyBox).listenable(),
+      ]),
+      builder: (context, _) {
+        final box = Hive.box<CategoryModel>(kCatBox);
+        final txBox = Hive.box<Transaction>(kMoneyBox);
+        final now = DateTime.now();
+
+        List<Transaction> allTransactions = txBox.values.toList();
+        
+        final categories = box.values
+            .where((c) => c.effectiveTypeIndex == typeIndex)
+            .toList();
+
+        if (categories.isEmpty) {
+          return _buildEmptyState(context, typeIndex);
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
+            final cat = categories[index];
+            
+            // Calculate spent for this category
+            double spent = 0;
+            final goalType = cat.effectiveGoalTypeIndex;
+            if (goalType == 1) {
+              spent = allTransactions
+                  .where((tx) => tx.categoryId == cat.id && tx.date.month == now.month && tx.date.year == now.year)
+                  .fold(0.0, (sum, tx) => sum + tx.amount);
+            } else if (goalType == 2) {
+              spent = allTransactions
+                  .where((tx) => tx.categoryId == cat.id)
+                  .fold(0.0, (sum, tx) => sum + tx.amount);
+            } else {
+              spent = allTransactions
+                  .where((tx) => tx.categoryId == cat.id && tx.date.month == now.month && tx.date.year == now.year)
+                  .fold(0.0, (sum, tx) => sum + tx.amount);
+            }
+
+            return Dismissible(
+              key: ValueKey(cat.id),
+              direction: DismissDirection.endToStart,
+              background: _buildDeleteBackground(),
+              confirmDismiss: (_) => _confirmDelete(context, cat),
+              onDismissed: (_) {
+                final name = cat.name;
+                cat.delete();
+                SheepNotifications.showSuccess(
+                  context,
+                  'Đã xoá danh mục "$name"',
+                );
+              },
+              child: SheepCard(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.zero,
+                child: InkWell(
+                  onTap: () => _showTransactionHistory(context, cat, allTransactions),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        _buildIcon(cat, typeIndex),
+                        const SizedBox(width: 15),
+                        _buildInfo(cat, spent, typeIndex),
+                        IconButton(
+                          icon: const Icon(LineIcons.edit, color: Colors.grey),
+                          onPressed: () => _showCategoryForm(context, cat),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, int typeIndex) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -143,9 +168,9 @@ class _CategoryTabState extends State<CategoryTab> {
           Icon(LineIcons.tags, size: 60, color: Colors.grey[300]),
           const SizedBox(height: 10),
           Text(
-            _selectedTypeIndex == 0 
+            typeIndex == 0 
                 ? 'Chưa có danh mục chi phí' 
-                : (_selectedTypeIndex == 1 ? 'Chưa có danh mục thu nhập' : 'Chưa có mục tiêu tích luỹ nào'),
+                : (typeIndex == 1 ? 'Chưa có danh mục thu nhập' : 'Chưa có mục tiêu tích luỹ nào'),
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
@@ -153,10 +178,10 @@ class _CategoryTabState extends State<CategoryTab> {
     );
   }
 
-  Widget _buildIcon(CategoryModel cat) {
+  Widget _buildIcon(CategoryModel cat, int typeIndex) {
     Color color;
-    if (_selectedTypeIndex == 0) color = AppColors.expense;
-    else if (_selectedTypeIndex == 1) color = AppColors.income;
+    if (typeIndex == 0) color = AppColors.expense;
+    else if (typeIndex == 1) color = AppColors.income;
     else color = AppColors.savings;
     
     if (cat.colorValue != null) color = Color(cat.colorValue!);
@@ -175,8 +200,8 @@ class _CategoryTabState extends State<CategoryTab> {
     );
   }
 
-  Widget _buildInfo(CategoryModel cat, double spent) {
-    bool isSavings = _selectedTypeIndex == 2;
+  Widget _buildInfo(CategoryModel cat, double spent, int typeIndex) {
+    bool isSavings = typeIndex == 2;
     double? target = isSavings ? cat.targetAmount : cat.budget;
     final remaining = (target ?? 0) - spent;
     
@@ -205,7 +230,7 @@ class _CategoryTabState extends State<CategoryTab> {
                 cat.name,
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              if (_selectedTypeIndex == 0 && cat.budget != null && remaining < 0)
+              if (typeIndex == 0 && cat.budget != null && remaining < 0)
                 Text(
                   CurrencyUtil.formatMoney(remaining),
                   style: const TextStyle(
@@ -220,7 +245,7 @@ class _CategoryTabState extends State<CategoryTab> {
           ),
           if (target != null && target > 0) ...[
             const SizedBox(height: 10),
-            _buildProgressBar(cat, spent),
+            _buildProgressBar(cat, spent, typeIndex),
             const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -251,16 +276,16 @@ class _CategoryTabState extends State<CategoryTab> {
     );
   }
 
-  Widget _buildProgressBar(CategoryModel cat, double spent) {
-    double? target = _selectedTypeIndex == 2 ? cat.targetAmount : cat.budget;
+  Widget _buildProgressBar(CategoryModel cat, double spent, int typeIndex) {
+    double? target = typeIndex == 2 ? cat.targetAmount : cat.budget;
     double progress = (target != null && target > 0)
         ? (spent / target)
         : 0.0;
     if (progress > 1.0) progress = 1.0;
     if (progress < 0) progress = 0;
 
-    final baseColor = cat.colorValue != null ? Color(cat.colorValue!) : (_selectedTypeIndex == 2 ? AppColors.savings : AppColors.primary);
-    final barColor = (_selectedTypeIndex == 0 && spent > (cat.budget ?? 0)) ? AppColors.expense : baseColor;
+    final baseColor = cat.colorValue != null ? Color(cat.colorValue!) : (typeIndex == 2 ? AppColors.savings : AppColors.primary);
+    final barColor = (typeIndex == 0 && spent > (cat.budget ?? 0)) ? AppColors.expense : baseColor;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),

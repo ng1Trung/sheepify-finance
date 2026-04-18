@@ -29,10 +29,16 @@
 - **Isolated Balance Logic**: Goal deposits appear in records but are excluded from the main "Disposable Income" balance to ensure financial accuracy.
 - **Dynamic Day Picker**: SMART month-aware day picker (detects 28/30/31 days).
 
-### 5. Premium Design
-- **Sheep Design System**: Custom widget system (SheepCard, SheepButton, SheepListTile/Widget) ensures consistency and elegance.
-- **Micro-animations**: Smooth transitions that make the user experience feel alive.
+### 5. Premium Design & UX
+- **Sheep Design System**: Custom widget system (SheepCard, SheepButton, SheepListTile) ensures consistency and elegance.
+- **Lottie Notification System**: High-quality animations for category milestones (Budget Exceeded 🔴, Goal Reached 🏆) using Lottie files for a truly "alive" UI.
+- **Smooth Transitions**: Horizontal PageView-based navigation for Category tabs to eliminate layout shifts and provide a premium feel.
 - **Glassmorphism**: Subtle blur effects and soft shadows for a modern aesthetic.
+
+### 6. Privacy & Security
+- **Offline-First**: All data is stored locally on your device using Hive. Your financial life never leaves your phone.
+- **No Account Required**: Start tracking immediately. No email, no password, no tracking pixels.
+- **Data Ownership**: You have full control over your data. Future-proof and private by design.
 
 ---
 

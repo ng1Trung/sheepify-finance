@@ -18,6 +18,8 @@ import 'transaction/transaction_image_area.dart';
 import 'transaction/transaction_category_picker.dart';
 
 import 'common/sheep_notifications.dart';
+import 'common/sheep_dialogs.dart';
+import '../../core/utils/category_util.dart';
 
 class TransactionForm extends StatefulWidget {
   final Transaction? transaction;
@@ -158,7 +160,7 @@ class _TransactionFormState extends State<TransactionForm> {
   }
 
   // Validate and persist transaction data
-  void _submit() {
+  Future<void> _submit() async {
     if (_amountController.text.isEmpty || _selectedCategoryId == null) {
       SheepNotifications.showError(context, 'Vui lòng nhập số tiền và chọn danh mục!');
       return;
@@ -194,7 +196,46 @@ class _TransactionFormState extends State<TransactionForm> {
         _box.add(newTx);
         SheepNotifications.showSuccess(context, 'Đã thêm giao dịch thành công');
       }
-      Navigator.of(context).pop(_selectedDate);
+
+      // Check if we hit budget or reached goal
+      try {
+        final cat = _catBox.values.firstWhere((c) => c.id == _selectedCategoryId);
+        final spent = CategoryUtil.calculateCategorySpent(cat);
+
+        if (cat.effectiveTypeIndex == 0) { // Expense
+          if (cat.budget != null && cat.budget! > 0 && spent > cat.budget!) {
+            await showDialog(
+              context: context,
+              builder: (_) => SheepGoalDialog(
+                title: 'Cảnh báo ngân sách!',
+                message: 'Bạn đã tiêu quá hạn mức của danh mục "${cat.name}". Hãy cân nhắc chi tiêu nhé!',
+                color: AppColors.expense,
+                isSuccess: false,
+                buttonLabel: 'Đã hiểu',
+              ),
+            );
+          }
+        } else if (cat.effectiveTypeIndex == 2) { // Savings
+          if (cat.targetAmount != null && cat.targetAmount! > 0 && spent >= cat.targetAmount!) {
+            await showDialog(
+              context: context,
+              builder: (_) => const SheepGoalDialog(
+                title: 'Chúc mừng!',
+                message: 'Tuyệt vời! Bạn đã đạt mục tiêu tích luỹ. Tiếp tục phát huy nhé!',
+                color: AppColors.savings,
+                isSuccess: true,
+                buttonLabel: 'Tuyệt vời!',
+              ),
+            );
+          }
+        }
+      } catch (_) {
+        // Ignore errors in goal check to not block the main flow
+      }
+
+      if (mounted) {
+        Navigator.of(context).pop(_selectedDate);
+      }
     } catch (e) {
       SheepNotifications.showError(context, 'Lỗi: $e');
     }
