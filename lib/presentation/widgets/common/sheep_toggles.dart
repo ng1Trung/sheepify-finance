@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/l10n.dart';
 
 class SheepTypeToggle extends StatelessWidget {
   final bool isExpense;
   final Function(bool) onChanged;
-  final String leftLabel;
-  final String rightLabel;
+  final String? leftLabel;
+  final String? rightLabel;
 
   const SheepTypeToggle({
     super.key,
     required this.isExpense,
     required this.onChanged,
-    this.leftLabel = "Chi",
-    this.rightLabel = "Thu",
+    this.leftLabel,
+    this.rightLabel,
   });
 
   @override
@@ -40,16 +41,16 @@ class SheepTypeToggle extends StatelessWidget {
                 bottom: 0,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).brightness == Brightness.light ? Colors.white : AppColors.getSurface(Theme.of(context).brightness),
                     borderRadius: BorderRadius.circular(21),
-                    boxShadow: AppColors.softShadow,
+                    boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
                   ),
                 ),
               ),
               Row(
                 children: [
-                   _buildToggleItem(leftLabel, isExpense, AppColors.expense, () => onChanged(true)),
-                   _buildToggleItem(rightLabel, !isExpense, AppColors.income, () => onChanged(false)),
+                   _buildToggleItem(context, leftLabel ?? L10n.of(context).get('expense'), isExpense, AppColors.expense, () => onChanged(true)),
+                   _buildToggleItem(context, rightLabel ?? L10n.of(context).get('income'), !isExpense, AppColors.income, () => onChanged(false)),
                 ],
               ),
             ],
@@ -59,7 +60,7 @@ class SheepTypeToggle extends StatelessWidget {
     );
   }
 
-  Widget _buildToggleItem(String title, bool isActive, Color color, VoidCallback onTap) {
+  Widget _buildToggleItem(BuildContext context, String title, bool isActive, Color color, VoidCallback onTap) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -67,10 +68,10 @@ class SheepTypeToggle extends StatelessWidget {
         child: Center(
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 200),
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelSmall!.copyWith(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: isActive ? color : AppColors.textSecondary,
+              color: isActive ? color : Theme.of(context).textTheme.labelSmall?.color,
             ),
             child: Text(title),
           ),
@@ -83,14 +84,14 @@ class SheepTypeToggle extends StatelessWidget {
 class SheepTripleToggle extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onChanged;
-  final List<String> labels;
+  final List<String>? labels;
   final PageController? controller;
 
   const SheepTripleToggle({
     super.key,
     required this.selectedIndex,
     required this.onChanged,
-    this.labels = const ["Chi tiêu", "Thu nhập", "Tích luỹ"],
+    this.labels,
     this.controller,
   });
 
@@ -98,8 +99,10 @@ class SheepTripleToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final l10n = L10n.of(context);
+        final currentLabels = labels ?? [l10n.get('expense'), l10n.get('income'), l10n.get('savings')];
         final totalWidth = constraints.maxWidth;
-        final itemWidth = (totalWidth - 8) / labels.length;
+        final itemWidth = (totalWidth - 8) / currentLabels.length;
 
         return Container(
           height: 48,
@@ -126,7 +129,7 @@ class SheepTripleToggle extends StatelessWidget {
                         width: itemWidth,
                         top: 0,
                         bottom: 0,
-                        child: _buildIndicator(),
+                        child: _buildIndicator(context),
                       );
                     },
                   )
@@ -137,12 +140,12 @@ class SheepTripleToggle extends StatelessWidget {
                     width: itemWidth,
                     top: 0,
                     bottom: 0,
-                    child: _buildIndicator(),
+                    child: _buildIndicator(context),
                   ),
               
               // TEXT LABELS
               Row(
-                children: List.generate(labels.length, (index) {
+                children: List.generate(currentLabels.length, (index) {
                   final isActive = selectedIndex == index;
                   Color activeColor;
                   switch (index) {
@@ -158,12 +161,12 @@ class SheepTripleToggle extends StatelessWidget {
                       child: Center(
                         child: AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 200),
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.labelSmall!.copyWith(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: isActive ? activeColor : AppColors.textSecondary,
+                            color: isActive ? activeColor : Theme.of(context).textTheme.labelSmall?.color,
                           ),
-                          child: Text(labels[index]),
+                          child: Text(currentLabels[index]),
                         ),
                       ),
                     ),
@@ -177,12 +180,12 @@ class SheepTripleToggle extends StatelessWidget {
     );
   }
 
-  Widget _buildIndicator() {
+  Widget _buildIndicator(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.light ? Colors.white : AppColors.getSurface(Theme.of(context).brightness),
         borderRadius: BorderRadius.circular(21),
-        boxShadow: AppColors.softShadow,
+        boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
       ),
     );
   }

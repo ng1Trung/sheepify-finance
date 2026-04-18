@@ -11,6 +11,7 @@ import '../../core/utils/currency_util.dart';
 import 'common/sheep_toggles.dart';
 import 'common/sheep_widgets.dart';
 import 'common/sheep_notifications.dart';
+import '../../core/utils/l10n.dart';
 
 class CategoryForm extends StatefulWidget {
   final CategoryModel? category;
@@ -134,8 +135,9 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   void _submit() {
+    final l10n = L10n.of(context);
     if (_nameController.text.isEmpty) {
-      SheepNotifications.showError(context, 'Vui lòng nhập tên danh mục!');
+      SheepNotifications.showError(context, L10n.of(context).get('enter_cat_name'));
       return;
     }
 
@@ -180,7 +182,7 @@ class _CategoryFormState extends State<CategoryForm> {
       cat.colorValue = _selectedColor.value;
       cat.save();
       
-      SheepNotifications.showSuccess(context, 'Đã cập nhật danh mục "${cat.name}"');
+      SheepNotifications.showSuccess(context, l10n.get('tx_updated'));
     } else {
       final catName = _nameController.text;
       final newCat = CategoryModel(
@@ -204,17 +206,19 @@ class _CategoryFormState extends State<CategoryForm> {
       );
       _catBox.add(newCat);
       
-      SheepNotifications.showSuccess(context, 'Đã tạo danh mục "$catName"');
+      SheepNotifications.showSuccess(context, l10n.get('tx_added'));
     }
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(theme.brightness),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         boxShadow: [
           BoxShadow(
@@ -235,10 +239,10 @@ class _CategoryFormState extends State<CategoryForm> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeaderPreview(),
+                    _buildHeaderPreview(l10n),
                     const SizedBox(height: 30),
 
-                    _buildSectionTitle('Thông tin cơ bản'),
+                    _buildSectionTitle(l10n.get('basic_info')),
                     const SizedBox(height: 12),
                     SheepTripleToggle(
                       selectedIndex: _selectedTypeIndex,
@@ -247,14 +251,14 @@ class _CategoryFormState extends State<CategoryForm> {
                     const SizedBox(height: 15),
                     _buildTextField(
                       controller: _nameController,
-                      hint: 'Tên danh mục',
+                      hint: l10n.get('category_name'),
                       icon: LineIcons.tag,
                     ),
                     if (_selectedTypeIndex == 0) ...[
                       const SizedBox(height: 12),
                       _buildTextField(
                         controller: _budgetController,
-                        hint: 'Ngân sách hàng tháng (Tùy chọn)',
+                        hint: l10n.get('budget_monthly'),
                         icon: LineIcons.coins,
                         isNumber: true,
                         suffix: 'đ',
@@ -264,33 +268,33 @@ class _CategoryFormState extends State<CategoryForm> {
                       const SizedBox(height: 12),
                       _buildTextField(
                         controller: _goalAmountController,
-                        hint: _selectedGoalTypeIndex == 1 ? 'Số tiền nạp mỗi tháng' : 'Số tiền mục tiêu',
+                        hint: _selectedGoalTypeIndex == 1 ? l10n.get('goal_amount_monthly') : l10n.get('target_amount'),
                         icon: Icons.flag_outlined,
                         isNumber: true,
                         suffix: 'đ',
                       ),
                       const SizedBox(height: 20),
-                      _buildSectionTitle('Hình thức'),
+                      _buildSectionTitle(l10n.get('goal_type')),
                       const SizedBox(height: 12),
-                      _buildGoalTypeToggle(),
+                      _buildGoalTypeToggle(l10n),
                       const SizedBox(height: 12),
                       if (_selectedGoalTypeIndex == 1)
-                        _buildReminderDayPicker()
+                        _buildReminderDayPicker(l10n)
                       else if (_selectedGoalTypeIndex == 2) ...[
-                        _buildMonthPicker(),
+                        _buildMonthPicker(l10n),
                         const SizedBox(height: 12),
-                        _buildYearPicker(),
+                        _buildYearPicker(l10n),
                       ] else
-                        _buildYearPicker(),
+                        _buildYearPicker(l10n),
                     ],
 
                     const SizedBox(height: 30),
-                    _buildSectionTitle('Màu sắc'),
+                    _buildSectionTitle(l10n.get('colors')),
                     const SizedBox(height: 12),
                     _buildColorPicker(),
 
                     const SizedBox(height: 30),
-                    _buildSectionTitle('Biểu tượng'),
+                    _buildSectionTitle(l10n.get('icons')),
                     const SizedBox(height: 12),
                     _buildIconPicker(),
                     const SizedBox(height: 30),
@@ -308,7 +312,7 @@ class _CategoryFormState extends State<CategoryForm> {
   Widget _buildStickyHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),
-      color: AppColors.surface,
+      color: AppColors.getSurface(Theme.of(context).brightness),
       child: Center(
         child: _buildDragHandle(),
       ),
@@ -316,6 +320,7 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Widget _buildStickyFooter() {
+    final l10n = L10n.of(context);
     return Container(
       padding: EdgeInsets.only(
         left: 20,
@@ -324,7 +329,7 @@ class _CategoryFormState extends State<CategoryForm> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.getSurface(Theme.of(context).brightness),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -355,7 +360,7 @@ class _CategoryFormState extends State<CategoryForm> {
           ),
           child: Center(
             child: Text(
-              widget.category == null ? 'TẠO DANH MỤC' : 'LƯU THAY ĐỔI',
+              widget.category == null ? l10n.get('create_category') : l10n.get('save_changes'),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -380,7 +385,8 @@ class _CategoryFormState extends State<CategoryForm> {
     );
   }
 
-  Widget _buildHeaderPreview() {
+  Widget _buildHeaderPreview(L10n l10n) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Container(
@@ -407,27 +413,23 @@ class _CategoryFormState extends State<CategoryForm> {
             children: [
               Text(
                 _nameController.text.isEmpty
-                    ? 'TÊN DANH MỤC'
+                    ? l10n.get('category_name').toUpperCase()
                     : _nameController.text.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 18,
+                style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
                   letterSpacing: 0.5,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 _selectedTypeIndex != 2 
-                    ? (_budgetController.text.isEmpty ? 'Không có ngân sách' : 'Ngân sách: ${_budgetController.text}đ')
+                    ? (_budgetController.text.isEmpty ? l10n.get('no_tx_month') : '${l10n.get('budget_monthly').split('(')[0].trim()}: ${_budgetController.text}đ')
                     : (_selectedGoalTypeIndex == 1
-                        ? 'Mục tiêu tháng: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ'
+                        ? '${l10n.get('monthly_goal_label')}: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ'
                         : (_selectedGoalTypeIndex == 2 
-                            ? 'Mục tiêu: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - T${_selectedTargetMonth}/${_selectedTargetYear}'
-                            : 'Mục tiêu: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - Năm ${_selectedTargetYear}')),
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
+                            ? '${l10n.get('target_amount')}: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - T${_selectedTargetMonth}/${_selectedTargetYear}'
+                            : '${l10n.get('target_amount')}: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - ${l10n.get('year')} ${_selectedTargetYear}')),
+                style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w500,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -439,19 +441,20 @@ class _CategoryFormState extends State<CategoryForm> {
     );
   }
 
-  Widget _buildGoalTypeToggle() {
+  Widget _buildGoalTypeToggle(L10n l10n) {
     return Row(
       children: [
-        _buildSimplifiedToggleItem('Hàng tháng', _selectedGoalTypeIndex == 1, () => setState(() => _selectedGoalTypeIndex = 1)),
+        _buildSimplifiedToggleItem(l10n.get('recurring_monthly'), _selectedGoalTypeIndex == 1, () => setState(() => _selectedGoalTypeIndex = 1)),
         const SizedBox(width: 8),
-        _buildSimplifiedToggleItem('Ngắn hạn', _selectedGoalTypeIndex == 2, () => setState(() => _selectedGoalTypeIndex = 2)),
+        _buildSimplifiedToggleItem(l10n.get('short_term'), _selectedGoalTypeIndex == 2, () => setState(() => _selectedGoalTypeIndex = 2)),
         const SizedBox(width: 8),
-        _buildSimplifiedToggleItem('Dài hạn', _selectedGoalTypeIndex == 3, () => setState(() => _selectedGoalTypeIndex = 3)),
+        _buildSimplifiedToggleItem(l10n.get('long_term'), _selectedGoalTypeIndex == 3, () => setState(() => _selectedGoalTypeIndex = 3)),
       ],
     );
   }
 
   Widget _buildSimplifiedToggleItem(String label, bool active, VoidCallback onTap) {
+    final theme = Theme.of(context);
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -469,7 +472,7 @@ class _CategoryFormState extends State<CategoryForm> {
             child: Text(
               label,
               style: TextStyle(
-                color: active ? AppColors.savings : AppColors.textSecondary,
+                color: active ? AppColors.savings : theme.textTheme.labelSmall?.color,
                 fontWeight: active ? FontWeight.bold : FontWeight.normal,
                 fontSize: 13,
               ),
@@ -480,14 +483,15 @@ class _CategoryFormState extends State<CategoryForm> {
     );
   }
 
-  Widget _buildReminderDayPicker() {
+  Widget _buildReminderDayPicker(L10n l10n) {
+    final theme = Theme.of(context);
     final now = DateTime.now();
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ngày nạp tiền hàng tháng', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text(l10n.get('reminder_day'), style: theme.textTheme.labelSmall),
         const SizedBox(height: 8),
         SizedBox(
           height: 50,
@@ -511,7 +515,7 @@ class _CategoryFormState extends State<CategoryForm> {
                     child: Text(
                       '$day',
                       style: TextStyle(
-                        color: active ? Colors.white : AppColors.textPrimary,
+                        color: active ? Colors.white : theme.textTheme.bodyLarge?.color,
                         fontWeight: active ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
@@ -525,11 +529,12 @@ class _CategoryFormState extends State<CategoryForm> {
     );
   }
 
-  Widget _buildMonthPicker() {
+  Widget _buildMonthPicker(L10n l10n) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Tháng hoàn thành', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text(l10n.get('target_month'), style: theme.textTheme.labelSmall),
         const SizedBox(height: 8),
         SizedBox(
           height: 45,
@@ -551,9 +556,9 @@ class _CategoryFormState extends State<CategoryForm> {
                   ),
                   child: Center(
                     child: Text(
-                      'Tháng $month',
+                      '${l10n.get('month')} $month',
                       style: TextStyle(
-                        color: active ? Colors.white : AppColors.textPrimary,
+                        color: active ? Colors.white : theme.textTheme.bodyLarge?.color,
                         fontSize: 13,
                         fontWeight: active ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -568,13 +573,14 @@ class _CategoryFormState extends State<CategoryForm> {
     );
   }
 
-  Widget _buildYearPicker() {
+  Widget _buildYearPicker(L10n l10n) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _selectedGoalTypeIndex == 2 ? 'Năm hoàn thành' : 'Năm hoàn thành (Hạn 31/12)', 
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)
+          l10n.get('target_year'), 
+          style: theme.textTheme.labelSmall
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -599,7 +605,7 @@ class _CategoryFormState extends State<CategoryForm> {
                     child: Text(
                       '$year',
                       style: TextStyle(
-                        color: active ? Colors.white : AppColors.textPrimary,
+                        color: active ? Colors.white : theme.textTheme.bodyLarge?.color,
                         fontWeight: active ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
@@ -614,10 +620,10 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final theme = Theme.of(context);
     return Text(
       title.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-        color: AppColors.textSecondary,
+      style: theme.textTheme.labelSmall?.copyWith(
         fontWeight: FontWeight.bold,
         letterSpacing: 1,
       ),
@@ -631,11 +637,12 @@ class _CategoryFormState extends State<CategoryForm> {
     bool isNumber = false,
     String? suffix,
   }) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: theme.cardColor.withOpacity(0.5),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[200]!, width: 1),
+        border: Border.all(color: theme.dividerColor, width: 1),
       ),
       child: TextField(
         controller: controller,
@@ -644,7 +651,7 @@ class _CategoryFormState extends State<CategoryForm> {
         inputFormatters: isNumber ? [CurrencyInputFormatter()] : null,
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+          prefixIcon: Icon(icon, color: theme.primaryColor, size: 20),
           suffixText: suffix,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -657,13 +664,14 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Widget _buildColorPicker() {
+    final theme = Theme.of(context);
     return Container(
       height: 145,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: GridView.builder(
         padding: EdgeInsets.zero,
@@ -698,13 +706,14 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Widget _buildIconPicker() {
+    final theme = Theme.of(context);
     return Container(
       height: 200,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: GridView.builder(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -721,12 +730,13 @@ class _CategoryFormState extends State<CategoryForm> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
-                color: isSelected ? _selectedColor : Colors.white,
+                color: isSelected ? _selectedColor : theme.cardColor,
                 shape: BoxShape.circle,
+                border: isSelected ? null : Border.all(color: theme.dividerColor),
               ),
               child: Icon(
                 icon,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+                color: isSelected ? Colors.white : theme.textTheme.labelSmall?.color,
                 size: 20,
               ),
             ),

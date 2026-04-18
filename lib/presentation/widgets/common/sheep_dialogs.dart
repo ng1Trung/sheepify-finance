@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/l10n.dart';
 
 class SheepConfirmDialog extends StatelessWidget {
   final String title;
@@ -27,6 +28,7 @@ class SheepConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       elevation: 0,
@@ -34,9 +36,9 @@ class SheepConfirmDialog extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.getSurface(brightness),
           borderRadius: BorderRadius.circular(28),
-          boxShadow: AppColors.softShadow,
+          boxShadow: AppColors.getSoftShadow(brightness),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -60,10 +62,10 @@ class SheepConfirmDialog extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: AppColors.getTextPrimary(brightness),
               ),
             ),
             const SizedBox(height: 12),
@@ -73,9 +75,9 @@ class SheepConfirmDialog extends StatelessWidget {
                 Text(
                   content ?? '',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.textSecondary,
+                    color: AppColors.getTextSecondary(brightness),
                     height: 1.5,
                   ),
                 ),
@@ -95,8 +97,8 @@ class SheepConfirmDialog extends StatelessWidget {
                     ),
                     child: Text(
                       cancelLabel,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: AppColors.getTextSecondary(brightness),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -151,15 +153,16 @@ class SheepGoalDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       backgroundColor: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.getSurface(brightness),
           borderRadius: BorderRadius.circular(28),
-          boxShadow: AppColors.softShadow,
+          boxShadow: AppColors.getSoftShadow(brightness),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -181,19 +184,19 @@ class SheepGoalDialog extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: AppColors.getTextPrimary(brightness),
               ),
             ),
             const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
-                color: AppColors.textSecondary,
+                color: AppColors.getTextSecondary(brightness),
                 height: 1.5,
               ),
             ),

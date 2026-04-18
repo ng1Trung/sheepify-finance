@@ -11,6 +11,7 @@ import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/l10n.dart';
 import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_toggles.dart';
 
@@ -38,6 +39,7 @@ class _StatsTabState extends State<StatsTab> {
       valueListenable: Hive.box<AppSettings>(kSettingsBox).listenable(),
       builder: (context, settingsBox, _) {
         final settings = settingsBox.get('current') ?? AppSettings();
+        final l10n = L10n.of(context);
 
         return ValueListenableBuilder(
           valueListenable: Hive.box<Transaction>(kMoneyBox).listenable(),
@@ -94,7 +96,7 @@ class _StatsTabState extends State<StatsTab> {
                 (c) => c.id == tx.categoryId,
                 orElse: () => CategoryModel(
                   id: 'unknown',
-                  name: 'Khác',
+                  name: l10n.get('other'),
                   iconCode: 58263,
                   isExpense: tx.isExpense,
                   typeIndex: tx.isExpense ? 0 : 1,
@@ -125,7 +127,7 @@ class _StatsTabState extends State<StatsTab> {
               if (_selectedTypeIndex == 1 && carriedOverBalance > 0) {
                 final prevMonthCat = CategoryModel(
                   id: 'virtual_prev_month',
-                  name: 'Số dư trước',
+                  name: l10n.get('prev_balance'),
                   iconCode: LineIcons.history.codePoint,
                   isExpense: false,
                   typeIndex: 1,
@@ -153,7 +155,7 @@ class _StatsTabState extends State<StatsTab> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    _buildBalanceCard(availableBalance),
+                    _buildBalanceCard(availableBalance, settings.currencyCode),
                     const SizedBox(height: 15),
                     _buildToggleButton(),
                     Expanded(
@@ -165,8 +167,8 @@ class _StatsTabState extends State<StatsTab> {
                             const SizedBox(height: 20),
                             Text(
                               _selectedTypeIndex == 0 
-                                  ? 'Chưa có dữ liệu chi phí cho ${DateFormat('MM/yyyy').format(widget.currentMonth)}!'
-                                  : (_selectedTypeIndex == 1 ? 'Chưa có dữ liệu thu nhập!' : 'Chưa có dữ liệu tích luỹ!'),
+                                  ? l10n.get('no_data_expense')
+                                  : (_selectedTypeIndex == 1 ? l10n.get('no_data_income') : l10n.get('no_data_savings')),
                               style: Theme.of(context).textTheme.labelSmall,
                               textAlign: TextAlign.center,
                             ),
@@ -182,7 +184,7 @@ class _StatsTabState extends State<StatsTab> {
             return ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
-                _buildBalanceCard(availableBalance),
+                _buildBalanceCard(availableBalance, settings.currencyCode),
                 const SizedBox(height: 15),
                 _buildToggleButton(),
                 const SizedBox(height: 20),
@@ -241,6 +243,7 @@ class _StatsTabState extends State<StatsTab> {
                             _buildCenterInfo(
                               sortedStats,
                               currentModeDisplayTotal,
+                              settings.currencyCode,
                             ),
                           ],
                         ),
@@ -281,9 +284,9 @@ class _StatsTabState extends State<StatsTab> {
                     ),
                     title: stat.category.name,
                     subtitle: isVirtual
-                        ? const Text(
-                            'Số dư tích lũy từ các tháng trước',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        ? Text(
+                            l10n.get('accumulated_from_prev'),
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 12),
                           )
                         : null,
                     trailing: Column(
@@ -291,8 +294,8 @@ class _StatsTabState extends State<StatsTab> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          CurrencyUtil.formatMoney(stat.amount),
-                          style: TextStyle(
+                          CurrencyUtil.formatByCurrency(stat.amount, settings.currencyCode),
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: color,
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -341,20 +344,21 @@ class _StatsTabState extends State<StatsTab> {
     );
   }
 
-  Widget _buildCenterInfo(List<_StatEntry> sortedStats, double total) {
+  Widget _buildCenterInfo(List<_StatEntry> sortedStats, double total, String currencyCode) {
+    final l10n = L10n.of(context);
     String label;
     Color color;
     switch (_selectedTypeIndex) {
-      case 0: label = "TỔNG CHI PHÍ"; color = AppColors.expense; break;
-      case 1: label = "TỔNG THU NHẬP"; color = AppColors.income; break;
-      default: label = "TỔNG TÍCH LUỸ"; color = AppColors.savings; break;
+      case 0: label = l10n.get('total_expense'); color = AppColors.expense; break;
+      case 1: label = l10n.get('total_income'); color = AppColors.income; break;
+      default: label = l10n.get('total_savings'); color = AppColors.savings; break;
     }
     
-    String amount = CurrencyUtil.formatMoney(total);
+    String amount = CurrencyUtil.formatByCurrency(total, currencyCode);
  
     if (_touchedIndex != -1 && _touchedIndex < sortedStats.length) {
       label = sortedStats[_touchedIndex].category.name;
-      amount = CurrencyUtil.formatMoney(sortedStats[_touchedIndex].amount);
+      amount = CurrencyUtil.formatByCurrency(sortedStats[_touchedIndex].amount, currencyCode);
       if (sortedStats[_touchedIndex].category.colorValue != null) {
         color = Color(sortedStats[_touchedIndex].category.colorValue!);
       }
@@ -387,24 +391,25 @@ class _StatsTabState extends State<StatsTab> {
     );
   }
 
-  Widget _buildBalanceCard(double balance) {
+  Widget _buildBalanceCard(double balance, String currencyCode) {
+    final l10n = L10n.of(context);
     return SheepCard(
       padding: const EdgeInsets.all(18),
-      color: AppColors.primaryLight,
+      color: Theme.of(context).primaryColor.withOpacity(0.08),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'SỐ DƯ VÍ',
+            l10n.get('wallet_balance'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.primary,
+              color: Theme.of(context).primaryColor,
               fontWeight: FontWeight.bold,
             ),
           ),
           Text(
-            CurrencyUtil.formatMoney(balance),
+            CurrencyUtil.formatByCurrency(balance, currencyCode),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.primary,
+              color: Theme.of(context).primaryColor,
               fontSize: 20,
             ),
           ),

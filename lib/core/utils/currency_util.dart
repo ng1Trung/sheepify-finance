@@ -29,11 +29,46 @@ class CurrencyUtil {
 
   /// Formats amount based on currency code
   static String formatByCurrency(double amount, String currencyCode) {
-    if (currencyCode.toUpperCase() == 'VND') {
-      return formatVND(amount);
+    switch (currencyCode.toUpperCase()) {
+      case 'VND':
+        return formatVND(amount);
+      case 'USD':
+        return NumberFormat.simpleCurrency(locale: 'en_US', name: 'USD').format(amount);
+      case 'EUR':
+        return NumberFormat.simpleCurrency(locale: 'fr_FR', name: 'EUR').format(amount);
+      default:
+        return NumberFormat.simpleCurrency(name: currencyCode.toUpperCase()).format(amount);
     }
-    // For other currencies, use simpleCurrency which handles symbols automatically
-    return NumberFormat.simpleCurrency(name: currencyCode.toUpperCase()).format(amount);
+  }
+
+  static String getCurrencySymbol(String currencyCode) {
+    switch (currencyCode.toUpperCase()) {
+      case 'VND': return 'đ';
+      case 'USD': return '\$';
+      case 'EUR': return '€';
+      default: return currencyCode;
+    }
+  }
+
+  /// Compact formatting for amounts (e.g., 8.000.000 -> 8M or 8Tr)
+  static String formatCompact(double amount, {String locale = 'vi_VN'}) {
+    bool isNegative = amount < 0;
+    double absAmount = amount.abs();
+    bool isVi = locale.startsWith('vi');
+    
+    String result;
+    if (absAmount >= 1000000) {
+      double value = absAmount / 1000000;
+      String suffix = isVi ? 'Tr' : 'M';
+      result = value % 1 == 0 ? '${value.toInt()}$suffix' : '${value.toStringAsFixed(1)}$suffix';
+    } else if (absAmount >= 1000) {
+      double value = absAmount / 1000;
+      result = value % 1 == 0 ? '${value.toInt()}K' : '${value.toStringAsFixed(1)}K';
+    } else {
+      result = absAmount.toInt().toString();
+    }
+
+    return (isNegative ? '-' : '') + result;
   }
 }
 

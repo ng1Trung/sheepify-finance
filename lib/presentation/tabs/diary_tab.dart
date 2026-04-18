@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:lottie/lottie.dart';
 import 'package:line_icons/line_icons.dart';
+import 'package:lottie/lottie.dart';
 
 import '../../core/constants/constants.dart';
+import '../../core/utils/l10n.dart';
 import '../../core/utils/currency_util.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
@@ -12,7 +13,6 @@ import '../../data/models/settings_model.dart';
 import '../widgets/transaction_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
-
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
 
@@ -32,6 +32,8 @@ class DiaryTab extends StatefulWidget {
 class _DiaryTabState extends State<DiaryTab> {
   @override
   Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
     return ValueListenableBuilder(
       valueListenable: Hive.box<AppSettings>(kSettingsBox).listenable(),
       builder: (context, settingsBox, _) {
@@ -132,15 +134,15 @@ class _DiaryTabState extends State<DiaryTab> {
                       children: [
                         Text(
                           widget.isMonthly
-                              ? 'SỐ DƯ THÁNG'
-                              : 'SỐ DƯ NGÀY',
+                              ? l10n.get('monthly_balance')
+                              : l10n.get('daily_balance'),
                           style: Theme.of(
                             context,
                           ).textTheme.labelSmall?.copyWith(letterSpacing: 1),
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          CurrencyUtil.formatMoney(totalIncome - totalExpense),
+                          CurrencyUtil.formatByCurrency(totalIncome - totalExpense, settings.currencyCode),
                           style: Theme.of(context).textTheme.displayLarge
                               ?.copyWith(
                                 color: (totalIncome - totalExpense) >= 0
@@ -152,21 +154,11 @@ class _DiaryTabState extends State<DiaryTab> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildStatItem(
-                              'Thu nhập',
-                              totalIncome,
-                              AppColors.income,
-                            ),
-                            Container(
-                              width: 1,
-                              height: 30,
-                              color: Colors.grey[200],
-                            ),
-                            _buildStatItem(
-                              'Chi phí',
-                              totalExpense,
-                              AppColors.expense,
-                            ),
+                            _buildStatItem(l10n.income, totalIncome, AppColors.income, settings.languageCode),
+                            Container(width: 1, height: 20, color: theme.dividerColor),
+                            _buildStatItem(l10n.expense, totalExpense, AppColors.expense, settings.languageCode),
+                            Container(width: 1, height: 20, color: theme.dividerColor),
+                            _buildStatItem(l10n.balance, totalIncome - totalExpense, theme.primaryColor, settings.languageCode),
                           ],
                         ),
                       ],
@@ -184,8 +176,8 @@ class _DiaryTabState extends State<DiaryTab> {
                               const SizedBox(height: 10),
                               Text(
                                 widget.isMonthly
-                                    ? 'Tháng này chưa có giao dịch'
-                                    : 'Hôm nay chưa có giao dịch',
+                                    ? l10n.get('no_tx_month')
+                                    : l10n.get('no_tx_today'),
                                 style: Theme.of(context).textTheme.labelSmall,
                               ),
                             ],
@@ -227,9 +219,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                         'EEEE, dd/MM/yyyy',
                                         'en_US',
                                       ).format(DateTime.parse(dKey)),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
+                                      style: theme.textTheme.labelSmall
                                           ?.copyWith(
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -251,7 +241,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                     background: Container(
                                       alignment: Alignment.centerRight,
                                       padding: const EdgeInsets.only(right: 20),
-                                      child: const Icon(
+                                      child: Icon(
                                         LineIcons.trash,
                                         color: AppColors.expense,
                                       ),
@@ -260,10 +250,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                       return await showDialog(
                                         context: context,
                                         builder: (ctx) => SheepConfirmDialog(
-                                          title: 'Xoá giao dịch?',
-                                          content:
-                                              'Bạn có chắc chắn muốn xoá giao dịch này không? Hành động này không thể hoàn tác.',
-                                          confirmLabel: 'Xoá',
+                                          title: l10n.get('delete_confirm_title'),
+                                          content: l10n.get('delete_confirm_msg'),
+                                          confirmLabel: l10n.delete,
                                           onConfirm: () {},
                                         ),
                                       );
@@ -272,7 +261,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                       tx.delete();
                                       SheepNotifications.showSuccess(
                                         context,
-                                        'Đã xoá giao dịch',
+                                        l10n.get('delete_success'),
                                       );
                                     },
                                     child: SheepListTile(
@@ -321,9 +310,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                                 color: AppColors.savings.withOpacity(0.1),
                                                 borderRadius: BorderRadius.circular(4),
                                               ),
-                                              child: const Text(
-                                                'MỤC TIÊU',
-                                                style: TextStyle(color: AppColors.savings, fontSize: 8, fontWeight: FontWeight.bold),
+                                              child: Text(
+                                                l10n.savings.toUpperCase(),
+                                                style: const TextStyle(color: AppColors.savings, fontSize: 8, fontWeight: FontWeight.bold),
                                               ),
                                             ),
                                           if (tx.note.isNotEmpty)
@@ -337,7 +326,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                             CrossAxisAlignment.end,
                                         children: [
                                           Text(
-                                            CurrencyUtil.formatMoney(tx.amount),
+                                            CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode),
                                             style: TextStyle(
                                               color: tx.isExpense
                                                   ? AppColors.expense
@@ -347,7 +336,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                             ),
                                           ),
                                           Text(
-                                            'Wallet: ${CurrencyUtil.formatMoney(runningBalances[tx.key] ?? 0)}',
+                                            '${l10n.get('wallet_balance').split(' ')[0]}: ${CurrencyUtil.formatByCurrency(runningBalances[tx.key] ?? 0, settings.currencyCode)}',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelSmall
@@ -371,17 +360,17 @@ class _DiaryTabState extends State<DiaryTab> {
     );
   }
 
-  Widget _buildStatItem(String label, double amount, Color color) {
+  Widget _buildStatItem(String label, double amount, Color color, String locale) {
     return Column(
       children: [
         Text(
           label,
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
         ),
         const SizedBox(height: 4),
         Text(
-          CurrencyUtil.formatMoney(amount),
-          style: TextStyle(
+          CurrencyUtil.formatCompact(amount, locale: locale),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: color,
             fontWeight: FontWeight.bold,
             fontSize: 14,

@@ -13,6 +13,7 @@ import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../widgets/category/transaction_history_sheet.dart';
+import '../../core/utils/l10n.dart';
 
 class CategoryTab extends StatefulWidget {
   const CategoryTab({super.key});
@@ -39,6 +40,7 @@ class _CategoryTabState extends State<CategoryTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
     return Column(
       children: [
         // --- 1. MODE TOGGLE ---
@@ -81,6 +83,7 @@ class _CategoryTabState extends State<CategoryTab> {
         Hive.box<Transaction>(kMoneyBox).listenable(),
       ]),
       builder: (context, _) {
+        final l10n = L10n.of(context);
         final box = Hive.box<CategoryModel>(kCatBox);
         final txBox = Hive.box<Transaction>(kMoneyBox);
         final now = DateTime.now();
@@ -128,7 +131,7 @@ class _CategoryTabState extends State<CategoryTab> {
                 cat.delete();
                 SheepNotifications.showSuccess(
                   context,
-                  'Đã xoá danh mục "$name"',
+                  l10n.get('delete_cat_success', params: {'name': name}),
                 );
               },
               child: SheepCard(
@@ -137,7 +140,15 @@ class _CategoryTabState extends State<CategoryTab> {
                 child: InkWell(
                   onTap: () => _showTransactionHistory(context, cat, allTransactions),
                   borderRadius: BorderRadius.circular(20),
-                  child: Padding(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: (typeIndex == 0 && cat.budget != null && spent > cat.budget!)
+                          ? Border.all(color: AppColors.expense, width: 2)
+                          : (typeIndex == 2 && cat.targetAmount != null && spent >= cat.targetAmount!)
+                              ? Border.all(color: AppColors.savings, width: 2)
+                              : null,
+                    ),
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
@@ -161,6 +172,7 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Widget _buildEmptyState(BuildContext context, int typeIndex) {
+    final l10n = L10n.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -169,8 +181,8 @@ class _CategoryTabState extends State<CategoryTab> {
           const SizedBox(height: 10),
           Text(
             typeIndex == 0 
-                ? 'Chưa có danh mục chi phí' 
-                : (typeIndex == 1 ? 'Chưa có danh mục thu nhập' : 'Chưa có mục tiêu tích luỹ nào'),
+                ? l10n.get('no_cat_expense') 
+                : (typeIndex == 1 ? l10n.get('no_cat_income') : l10n.get('no_cat_savings')),
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
@@ -201,22 +213,30 @@ class _CategoryTabState extends State<CategoryTab> {
   }
 
   Widget _buildInfo(CategoryModel cat, double spent, int typeIndex) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
     bool isSavings = typeIndex == 2;
     double? target = isSavings ? cat.targetAmount : cat.budget;
     final remaining = (target ?? 0) - spent;
     
+    final spentStr = CurrencyUtil.formatCompact(spent);
+    final targetStr = target != null ? CurrencyUtil.formatCompact(target) : '';
+    final infoLabel = (target != null && target > 0) ? '$spentStr / $targetStr' : spentStr;
+
     String goalSubtitle = '';
     if (isSavings) {
       final goalType = cat.effectiveGoalTypeIndex;
+      String typeLabel = '';
       if (goalType == 1) {
-        goalSubtitle = 'Mục tiêu tháng: ${CurrencyUtil.formatMoney(cat.targetAmount!)}';
+        typeLabel = l10n.get('recurring_monthly');
+        goalSubtitle = typeLabel;
       } else if (goalType == 2) {
-        goalSubtitle = 'Hạn T${cat.targetMonth}/${cat.targetYear}: ${CurrencyUtil.formatMoney(cat.targetAmount!)}';
+        typeLabel = l10n.get('short_term');
+        goalSubtitle = '$typeLabel • ${cat.targetMonth}/${cat.targetYear}';
       } else {
-        goalSubtitle = 'Mục tiêu ${cat.targetYear}: ${CurrencyUtil.formatMoney(cat.targetAmount!)}';
+        typeLabel = l10n.get('long_term');
+        goalSubtitle = '$typeLabel • ${cat.targetYear}';
       }
-    } else {
-      goalSubtitle = 'Ngân sách: ${CurrencyUtil.formatMoney(cat.budget ?? 0)}';
     }
 
     return Expanded(
@@ -228,19 +248,8 @@ class _CategoryTabState extends State<CategoryTab> {
             children: [
               Text(
                 cat.name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              if (typeIndex == 0 && cat.budget != null && remaining < 0)
-                Text(
-                  CurrencyUtil.formatMoney(remaining),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.expense,
-                  ),
-                ),
-              if (isSavings && cat.targetAmount != null && remaining <= 0)
-                const Icon(Icons.check_circle, color: AppColors.savings, size: 20),
             ],
           ),
           if (target != null && target > 0) ...[
@@ -250,24 +259,30 @@ class _CategoryTabState extends State<CategoryTab> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    isSavings 
-                        ? (remaining <= 0 ? 'Đã đạt mục tiêu!' : (cat.effectiveGoalTypeIndex == 1 ? 'Tiến độ tháng' : 'Hành trình'))
-                        : (remaining < 0 ? 'Vượt quá' : ''),
-                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
                 Flexible(
+                  flex: 3,
                   child: Text(
-                    goalSubtitle,
-                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                    textAlign: TextAlign.right,
+                    infoLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontSize: 10,
+                      color: (typeIndex == 0 && remaining < 0) 
+                          ? AppColors.expense 
+                          : (typeIndex == 2 && remaining <= 0) ? AppColors.savings : null,
+                      fontWeight: (remaining <= 0) ? FontWeight.bold : null,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (isSavings)
+                  Flexible(
+                    flex: 5,
+                    child: Text(
+                      goalSubtitle,
+                      style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
+                      textAlign: TextAlign.right,
+                      // Removed ellipsis to try to show more
+                    ),
+                  ),
               ],
             ),
           ],
@@ -343,48 +358,48 @@ class _CategoryTabState extends State<CategoryTab> {
 
     return showDialog<bool>(
       context: context,
-      builder: (ctx) => SheepConfirmDialog(
-        title: relatedTxsCount > 0 ? 'Xoá danh mục & dữ liệu?' : 'Xoá danh mục?',
-        richContent: Text.rich(
-          TextSpan(
-            text: relatedTxsCount > 0
-                ? 'Danh mục '
-                : 'Bạn có chắc chắn muốn xoá danh mục ',
-            children: [
-              TextSpan(
-                text: '"${item.name}"',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (relatedTxsCount > 0) ...[
-                const TextSpan(text: ' hiện đang chứa '),
+      builder: (ctx) {
+        final l10n = L10n.of(context);
+        final theme = Theme.of(context);
+        return SheepConfirmDialog(
+          title: relatedTxsCount > 0 ? l10n.get('delete_cat_confirm') : l10n.get('delete_cat_simple'),
+          richContent: Text.rich(
+            TextSpan(
+              text: relatedTxsCount > 0
+                  ? l10n.get('delete_cat_confirm_msg').split('{name}')[0]
+                  : l10n.get('delete_cat_simple_msg').split('{name}')[0],
+              children: [
                 TextSpan(
-                  text: '$relatedTxsCount giao dịch',
-                  style: const TextStyle(
+                  text: '"${item.name}"',
+                  style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
                   ),
                 ),
-                const TextSpan(
-                  text:
-                      '. Nếu xoá danh mục này, toàn bộ dữ liệu giao dịch liên quan sẽ bị mất vĩnh viễn. Bạn có chắc muốn tiếp tục?',
-                ),
-              ] else
-                const TextSpan(text: '?'),
-            ],
+                if (relatedTxsCount > 0) ...[
+                  const TextSpan(text: ' hiện đang chứa '),
+                  TextSpan(
+                    text: l10n.get('num_transactions', params: {'count': relatedTxsCount.toString()}),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                  TextSpan(
+                    text: '. ' + l10n.get('delete_cat_confirm_msg').split('}')[1],
+                  ),
+                ] else
+                  const TextSpan(text: '?'),
+              ],
+            ),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              height: 1.5,
+            ),
           ),
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-            height: 1.5,
-          ),
-        ),
-        confirmLabel: relatedTxsCount > 0 ? 'Xoá tất cả' : 'Xoá',
-        onConfirm: () {},
-      ),
+          confirmLabel: relatedTxsCount > 0 ? l10n.get('delete_cat_confirm').split('?')[0] : l10n.delete,
+          onConfirm: () {},
+        );
+      },
     );
   }
 }

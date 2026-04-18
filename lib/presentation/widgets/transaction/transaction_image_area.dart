@@ -44,7 +44,7 @@ class TransactionImageArea extends StatelessWidget {
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.getBackground(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(35),
           boxShadow: [
             BoxShadow(

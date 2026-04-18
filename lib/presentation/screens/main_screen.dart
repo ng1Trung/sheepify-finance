@@ -13,6 +13,7 @@ import '../tabs/category_tab.dart';
 import '../tabs/settings_tab.dart';
 import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/l10n.dart';
 
 import '../widgets/common/sheep_notifications.dart';
 
@@ -104,6 +105,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildModeToggleItem(String title, bool isActive) {
+    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
+    final displayTitle = title == 'Ngày' ? l10n.get('day') : (title == 'Tháng' ? l10n.get('month') : title);
+    
     return GestureDetector(
       onTap: () => setState(() => _isMonthlyView = (title == 'Tháng')),
       child: Container(
@@ -123,11 +128,11 @@ class _MainScreenState extends State<MainScreen> {
               : null,
         ),
         child: Text(
-          title,
-          style: TextStyle(
+          displayTitle,
+          style: theme.textTheme.labelSmall?.copyWith(
             fontSize: 12,
             fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-            color: isActive ? AppColors.primary : AppColors.textSecondary,
+            color: isActive ? theme.primaryColor : AppColors.getTextSecondary(theme.brightness),
           ),
         ),
       ),
@@ -136,32 +141,36 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+
     // PREMIUM APPBAR NAVIGATOR
     Widget buildAppBarTitle() {
       if (_currentIndex == 2) {
-        return const Text(
-          'Danh mục',
-          style: TextStyle(
+        return Text(
+          l10n.categories,
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: AppColors.primary,
+            color: theme.primaryColor,
           ),
         );
       }
       if (_currentIndex == 3) {
-        return const Text(
-          'Cài đặt',
-          style: TextStyle(
+        return Text(
+          l10n.settings,
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: AppColors.primary,
+            color: theme.primaryColor,
           ),
         );
       }
 
       String dateText;
+      final locale = Localizations.localeOf(context).toString();
       if (_currentIndex == 0 || _isMonthlyView) {
-        dateText = DateFormat('MMMM yyyy').format(_selectedDate);
+        dateText = DateFormat('MMMM yyyy', locale).format(_selectedDate);
       } else {
-        dateText = DateFormat('dd/MM/yyyy').format(_selectedDate);
+        dateText = DateFormat('dd/MM/yyyy', locale).format(_selectedDate);
       }
 
       return Column(
@@ -173,9 +182,9 @@ class _MainScreenState extends State<MainScreen> {
               height: 32,
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: theme.brightness == Brightness.light ? Colors.grey[100] : Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[300]!, width: 0.5),
+                border: Border.all(color: theme.dividerColor, width: 0.5),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -208,11 +217,11 @@ class _MainScreenState extends State<MainScreen> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: theme.brightness == Brightness.light ? Colors.white : AppColors.getSurface(theme.brightness),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: theme.primaryColor.withOpacity(0.1),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -225,27 +234,27 @@ class _MainScreenState extends State<MainScreen> {
                             ? Icons.calendar_month
                             : Icons.calendar_today,
                         size: 14,
-                        color: AppColors.primary,
+                        color: theme.primaryColor,
                       ),
                       const SizedBox(width: 10),
                       Text(
                         dateText,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: theme.primaryColor,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_forward_ios,
                   size: 14,
-                  color: AppColors.primary,
+                  color: theme.primaryColor,
                 ),
                 onPressed: () => _changeTime(1),
               ),
@@ -274,7 +283,7 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.getBackground(theme.brightness),
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
@@ -288,7 +297,7 @@ class _MainScreenState extends State<MainScreen> {
               onPressed: _currentIndex == 1
                   ? _showAddTransactionForm
                   : _showAddCategoryForm,
-              backgroundColor: AppColors.primary,
+              backgroundColor: theme.primaryColor,
               elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -304,24 +313,24 @@ class _MainScreenState extends State<MainScreen> {
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.getSurface(theme.brightness),
             borderRadius: BorderRadius.circular(30),
-            boxShadow: AppColors.softShadow,
+            boxShadow: AppColors.getSoftShadow(theme.brightness),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: GNav(
               gap: 8,
-              activeColor: AppColors.primary,
+              activeColor: theme.primaryColor,
               iconSize: 22,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              tabBackgroundColor: AppColors.primary.withOpacity(0.08),
-              color: AppColors.textSecondary,
-              tabs: const [
-                GButton(icon: LineIcons.pieChart, text: 'Thống kê'),
-                GButton(icon: LineIcons.book, text: 'Nhật ký'),
-                GButton(icon: LineIcons.tags, text: 'Danh mục'),
-                GButton(icon: LineIcons.user, text: 'Cài đặt'),
+              tabBackgroundColor: theme.primaryColor.withOpacity(0.08),
+              color: AppColors.getTextSecondary(theme.brightness),
+              tabs: [
+                GButton(icon: LineIcons.pieChart, text: l10n.stats),
+                GButton(icon: LineIcons.book, text: l10n.get('diary')),
+                GButton(icon: LineIcons.tags, text: l10n.categories),
+                GButton(icon: LineIcons.user, text: l10n.settings),
               ],
               selectedIndex: _currentIndex,
               onTabChange: (index) => setState(() => _currentIndex = index),
