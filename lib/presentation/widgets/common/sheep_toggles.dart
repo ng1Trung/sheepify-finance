@@ -17,50 +17,62 @@ class SheepTypeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildToggleItem(
-              leftLabel,
-              isExpense,
-              AppColors.expense,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth;
+        final itemWidth = (totalWidth - 8) / 2;
+
+        return Container(
+          height: 48,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(24),
           ),
-          Expanded(
-            child: _buildToggleItem(
-              rightLabel,
-              !isExpense,
-              AppColors.income,
-            ),
+          child: Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutBack,
+                left: (isExpense ? 0 : 1) * itemWidth,
+                width: itemWidth,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(21),
+                    boxShadow: AppColors.softShadow,
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                   _buildToggleItem(leftLabel, isExpense, AppColors.expense, () => onChanged(true)),
+                   _buildToggleItem(rightLabel, !isExpense, AppColors.income, () => onChanged(false)),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildToggleItem(String title, bool isActive, Color color) {
-    return GestureDetector(
-      onTap: () => onChanged(title == leftLabel),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(21),
-          boxShadow: isActive ? AppColors.softShadow : null,
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: isActive ? color : AppColors.textSecondary,
+  Widget _buildToggleItem(String title, bool isActive, Color color, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Center(
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: isActive ? color : AppColors.textSecondary,
+            ),
+            child: Text(title),
           ),
         ),
       ),
@@ -72,56 +84,105 @@ class SheepTripleToggle extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onChanged;
   final List<String> labels;
+  final PageController? controller;
 
   const SheepTripleToggle({
     super.key,
     required this.selectedIndex,
     required this.onChanged,
     this.labels = const ["Chi tiêu", "Thu nhập", "Tích luỹ"],
+    this.controller,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: List.generate(labels.length, (index) {
-          final isActive = selectedIndex == index;
-          Color activeColor;
-          switch (index) {
-            case 0: activeColor = AppColors.expense; break;
-            case 1: activeColor = AppColors.income; break;
-            default: activeColor = AppColors.savings; break;
-          }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth;
+        final itemWidth = (totalWidth - 8) / labels.length;
 
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => onChanged(index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isActive ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(21),
-                  boxShadow: isActive ? AppColors.softShadow : null,
-                ),
-                child: Text(
-                  labels[index],
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: isActive ? activeColor : AppColors.textSecondary,
+        return Container(
+          height: 48,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Stack(
+            children: [
+              // SLIDING INDICATOR DRIVEN BY CONTROLLER OR INDEX
+              controller != null 
+                ? AnimatedBuilder(
+                    animation: controller!,
+                    builder: (context, _) {
+                      double page = selectedIndex.toDouble();
+                      if (controller!.hasClients) {
+                        try {
+                          page = controller!.page ?? selectedIndex.toDouble();
+                        } catch (_) {}
+                      }
+                      return Positioned(
+                        left: page * itemWidth,
+                        width: itemWidth,
+                        top: 0,
+                        bottom: 0,
+                        child: _buildIndicator(),
+                      );
+                    },
+                  )
+                : AnimatedPositioned(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    left: selectedIndex * itemWidth,
+                    width: itemWidth,
+                    top: 0,
+                    bottom: 0,
+                    child: _buildIndicator(),
                   ),
-                ),
+              
+              // TEXT LABELS
+              Row(
+                children: List.generate(labels.length, (index) {
+                  final isActive = selectedIndex == index;
+                  Color activeColor;
+                  switch (index) {
+                    case 0: activeColor = AppColors.expense; break;
+                    case 1: activeColor = AppColors.income; break;
+                    default: activeColor = AppColors.savings; break;
+                  }
+
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => onChanged(index),
+                      behavior: HitTestBehavior.opaque,
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isActive ? activeColor : AppColors.textSecondary,
+                          ),
+                          child: Text(labels[index]),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               ),
-            ),
-          );
-        }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildIndicator() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(21),
+        boxShadow: AppColors.softShadow,
       ),
     );
   }

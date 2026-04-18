@@ -106,6 +106,8 @@ class SettingsTab extends StatelessWidget {
               ),
 
               const SizedBox(height: 30),
+
+              const SizedBox(height: 30),
               Center(
                 child: Text(
                   'Sheepify v1.0.0',
