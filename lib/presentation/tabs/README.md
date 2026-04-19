@@ -12,9 +12,9 @@ This directory contains the main application screens (pages), organized as tabs 
 ## 2. Category Tab (`category_tab.dart`)
 - **Role**: Budget and Goal management.
 - **Features**:
-    - **Smooth Navigation**: Uses `PageView` with synchronized indicator for fluid transitions between Expense, Income, and Goal tabs.
-    - Unified view for Expenses, Income, and **Goals**.
-    - Rich progress bars for 3 goal types: Monthly, Short-term, and Long-term.
+    - **Smooth Navigation**: Uses `PageView` with synchronized indicator for fluid transitions between Expense, Income, and **Goal** (Tích luỹ) tabs.
+    - Unified view for Expenses, Income, and Savings goals.
+    - Advanced progress tracking for **Periodic** and **Term-based** goals.
     - Intelligent dashboards in category details for planning financial milestones.
 
 ## 3. Stats Tab (`stats_tab.dart`)
