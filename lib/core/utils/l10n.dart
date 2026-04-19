@@ -21,7 +21,8 @@ class L10n {
       'income': 'Thu nhập',
       'expense': 'Chi tiêu',
       'accumulate_balance': 'Cộng dồn số dư từ tháng trước',
-      'accumulate_subtitle': 'Số dư tháng này sẽ bao gồm cả số dư khả dụng từ các tháng trước đó.',
+      'accumulate_subtitle':
+          'Số dư tháng này sẽ bao gồm cả số dư khả dụng từ các tháng trước đó.',
       'system_settings': 'CÀI ĐẶT HỆ THỐNG',
       'theme': 'Giao diện & Màu sắc',
       'language': 'Ngôn ngữ',
@@ -39,7 +40,8 @@ class L10n {
       'no_tx_month': 'Tháng này chưa có giao dịch',
       'no_tx_today': 'Hôm nay chưa có giao dịch',
       'delete_confirm_title': 'Xoá giao dịch?',
-      'delete_confirm_msg': 'Bạn có chắc chắn muốn xoá giao dịch này không? Hành động này không thể hoàn tác.',
+      'delete_confirm_msg':
+          'Bạn có chắc chắn muốn xoá giao dịch này không? Hành động này không thể hoàn tác.',
       'delete': 'Xoá',
       'delete_success': 'Đã xoá giao dịch',
       'wallet_balance': 'SỐ DƯ VÍ',
@@ -61,9 +63,11 @@ class L10n {
       'tx_updated': 'Đã cập nhật giao dịch',
       'tx_added': 'Đã thêm giao dịch thành công',
       'budget_warning': 'Cảnh báo ngân sách!',
-      'budget_msg': 'Bạn đã tiêu quá hạn mức của danh mục "{name}". Hãy cân nhắc chi tiêu nhé!',
+      'budget_msg':
+          'Bạn đã tiêu quá hạn mức của danh mục "{name}". Hãy cân nhắc chi tiêu nhé!',
       'goal_congrats': 'Chúc mừng!',
-      'goal_msg': 'Tuyệt vời! Bạn đã đạt mục tiêu tích luỹ. Tiếp tục phát huy nhé!',
+      'goal_msg':
+          'Tuyệt vời! Bạn đã đạt mục tiêu tích luỹ. Tiếp tục phát huy nhé!',
       'understood': 'Đã hiểu',
       'awesome': 'Tuyệt vời!',
       'savings': 'Tích luỹ',
@@ -98,7 +102,8 @@ class L10n {
       'create_category': 'TẠO DANH MỤC',
       'save_changes': 'LƯU THAY ĐỔI',
       'delete_cat_confirm': 'Xoá danh mục & dữ liệu?',
-      'delete_cat_confirm_msg': 'Danh mục "{name}" hiện đang chứa {count} giao dịch. Nếu xoá, toàn bộ dữ liệu sẽ bị mất vĩnh viễn.',
+      'delete_cat_confirm_msg':
+          'Danh mục "{name}" hiện đang chứa {count} giao dịch. Nếu xoá, toàn bộ dữ liệu sẽ bị mất vĩnh viễn.',
       'delete_cat_simple': 'Xoá danh mục?',
       'delete_cat_simple_msg': 'Bạn có chắc chắn muốn xoá danh mục {name}?',
       'no_cat_expense': 'Chưa có danh mục chi phí',
@@ -123,7 +128,8 @@ class L10n {
       'income': 'Income',
       'expense': 'Expense',
       'accumulate_balance': 'Roll over balance from last month',
-      'accumulate_subtitle': 'Balance for this month will include available balance from previous months.',
+      'accumulate_subtitle':
+          'Balance for this month will include available balance from previous months.',
       'system_settings': 'SYSTEM SETTINGS',
       'theme': 'Theme & Colors',
       'language': 'Language',
@@ -141,7 +147,8 @@ class L10n {
       'no_tx_month': 'No transactions this month',
       'no_tx_today': 'No transactions today',
       'delete_confirm_title': 'Delete transaction?',
-      'delete_confirm_msg': 'Are you sure you want to delete this transaction? This action cannot be undone.',
+      'delete_confirm_msg':
+          'Are you sure you want to delete this transaction? This action cannot be undone.',
       'delete': 'Delete',
       'delete_success': 'Transaction deleted',
       'wallet_balance': 'WALLET BALANCE',
@@ -163,7 +170,8 @@ class L10n {
       'tx_updated': 'Transaction updated',
       'tx_added': 'Transaction added successfully',
       'budget_warning': 'Budget Warning!',
-      'budget_msg': 'You have exceeded the budget for "{name}". Please consider your spending!',
+      'budget_msg':
+          'You have exceeded the budget for "{name}". Please consider your spending!',
       'goal_congrats': 'Congratulations!',
       'goal_msg': 'Awesome! You have reached your savings goal. Keep it up!',
       'understood': 'Understood',
@@ -200,14 +208,16 @@ class L10n {
       'create_category': 'CREATE CATEGORY',
       'save_changes': 'SAVE CHANGES',
       'delete_cat_confirm': 'Delete category & data?',
-      'delete_cat_confirm_msg': 'Category "{name}" contains {count} transactions. If deleted, data will be lost forever.',
+      'delete_cat_confirm_msg':
+          'Category "{name}" contains {count} transactions. If deleted, data will be lost forever.',
       'delete_cat_simple': 'Delete category?',
-      'delete_cat_simple_msg': 'Are you sure you want to delete category {name}?',
+      'delete_cat_simple_msg':
+          'Are you sure you want to delete category {name}?',
       'no_cat_expense': 'No expense categories yet',
       'no_cat_income': 'No income categories yet',
       'no_cat_savings': 'No savings goals yet',
       'over_budget': 'Over budget',
-      'target_achieved': 'Goal achieved!',
+      'target_achieved': 'Goal achieved',
       'monthly_progress': 'Monthly progress',
       'journey': 'Journey',
       'delete_cat_success': 'Category "{name}" deleted',

@@ -16,6 +16,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/l10n.dart';
 
 import '../widgets/common/sheep_notifications.dart';
+import '../widgets/common/sheep_widgets.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -93,11 +94,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showDatePicker(
+    final bool isMonthOnly = (_currentIndex == 0 || _isMonthlyView);
+    final picked = await SheepDatePicker.show(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      mode: isMonthOnly ? SheepDateMode.month : SheepDateMode.day,
     );
     if (picked != null) {
       setState(() => _selectedDate = picked);
@@ -333,7 +334,12 @@ class _MainScreenState extends State<MainScreen> {
                 GButton(icon: LineIcons.user, text: l10n.settings),
               ],
               selectedIndex: _currentIndex,
-              onTabChange: (index) => setState(() => _currentIndex = index),
+              onTabChange: (index) {
+                setState(() {
+                  _currentIndex = index;
+                  _selectedDate = DateTime.now();
+                });
+              },
             ),
           ),
         ),

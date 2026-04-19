@@ -121,6 +121,9 @@ class _CategoryTabState extends State<CategoryTab> {
                   .fold(0.0, (sum, tx) => sum + tx.amount);
             }
 
+            final bool isOverBudget = typeIndex == 0 && cat.budget != null && spent > cat.budget!;
+            final bool isGoalDone = typeIndex == 2 && cat.targetAmount != null && spent >= cat.targetAmount!;
+
             return Dismissible(
               key: ValueKey(cat.id),
               direction: DismissDirection.endToStart,
@@ -137,28 +140,78 @@ class _CategoryTabState extends State<CategoryTab> {
               child: SheepCard(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: EdgeInsets.zero,
+                color: isOverBudget
+                    ? AppColors.expense.withOpacity(0.05)
+                    : isGoalDone
+                        ? AppColors.savings.withOpacity(0.05)
+                        : null,
                 child: InkWell(
                   onTap: () => _showTransactionHistory(context, cat, allTransactions),
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
-                      border: (typeIndex == 0 && cat.budget != null && spent > cat.budget!)
-                          ? Border.all(color: AppColors.expense, width: 2)
-                          : (typeIndex == 2 && cat.targetAmount != null && spent >= cat.targetAmount!)
-                              ? Border.all(color: AppColors.savings, width: 2)
+                      border: isOverBudget
+                          ? Border.all(color: AppColors.expense.withOpacity(0.5), width: 1.5)
+                          : isGoalDone
+                              ? Border.all(color: AppColors.savings.withOpacity(0.5), width: 1.5)
                               : null,
                     ),
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
+                    padding: EdgeInsets.zero,
+                    child: Stack(
                       children: [
-                        _buildIcon(cat, typeIndex),
-                        const SizedBox(width: 15),
-                        _buildInfo(cat, spent, typeIndex),
-                        IconButton(
-                          icon: const Icon(LineIcons.edit, color: Colors.grey),
-                          onPressed: () => _showCategoryForm(context, cat),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                            _buildIcon(cat, typeIndex),
+                            const SizedBox(width: 15),
+                            _buildInfo(cat, spent, typeIndex),
+                            IconButton(
+                              icon: const Icon(LineIcons.edit, color: Colors.grey),
+                              onPressed: () => _showCategoryForm(context, cat),
+                            ),
+                          ],
                         ),
+                      ),
+                        if (isOverBudget)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.expense,
+                                borderRadius: const BorderRadius.only(
+                                  topRight: Radius.circular(20),
+                                  bottomLeft: Radius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                l10n.overBudget.toUpperCase(),
+                                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        if (isGoalDone)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.savings,
+                                borderRadius: const BorderRadius.only(
+                                  topRight: Radius.circular(20),
+                                  bottomLeft: Radius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                l10n.targetAchieved.toUpperCase(),
+                                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
