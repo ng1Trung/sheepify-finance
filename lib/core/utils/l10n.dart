@@ -71,14 +71,12 @@ class L10n {
       'understood': 'Đã hiểu',
       'awesome': 'Tuyệt vời!',
       'savings': 'Tích luỹ',
-      'total_target': 'TỔNG MỤC TIÊU',
+      'total_target': 'TỔNG TÍCH LUỸ',
       'total_spent_cat': 'TỔNG CHI TIÊU',
       'num_transactions': '{count} giao dịch',
       'no_transactions': 'Chưa có giao dịch nào',
       'unnamed_transaction': 'Giao dịch chưa đặt tên',
       'monthly_goal_label': 'Mục tiêu tháng',
-      'short_term_goal': 'Kế hoạch ngắn hạn',
-      'long_term_goal': 'Hành trình dài hạn',
       'target_amount': 'Số tiền mục tiêu',
       'target_date': 'Hạn hoàn thành',
       'days_left': 'còn {count} ngày',
@@ -89,11 +87,10 @@ class L10n {
       'basic_info': 'THÔNG TIN CƠ BẢN',
       'category_name': 'Tên danh mục',
       'budget_monthly': 'Ngân sách hàng tháng (Tùy chọn)',
-      'goal_amount_monthly': 'Số tiền nạp mỗi tháng',
+      'goal_amount': 'Số tiền tích luỹ',
       'goal_type': 'HÌNH THỨC',
-      'recurring_monthly': 'Hàng tháng',
-      'short_term': 'Ngắn hạn',
-      'long_term': 'Dài hạn',
+      'recurring_monthly': 'Định kỳ',
+      'goal': 'Mục tiêu',
       'reminder_day': 'Ngày nạp tiền hàng tháng',
       'target_month': 'Tháng hoàn thành',
       'target_year': 'Năm hoàn thành',
@@ -114,6 +111,9 @@ class L10n {
       'monthly_progress': 'Tiến độ tháng',
       'journey': 'Hành trình',
       'delete_cat_success': 'Đã xoá danh mục "{name}"',
+      'accumulate_periodic': 'Tích luỹ định kỳ',
+      'accumulate_goal': 'Tích luỹ mục tiêu',
+      'total_savings_label': 'Tổng tích luỹ',
       'enter_cat_name': 'Vui lòng nhập tên danh mục!',
     },
     'en': {
@@ -177,14 +177,12 @@ class L10n {
       'understood': 'Understood',
       'awesome': 'Awesome!',
       'savings': 'Savings',
-      'total_target': 'TOTAL TARGET',
+      'total_target': 'TOTAL ACCUMULATED',
       'total_spent_cat': 'TOTAL SPENT',
       'num_transactions': '{count} transactions',
       'no_transactions': 'No transactions found',
       'unnamed_transaction': 'Unnamed transaction',
       'monthly_goal_label': 'Monthly Goal',
-      'short_term_goal': 'Short-term plan',
-      'long_term_goal': 'Long-term journey',
       'target_amount': 'Target amount',
       'target_date': 'Target date',
       'days_left': '{count} days left',
@@ -195,11 +193,10 @@ class L10n {
       'basic_info': 'BASIC INFO',
       'category_name': 'Category Name',
       'budget_monthly': 'Monthly Budget (Optional)',
-      'goal_amount_monthly': 'Monthly savings goal',
+      'goal_amount': 'Savings goal',
       'goal_type': 'GOAL TYPE',
-      'recurring_monthly': 'Monthly',
-      'short_term': 'Short-term',
-      'long_term': 'Long-term',
+      'recurring_monthly': 'Periodic',
+      'goal': 'Goal',
       'reminder_day': 'Monthly deposit day',
       'target_month': 'Target month',
       'target_year': 'Target year',
@@ -221,6 +218,9 @@ class L10n {
       'monthly_progress': 'Monthly progress',
       'journey': 'Journey',
       'delete_cat_success': 'Category "{name}" deleted',
+      'accumulate_periodic': 'Periodic Savings',
+      'accumulate_goal': 'Goal Savings',
+      'total_savings_label': 'Total savings',
       'enter_cat_name': 'Please enter category name!',
     },
   };
@@ -270,8 +270,7 @@ class L10n {
   String get unnamedTransaction => get('unnamed_transaction');
   String get overBudget => get('over_budget');
   String get recurringMonthly => get('recurring_monthly');
-  String get shortTerm => get('short_term');
-  String get longTerm => get('long_term');
+  String get goal => get('goal');
   String get balance => get('balance');
 }
 

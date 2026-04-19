@@ -23,11 +23,11 @@
 - **Spending Summary**: Track Daily/Monthly balance without being mixed with long-term goals.
 - **Income/Expense Views**: Flexible toggles for deep analysis of different cash flows.
 
-### 4. Advanced Goal Tracking (Hệ thống Mục tiêu)
-- **3-Tier Strategy**: Support for **Monthly** (daily habit), **Short-term** (specific Month/Year), and **Long-term** (Yearly milestones).
-- **Intelligent Dashboard**: Automatically calculates required monthly contributions and time remaining (e.g., "Save 7M/month for Korea trip in Nov 2026").
-- **Isolated Balance Logic**: Goal deposits appear in records but are excluded from the main "Disposable Income" balance to ensure financial accuracy.
-- **Dynamic Day Picker**: SMART month-aware day picker (detects 28/30/31 days).
+### 4. Advanced Accumulation System (Hệ thống Tích lũy)
+- **Simplified Dual Modes**: Supports **Periodic** (depositing monthly on a specific day) and **Goal** (targeting a specific Month/Year milestone).
+- **Intelligent Dashboard**: Real-time duration calculation (e.g., "This goal lasts for 360 months") and automated required contribution tracking.
+- **Modern Input Experience**: Replaced clunky list pickers with a compact, Apple-inspired **Wheel Picker** for Month, Year, and Day selection within a smooth bottom sheet.
+- **Extended Planning**: Support for long-term goals up to the year 2100.
 
 ### 5. Premium Design & UX
 - **Sheep Design System**: Custom widget system (SheepCard, SheepButton, SheepListTile) ensures consistency and elegance.

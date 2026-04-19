@@ -33,7 +33,7 @@ class CategoryModel extends HiveObject {
   DateTime? targetDate;
 
   @HiveField(10)
-  int? goalTypeIndex; // 0: none, 1: monthly, 2: short-term, 3: long-term
+  int? goalTypeIndex; // 0: none, 1: periodic (monthly), 2: goal (short/long-term)
 
   @HiveField(11)
   int? reminderDay; // Day of month (1-31)

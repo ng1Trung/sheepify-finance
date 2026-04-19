@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:flutter/services.dart';
@@ -32,7 +33,7 @@ class _CategoryFormState extends State<CategoryForm> {
   int _selectedReminderDay = DateTime.now().day;
   int _selectedTargetMonth = DateTime.now().month;
   int _selectedTargetYear = DateTime.now().year + 1;
-  
+
   DateTime? _selectedTargetDate;
   late int _selectedIcon;
   late Color _selectedColor;
@@ -118,11 +119,16 @@ class _CategoryFormState extends State<CategoryForm> {
           ? CurrencyUtil.formatNumber(cat.targetAmount!)
           : '';
       _selectedTargetDate = cat.targetDate;
-      _selectedGoalTypeIndex = (cat.goalTypeIndex != null && cat.goalTypeIndex != 0) ? cat.goalTypeIndex! : 1;
+      // Merge 2 (short-term) and 3 (long-term) into 2 (Goal)
+      int gType = cat.goalTypeIndex ?? 1;
+      _selectedGoalTypeIndex = (gType == 3) ? 2 : (gType == 0 ? 1 : gType);
+
       _selectedReminderDay = cat.reminderDay ?? DateTime.now().day;
-      _selectedTargetMonth = cat.targetMonth ?? (cat.targetDate?.month ?? DateTime.now().month);
-      _selectedTargetYear = cat.targetYear ?? (cat.targetDate?.year ?? DateTime.now().year + 1);
-      
+      _selectedTargetMonth =
+          cat.targetMonth ?? (cat.targetDate?.month ?? DateTime.now().month);
+      _selectedTargetYear =
+          cat.targetYear ?? (cat.targetDate?.year ?? DateTime.now().year + 1);
+
       _selectedColor = cat.colorValue != null
           ? Color(cat.colorValue!)
           : _vibrantColors[0];
@@ -131,13 +137,20 @@ class _CategoryFormState extends State<CategoryForm> {
       _selectedTypeIndex = 0; // Default Expense
       _selectedIcon = _iconList[0].codePoint;
       _selectedColor = _vibrantColors[0];
+
+      // Default for goals
+      _selectedTargetMonth = DateTime.now().month;
+      _selectedTargetYear = DateTime.now().year + 1;
     }
   }
 
   void _submit() {
     final l10n = L10n.of(context);
     if (_nameController.text.isEmpty) {
-      SheepNotifications.showError(context, L10n.of(context).get('enter_cat_name'));
+      SheepNotifications.showError(
+        context,
+        L10n.of(context).get('enter_cat_name'),
+      );
       return;
     }
 
@@ -153,7 +166,7 @@ class _CategoryFormState extends State<CategoryForm> {
       cat.typeIndex = _selectedTypeIndex;
       cat.budget = _selectedTypeIndex == 0 ? enteredBudget : null;
       cat.targetAmount = _selectedTypeIndex == 2 ? enteredGoal : null;
-      
+
       if (_selectedTypeIndex == 2) {
         cat.goalTypeIndex = _selectedGoalTypeIndex;
         if (_selectedGoalTypeIndex == 1) {
@@ -161,27 +174,25 @@ class _CategoryFormState extends State<CategoryForm> {
           cat.targetMonth = null;
           cat.targetYear = null;
           cat.targetDate = null;
-        } else if (_selectedGoalTypeIndex == 2) {
-          // Ngắn hạn: Month + Year
+        } else {
+          // Mục tiêu (combined): Month + Year
           cat.reminderDay = null;
           cat.targetMonth = _selectedTargetMonth;
           cat.targetYear = _selectedTargetYear;
-          cat.targetDate = DateTime(_selectedTargetYear, _selectedTargetMonth + 1, 0); // Last day of month
-        } else {
-          // Dài hạn: Year only
-          cat.targetYear = _selectedTargetYear;
-          cat.targetDate = DateTime(_selectedTargetYear, 12, 31);
-          cat.targetMonth = null;
-          cat.reminderDay = null;
+          cat.targetDate = DateTime(
+            _selectedTargetYear,
+            _selectedTargetMonth + 1,
+            0,
+          ); // Last day of month
         }
       } else {
         cat.goalTypeIndex = 0;
         cat.targetDate = null;
       }
-      
+
       cat.colorValue = _selectedColor.value;
       cat.save();
-      
+
       SheepNotifications.showSuccess(context, l10n.get('tx_updated'));
     } else {
       final catName = _nameController.text;
@@ -194,18 +205,22 @@ class _CategoryFormState extends State<CategoryForm> {
         budget: _selectedTypeIndex == 0 ? enteredBudget : null,
         targetAmount: _selectedTypeIndex == 2 ? enteredGoal : null,
         goalTypeIndex: _selectedTypeIndex == 2 ? _selectedGoalTypeIndex : 0,
-        reminderDay: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 1) ? _selectedReminderDay : null,
-        targetMonth: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 2) ? _selectedTargetMonth : null,
-        targetYear: (_selectedTypeIndex == 2 && (_selectedGoalTypeIndex == 2 || _selectedGoalTypeIndex == 3)) ? _selectedTargetYear : null,
-        targetDate: _selectedTypeIndex == 2 
-            ? (_selectedGoalTypeIndex == 2 
-                ? DateTime(_selectedTargetYear, _selectedTargetMonth + 1, 0)
-                : (_selectedGoalTypeIndex == 3 ? DateTime(_selectedTargetYear, 12, 31) : null))
+        reminderDay: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 1)
+            ? _selectedReminderDay
+            : null,
+        targetMonth: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 2)
+            ? _selectedTargetMonth
+            : null,
+        targetYear: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 2)
+            ? _selectedTargetYear
+            : null,
+        targetDate: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 2)
+            ? DateTime(_selectedTargetYear, _selectedTargetMonth + 1, 0)
             : null,
         colorValue: _selectedColor.value,
       );
       _catBox.add(newCat);
-      
+
       SheepNotifications.showSuccess(context, l10n.get('tx_added'));
     }
     Navigator.pop(context);
@@ -246,7 +261,8 @@ class _CategoryFormState extends State<CategoryForm> {
                     const SizedBox(height: 12),
                     SheepTripleToggle(
                       selectedIndex: _selectedTypeIndex,
-                      onChanged: (val) => setState(() => _selectedTypeIndex = val),
+                      onChanged: (val) =>
+                          setState(() => _selectedTypeIndex = val),
                     ),
                     const SizedBox(height: 15),
                     _buildTextField(
@@ -268,7 +284,9 @@ class _CategoryFormState extends State<CategoryForm> {
                       const SizedBox(height: 12),
                       _buildTextField(
                         controller: _goalAmountController,
-                        hint: _selectedGoalTypeIndex == 1 ? l10n.get('goal_amount_monthly') : l10n.get('target_amount'),
+                        hint: _selectedGoalTypeIndex == 1
+                            ? l10n.get('goal_amount')
+                            : l10n.get('target_amount'),
                         icon: Icons.flag_outlined,
                         isNumber: true,
                         suffix: 'đ',
@@ -280,12 +298,8 @@ class _CategoryFormState extends State<CategoryForm> {
                       const SizedBox(height: 12),
                       if (_selectedGoalTypeIndex == 1)
                         _buildReminderDayPicker(l10n)
-                      else if (_selectedGoalTypeIndex == 2) ...[
-                        _buildMonthPicker(l10n),
-                        const SizedBox(height: 12),
-                        _buildYearPicker(l10n),
-                      ] else
-                        _buildYearPicker(l10n),
+                      else
+                        _buildGoalDatePicker(l10n),
                     ],
 
                     const SizedBox(height: 30),
@@ -313,9 +327,7 @@ class _CategoryFormState extends State<CategoryForm> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),
       color: AppColors.getSurface(Theme.of(context).brightness),
-      child: Center(
-        child: _buildDragHandle(),
-      ),
+      child: Center(child: _buildDragHandle()),
     );
   }
 
@@ -344,10 +356,7 @@ class _CategoryFormState extends State<CategoryForm> {
           height: 55,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                _selectedColor,
-                _selectedColor.withOpacity(0.8),
-              ],
+              colors: [_selectedColor, _selectedColor.withOpacity(0.8)],
             ),
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
@@ -360,7 +369,9 @@ class _CategoryFormState extends State<CategoryForm> {
           ),
           child: Center(
             child: Text(
-              widget.category == null ? l10n.get('create_category') : l10n.get('save_changes'),
+              widget.category == null
+                  ? l10n.get('create_category')
+                  : l10n.get('save_changes'),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -420,20 +431,6 @@ class _CategoryFormState extends State<CategoryForm> {
                   letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                _selectedTypeIndex != 2 
-                    ? (_budgetController.text.isEmpty ? l10n.get('no_tx_month') : '${l10n.get('budget_monthly').split('(')[0].trim()}: ${_budgetController.text}đ')
-                    : (_selectedGoalTypeIndex == 1
-                        ? '${l10n.get('monthly_goal_label')}: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ'
-                        : (_selectedGoalTypeIndex == 2 
-                            ? '${l10n.get('target_amount')}: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - T${_selectedTargetMonth}/${_selectedTargetYear}'
-                            : '${l10n.get('target_amount')}: ${_goalAmountController.text.isEmpty ? '0' : _goalAmountController.text} đ - ${l10n.get('year')} ${_selectedTargetYear}')),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
             ],
           ),
         ),
@@ -444,16 +441,26 @@ class _CategoryFormState extends State<CategoryForm> {
   Widget _buildGoalTypeToggle(L10n l10n) {
     return Row(
       children: [
-        _buildSimplifiedToggleItem(l10n.get('recurring_monthly'), _selectedGoalTypeIndex == 1, () => setState(() => _selectedGoalTypeIndex = 1)),
+        _buildSimplifiedToggleItem(
+          l10n.recurringMonthly,
+          _selectedGoalTypeIndex == 1,
+          () => setState(() => _selectedGoalTypeIndex = 1),
+        ),
         const SizedBox(width: 8),
-        _buildSimplifiedToggleItem(l10n.get('short_term'), _selectedGoalTypeIndex == 2, () => setState(() => _selectedGoalTypeIndex = 2)),
-        const SizedBox(width: 8),
-        _buildSimplifiedToggleItem(l10n.get('long_term'), _selectedGoalTypeIndex == 3, () => setState(() => _selectedGoalTypeIndex = 3)),
+        _buildSimplifiedToggleItem(
+          l10n.goal,
+          _selectedGoalTypeIndex == 2,
+          () => setState(() => _selectedGoalTypeIndex = 2),
+        ),
       ],
     );
   }
 
-  Widget _buildSimplifiedToggleItem(String label, bool active, VoidCallback onTap) {
+  Widget _buildSimplifiedToggleItem(
+    String label,
+    bool active,
+    VoidCallback onTap,
+  ) {
     final theme = Theme.of(context);
     return Expanded(
       child: GestureDetector(
@@ -461,7 +468,9 @@ class _CategoryFormState extends State<CategoryForm> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: active ? AppColors.savings.withOpacity(0.1) : Colors.grey[50],
+            color: active
+                ? AppColors.savings.withOpacity(0.1)
+                : Colors.grey[50],
             borderRadius: BorderRadius.circular(15),
             border: Border.all(
               color: active ? AppColors.savings : Colors.grey[200]!,
@@ -472,7 +481,9 @@ class _CategoryFormState extends State<CategoryForm> {
             child: Text(
               label,
               style: TextStyle(
-                color: active ? AppColors.savings : theme.textTheme.labelSmall?.color,
+                color: active
+                    ? AppColors.savings
+                    : theme.textTheme.labelSmall?.color,
                 fontWeight: active ? FontWeight.bold : FontWeight.normal,
                 fontSize: 13,
               ),
@@ -485,137 +496,320 @@ class _CategoryFormState extends State<CategoryForm> {
 
   Widget _buildReminderDayPicker(L10n l10n) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(l10n.get('reminder_day'), style: theme.textTheme.labelSmall),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 50,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: daysInMonth,
-            itemBuilder: (context, index) {
-              final day = index + 1;
-              final bool active = _selectedReminderDay == day;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedReminderDay = day),
-                child: Container(
-                  width: 45,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: active ? AppColors.savings : Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: active ? AppColors.savings : Colors.grey[300]!),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$day',
-                      style: TextStyle(
-                        color: active ? Colors.white : theme.textTheme.bodyLarge?.color,
-                        fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
+        const SizedBox(height: 10),
+        InkWell(
+          onTap: () => _showDayPicker(l10n),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColors.savings.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.savings.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  LineIcons.calendar,
+                  color: AppColors.savings,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  l10n.locale.languageCode == 'vi'
+                      ? 'Ngày $_selectedReminderDay hàng tháng'
+                      : 'Day $_selectedReminderDay of month',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: AppColors.savings,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            },
+                const Spacer(),
+                const Icon(Icons.keyboard_arrow_down, color: AppColors.savings),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildMonthPicker(L10n l10n) {
+  void _showDayPicker(L10n l10n) {
     final theme = Theme.of(context);
+    final dayController = FixedExtentScrollController(
+      initialItem: _selectedReminderDay - 1,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.getSurface(theme.brightness),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDragHandle(),
+            const SizedBox(height: 20),
+            Text(
+              l10n.get('reminder_day').toUpperCase(),
+              style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              height: 200,
+              child: CupertinoPicker(
+                scrollController: dayController,
+                itemExtent: 45,
+                onSelectedItemChanged: (index) {
+                  setState(() => _selectedReminderDay = index + 1);
+                },
+                children: List.generate(
+                  31,
+                  (i) => Center(
+                    child: Text(
+                      l10n.locale.languageCode == 'vi'
+                          ? 'Ngày ${i + 1}'
+                          : 'Day ${i + 1}',
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+            SheepButton(
+              label: l10n.confirm,
+              onPressed: () => Navigator.pop(ctx),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoalDatePicker(L10n l10n) {
+    final theme = Theme.of(context);
+    final monthLabel = l10n.locale.languageCode == 'vi'
+        ? 'Tháng ${_selectedTargetMonth.toString().padLeft(2, '0')}'
+        : DateFormat.MMMM(
+            l10n.locale.languageCode,
+          ).format(DateTime(2024, _selectedTargetMonth));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.get('target_month'), style: theme.textTheme.labelSmall),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 45,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: 12,
-            itemBuilder: (context, index) {
-              final month = index + 1;
-              final bool active = _selectedTargetMonth == month;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedTargetMonth = month),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  margin: const EdgeInsets.only(right: 8),
+        Text(l10n.get('target_date'), style: theme.textTheme.labelSmall),
+        const SizedBox(height: 10),
+        InkWell(
+          onTap: () => _showMonthYearPicker(l10n),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColors.savings.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.savings.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  LineIcons.calendar,
+                  color: AppColors.savings,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '$monthLabel, $_selectedTargetYear',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: AppColors.savings,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(Icons.keyboard_arrow_down, color: AppColors.savings),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showMonthYearPicker(L10n l10n) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final years = List.generate(2100 - now.year + 1, (i) => now.year + i);
+
+    // Initial scroll positions
+    final monthController = FixedExtentScrollController(
+      initialItem: _selectedTargetMonth - 1,
+    );
+    final yearController = FixedExtentScrollController(
+      initialItem: years.indexOf(_selectedTargetYear),
+    );
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setPickerState) {
+          // Initialize local selection state
+          int tempMonth = _selectedTargetMonth;
+          int tempYear = _selectedTargetYear;
+
+          // Search current year index
+          int yearIndex = years.indexOf(tempYear);
+          if (yearIndex == -1) yearIndex = 0;
+
+          // Duration calculation (re-calculate on every build)
+          int totalMonths =
+              (tempYear - now.year) * 12 + (tempMonth - now.month);
+          if (totalMonths < 0) totalMonths = 0;
+
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.getSurface(theme.brightness),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(30),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDragHandle(),
+                const SizedBox(height: 20),
+                Text(
+                  l10n.get('target_date').toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  height: 200,
+                  child: Row(
+                    children: [
+                      // Month Column
+                      Expanded(
+                        child: CupertinoPicker(
+                          scrollController: monthController,
+                          itemExtent: 45,
+                          onSelectedItemChanged: (index) {
+                            int m = index + 1;
+                            // Validation: avoid past months
+                            if (tempYear == now.year && m < now.month) {
+                              monthController.animateToItem(
+                                now.month - 1,
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.ease,
+                              );
+                              m = now.month;
+                            }
+                            setState(() => _selectedTargetMonth = m);
+                            setPickerState(
+                              () {},
+                            ); // Refresh local UI (duration text)
+                          },
+                          children: List.generate(12, (i) {
+                            final m = i + 1;
+                            final isPast =
+                                tempYear == now.year && m < now.month;
+                            return Center(
+                              child: Text(
+                                l10n.locale.languageCode == 'vi'
+                                    ? 'Tháng ${m.toString().padLeft(2, '0')}'
+                                    : DateFormat.MMMM(
+                                        l10n.locale.languageCode,
+                                      ).format(DateTime(2024, m)),
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: isPast ? Colors.grey[300] : null,
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                      // Year Column
+                      Expanded(
+                        child: CupertinoPicker(
+                          scrollController: yearController,
+                          itemExtent: 45,
+                          onSelectedItemChanged: (index) {
+                            int y = years[index];
+                            int m = tempMonth;
+                            // Validation: if year is current, ensures month is not past
+                            if (y == now.year && m < now.month) {
+                              monthController.animateToItem(
+                                now.month - 1,
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.ease,
+                              );
+                              m = now.month;
+                            }
+                            setState(() {
+                              _selectedTargetYear = y;
+                              _selectedTargetMonth = m;
+                            });
+                            setPickerState(() {}); // Refresh local UI
+                          },
+                          children: years
+                              .map(
+                                (y) => Center(
+                                  child: Text(
+                                    '$y',
+                                    style: theme.textTheme.bodyLarge,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    color: active ? AppColors.savings : Colors.transparent,
+                    color: AppColors.savings.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: active ? AppColors.savings : Colors.grey[300]!),
                   ),
-                  child: Center(
-                    child: Text(
-                      '${l10n.get('month')} $month',
-                      style: TextStyle(
-                        color: active ? Colors.white : theme.textTheme.bodyLarge?.color,
-                        fontSize: 13,
-                        fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                      ),
+                  child: Text(
+                    l10n.locale.languageCode == 'vi'
+                        ? 'Mục tiêu này kéo dài $totalMonths tháng'
+                        : 'This goal lasts for $totalMonths months',
+                    style: TextStyle(
+                      color: AppColors.savings,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
                     ),
                   ),
                 ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildYearPicker(L10n l10n) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l10n.get('target_year'), 
-          style: theme.textTheme.labelSmall
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 50,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: 20,
-            itemBuilder: (context, index) {
-              final year = DateTime.now().year + index;
-              final bool active = _selectedTargetYear == year;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedTargetYear = year),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: active ? AppColors.savings : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: active ? AppColors.savings : Colors.grey[300]!),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$year',
-                      style: TextStyle(
-                        color: active ? Colors.white : theme.textTheme.bodyLarge?.color,
-                        fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                  ),
+                const SizedBox(height: 30),
+                SheepButton(
+                  label: l10n.confirm,
+                  onPressed: () => Navigator.pop(ctx),
                 ),
-              );
-            },
-          ),
-        ),
-      ],
+                const SizedBox(height: 10),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -639,24 +833,37 @@ class _CategoryFormState extends State<CategoryForm> {
   }) {
     final theme = Theme.of(context);
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: theme.cardColor.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.dividerColor, width: 1),
+        color: AppColors.getSurface(theme.brightness).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.dividerColor.withOpacity(0.1),
+          width: 1.2,
+        ),
       ),
       child: TextField(
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         onChanged: (_) => setState(() {}),
         inputFormatters: isNumber ? [CurrencyInputFormatter()] : null,
+        style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: Icon(icon, color: theme.primaryColor, size: 20),
+          hintStyle: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.hintColor.withOpacity(0.4),
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Icon(icon, color: _selectedColor.withOpacity(0.7), size: 20),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 40),
           suffixText: suffix,
+          suffixStyle: TextStyle(color: theme.hintColor),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 15,
+            horizontal: 16,
+            vertical: 16,
           ),
         ),
       ),
@@ -691,10 +898,7 @@ class _CategoryFormState extends State<CategoryForm> {
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               child: isSelected
                   ? const Icon(Icons.check, color: Colors.white, size: 18)
                   : null,
@@ -732,11 +936,15 @@ class _CategoryFormState extends State<CategoryForm> {
               decoration: BoxDecoration(
                 color: isSelected ? _selectedColor : theme.cardColor,
                 shape: BoxShape.circle,
-                border: isSelected ? null : Border.all(color: theme.dividerColor),
+                border: isSelected
+                    ? null
+                    : Border.all(color: theme.dividerColor),
               ),
               child: Icon(
                 icon,
-                color: isSelected ? Colors.white : theme.textTheme.labelSmall?.color,
+                color: isSelected
+                    ? Colors.white
+                    : theme.textTheme.labelSmall?.color,
                 size: 20,
               ),
             ),

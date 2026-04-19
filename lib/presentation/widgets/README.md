@@ -13,8 +13,8 @@ This directory contains the Sheepify UI component system, built with a focus on 
 - `transaction_category_picker.dart`: Upgraded to 3-tier selection to support **Goal** selection.
 
 ## 3. Category Widgets (`category/`)
-- `category_form.dart`: Advanced form supporting **3 goal strategies** with a SMART day picker.
-- `transaction_history_sheet.dart`: Displays all-time history and intelligent planning dashboards for goals.
+- `category_form.dart`: Advanced form supporting **Simplified Dual Modes** (Periodic vs Goal) with a premium **Wheel Picker** Bottom Sheet.
+- `transaction_history_sheet.dart`: Displays all-time history and intelligent planning dashboards for accumulation goals.
 
 ## Design Principles (Atomic Design)
 - Large widgets are composed of smaller "atomic" widgets found in the `common` directory.
