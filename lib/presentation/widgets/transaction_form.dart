@@ -81,25 +81,11 @@ class _TransactionFormState extends State<TransactionForm> {
     _amountController.addListener(() => setState(() {}));
   }
 
-  // Pick date through date picker
+  // Select transaction date
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await SheepDatePicker.show(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: AppColors.getTextPrimary(Theme.of(context).brightness),
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
     if (picked != null) {
       setState(() {
