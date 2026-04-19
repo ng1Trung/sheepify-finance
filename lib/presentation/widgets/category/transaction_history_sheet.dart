@@ -228,11 +228,11 @@ class TransactionHistorySheet extends StatelessWidget {
 
       return _buildDashboardCard(
         context,
-        title: '${l10n.get('monthly_goal_label').toUpperCase()} ${l10n.get('month').toUpperCase()} ${now.month}',
+        title: '${l10n.get('accumulate_periodic').toUpperCase()} ${l10n.get('month').toUpperCase()} ${now.month}',
         subtitle: planningText,
         progress: progress,
         info: infoText,
-        footerLeft: '${l10n.get('total_balance').split(' ')[0]} ${l10n.get('income').toLowerCase()}: ${CurrencyUtil.formatMoney(totalInMonth)}',
+        footerLeft: '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatMoney(totalInMonth)}',
         footerRight: '${l10n.get('monthly_goal_label')}: ${CurrencyUtil.formatMoney(target)}',
       );
     } else if (goalType == 2 || goalType == 3) {
@@ -257,11 +257,11 @@ class TransactionHistorySheet extends StatelessWidget {
 
       return _buildDashboardCard(
         context,
-        title: goalType == 2 ? l10n.get('short_term_goal').toUpperCase() : l10n.get('long_term_goal').toUpperCase(),
+        title: l10n.get('accumulate_goal').toUpperCase(),
         subtitle: planningText,
         progress: progress,
         info: infoText,
-        footerLeft: '${l10n.get('total_balance').split(' ')[0]} ${l10n.get('income').toLowerCase()}: ${CurrencyUtil.formatMoney(totalAllTime)}',
+        footerLeft: '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatMoney(totalAllTime)}',
         footerRight: '${l10n.get('target_amount')}: ${CurrencyUtil.formatMoney(target)}',
       );
     }
