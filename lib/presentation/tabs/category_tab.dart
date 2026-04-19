@@ -279,16 +279,11 @@ class _CategoryTabState extends State<CategoryTab> {
     String goalSubtitle = '';
     if (isSavings) {
       final goalType = cat.effectiveGoalTypeIndex;
-      String typeLabel = '';
       if (goalType == 1) {
-        typeLabel = l10n.get('recurring_monthly');
-        goalSubtitle = typeLabel;
-      } else if (goalType == 2) {
-        typeLabel = l10n.get('short_term');
-        goalSubtitle = '$typeLabel • ${cat.targetMonth}/${cat.targetYear}';
+        goalSubtitle = l10n.recurringMonthly;
       } else {
-        typeLabel = l10n.get('long_term');
-        goalSubtitle = '$typeLabel • ${cat.targetYear}';
+        // Goal (merged 2 and 3)
+        goalSubtitle = '${l10n.goal} • T${cat.targetMonth ?? cat.targetDate?.month ?? ''}/${cat.targetYear ?? cat.targetDate?.year ?? ''}';
       }
     }
 

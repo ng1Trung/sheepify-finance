@@ -91,9 +91,8 @@ class L10n {
       'budget_monthly': 'Ngân sách hàng tháng (Tùy chọn)',
       'goal_amount_monthly': 'Số tiền nạp mỗi tháng',
       'goal_type': 'HÌNH THỨC',
-      'recurring_monthly': 'Hàng tháng',
-      'short_term': 'Ngắn hạn',
-      'long_term': 'Dài hạn',
+      'recurring_monthly': 'Định kỳ',
+      'goal': 'Mục tiêu',
       'reminder_day': 'Ngày nạp tiền hàng tháng',
       'target_month': 'Tháng hoàn thành',
       'target_year': 'Năm hoàn thành',
@@ -197,9 +196,8 @@ class L10n {
       'budget_monthly': 'Monthly Budget (Optional)',
       'goal_amount_monthly': 'Monthly savings goal',
       'goal_type': 'GOAL TYPE',
-      'recurring_monthly': 'Monthly',
-      'short_term': 'Short-term',
-      'long_term': 'Long-term',
+      'recurring_monthly': 'Periodic',
+      'goal': 'Goal',
       'reminder_day': 'Monthly deposit day',
       'target_month': 'Target month',
       'target_year': 'Target year',
@@ -270,8 +268,7 @@ class L10n {
   String get unnamedTransaction => get('unnamed_transaction');
   String get overBudget => get('over_budget');
   String get recurringMonthly => get('recurring_monthly');
-  String get shortTerm => get('short_term');
-  String get longTerm => get('long_term');
+  String get goal => get('goal');
   String get balance => get('balance');
 }
 

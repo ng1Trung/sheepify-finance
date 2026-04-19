@@ -20,7 +20,7 @@ class CategoryUtil {
               tx.date.year == now.year)
           .fold(0.0, (sum, tx) => sum + tx.amount);
     } else if (goalType == 2) {
-      // Long-term goal: all history
+      // Goal: all history
       spent = allTransactions
           .where((tx) => tx.categoryId == cat.id)
           .fold(0.0, (sum, tx) => sum + tx.amount);
