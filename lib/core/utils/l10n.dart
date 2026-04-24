@@ -115,6 +115,10 @@ class L10n {
       'accumulate_goal': 'Tích luỹ mục tiêu',
       'total_savings_label': 'Tổng tích luỹ',
       'enter_cat_name': 'Vui lòng nhập tên danh mục!',
+      'view_all': 'Xem tất cả',
+      'today_transactions': 'Giao dịch hôm nay',
+      'no_data_today': 'Hôm nay chưa có giao dịch nào.',
+      'no_note': 'Không có ghi chú',
     },
     'en': {
       'app_title': 'Sheepify',
@@ -222,6 +226,10 @@ class L10n {
       'accumulate_goal': 'Goal Savings',
       'total_savings_label': 'Total savings',
       'enter_cat_name': 'Please enter category name!',
+      'view_all': 'View All',
+      'today_transactions': 'Today\'s Transactions',
+      'no_data_today': 'No transactions today.',
+      'no_note': 'No note',
     },
   };
 

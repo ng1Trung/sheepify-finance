@@ -7,6 +7,7 @@ import 'package:line_icons/line_icons.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
 import '../widgets/transaction_form.dart';
+import '../tabs/home_tab.dart';
 import '../tabs/stats_tab.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
@@ -25,7 +26,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 1;
+  int _currentIndex = 0; // Bắt đầu từ Trang chủ
 
   // TIME AND VIEW MODE MANAGEMENT
   DateTime _selectedDate = DateTime.now();
@@ -151,7 +152,10 @@ class _MainScreenState extends State<MainScreen> {
 
     // PREMIUM APPBAR NAVIGATOR
     Widget buildAppBarTitle() {
-      if (_currentIndex == 2) {
+      if (_currentIndex == 0) {
+        return const SizedBox.shrink(); // HomeTab handles its own header
+      }
+      if (_currentIndex == 3) {
         return Text(
           l10n.categories,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -160,7 +164,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
         );
       }
-      if (_currentIndex == 3) {
+      if (_currentIndex == 4) {
         return Text(
           l10n.settings,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -170,9 +174,13 @@ class _MainScreenState extends State<MainScreen> {
         );
       }
 
+      if (_currentIndex == 0 || _currentIndex == 3 || _currentIndex == 4) {
+        return const SizedBox.shrink();
+      }
+
       String dateText;
       final locale = Localizations.localeOf(context).toString();
-      if (_currentIndex == 0 || _isMonthlyView) {
+      if (_currentIndex == 1 || _isMonthlyView) {
         dateText = DateFormat('MMMM yyyy', locale).format(_selectedDate);
       } else {
         dateText = DateFormat('dd/MM/yyyy', locale).format(_selectedDate);
@@ -181,8 +189,8 @@ class _MainScreenState extends State<MainScreen> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // MODE TOGGLE (DAY/MONTH) - ONLY IN DIARY TAB
-          if (_currentIndex == 1)
+          // MODE TOGGLE (DAY/MONTH) - ONLY IN DIARY TAB (Index 2)
+          if (_currentIndex == 2)
             Container(
               height: 32,
               padding: const EdgeInsets.all(2),
@@ -239,7 +247,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        (_currentIndex == 0 || _isMonthlyView)
+                        (_currentIndex == 1 || _isMonthlyView)
                             ? Icons.calendar_month
                             : Icons.calendar_today,
                         size: 14,
@@ -276,15 +284,19 @@ class _MainScreenState extends State<MainScreen> {
     Widget buildBody() {
       switch (_currentIndex) {
         case 0:
-          return StatsTab(currentMonth: _selectedDate);
+          return HomeTab(
+            onViewAllSavings: () => setState(() => _currentIndex = 3),
+          );
         case 1:
+          return StatsTab(currentMonth: _selectedDate);
+        case 2:
           return DiaryTab(
             selectedDate: _selectedDate,
             isMonthly: _isMonthlyView,
           );
-        case 2:
-          return const CategoryTab();
         case 3:
+          return const CategoryTab();
+        case 4:
           return const SettingsTab();
         default:
           return const SizedBox();
@@ -293,13 +305,15 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.getBackground(theme.brightness),
-      appBar: AppBar(
-        elevation: 0,
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        toolbarHeight: (_currentIndex == 2 || _currentIndex == 3) ? 60 : 100,
-        title: buildAppBarTitle(),
-      ),
+      appBar: _currentIndex == 0
+          ? null
+          : AppBar(
+              elevation: 0,
+              centerTitle: true,
+              backgroundColor: Colors.transparent,
+              toolbarHeight: (_currentIndex == 3 || _currentIndex == 4) ? 60 : 100,
+              title: buildAppBarTitle(),
+            ),
       body: buildBody(),
       bottomNavigationBar: BottomAppBar(
         color: AppColors.getSurface(theme.brightness),
@@ -324,13 +338,15 @@ class _MainScreenState extends State<MainScreen> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildIconNavItem(0, Icons.pie_chart_rounded),
-                    const SizedBox(width: 25),
-                    _buildIconNavItem(1, Icons.history_rounded),
-                    const SizedBox(width: 25),
-                    _buildIconNavItem(2, Icons.style_rounded),
-                    const SizedBox(width: 25),
-                    _buildIconNavItem(3, Icons.settings_rounded),
+                    _buildIconNavItem(0, Icons.home_rounded),
+                    const SizedBox(width: 18),
+                    _buildIconNavItem(1, Icons.pie_chart_rounded),
+                    const SizedBox(width: 18),
+                    _buildIconNavItem(2, Icons.history_rounded),
+                    const SizedBox(width: 18),
+                    _buildIconNavItem(3, Icons.style_rounded),
+                    const SizedBox(width: 18),
+                    _buildIconNavItem(4, Icons.settings_rounded),
                   ],
                 ),
               ),
