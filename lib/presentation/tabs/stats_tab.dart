@@ -322,14 +322,14 @@ class _StatsTabState extends State<StatsTab> {
 
   Color _getPastelColor(int index) {
     final List<Color> pastelPalette = [
-      const Color(0xFF83EAF1),
+      const Color(0xFF1A1A1A), // Black
       const Color(0xFF63A4FF),
       const Color(0xFFB983FF),
       const Color(0xFFFF83C1),
       const Color(0xFFFF9B83),
       const Color(0xFFFFD383),
-      const Color(0xFFD3FF83),
-      const Color(0xFF83FFB9),
+      const Color(0xFF757575), // Gray
+      const Color(0xFFBDBDBD), // Light Gray
     ];
     return pastelPalette[index % pastelPalette.length];
   }
@@ -393,23 +393,25 @@ class _StatsTabState extends State<StatsTab> {
 
   Widget _buildBalanceCard(double balance, String currencyCode) {
     final l10n = L10n.of(context);
+    final theme = Theme.of(context);
     return SheepCard(
-      padding: const EdgeInsets.all(18),
-      color: Theme.of(context).primaryColor.withOpacity(0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            l10n.get('wallet_balance'),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).primaryColor,
+            l10n.get('wallet_balance').toUpperCase(),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.getTextSecondary(theme.brightness),
               fontWeight: FontWeight.bold,
+              fontSize: 12,
+              letterSpacing: 1,
             ),
           ),
           Text(
             CurrencyUtil.formatByCurrency(balance, currencyCode),
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).primaryColor,
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: AppColors.getTextPrimary(theme.brightness),
               fontSize: 20,
             ),
           ),

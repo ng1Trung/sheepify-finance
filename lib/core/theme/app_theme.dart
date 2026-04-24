@@ -49,12 +49,12 @@ class AppTheme {
       brightness: brightness,
       fontFamily: fontFamily,
       scaffoldBackgroundColor: background,
-      primaryColor: primary,
+      primaryColor: AppColors.primary, // Black
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         brightness: brightness,
         primary: primary,
-        secondary: palette.secondary,
+        secondary: const Color(0xFF757575),
         surface: surface,
         error: AppColors.expense,
       ),
@@ -62,20 +62,32 @@ class AppTheme {
         displayLarge: baseTextTheme.displayLarge?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.bold,
-          fontSize: 28,
+          fontSize: 24,
+          letterSpacing: 0,
+        ),
+        headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+          color: textPrimary,
+          fontWeight: FontWeight.bold,
+          fontSize: 24,
+          letterSpacing: 0,
         ),
         titleLarge: baseTextTheme.titleLarge?.copyWith(
           color: textPrimary,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w600, // SemiBold
           fontSize: 18,
+          letterSpacing: 0,
         ),
         bodyLarge: baseTextTheme.bodyLarge?.copyWith(
           color: textPrimary,
+          fontWeight: FontWeight.w500, // Medium
           fontSize: 16,
+          letterSpacing: 0.5,
         ),
         bodyMedium: baseTextTheme.bodyMedium?.copyWith(
           color: textPrimary,
+          fontWeight: FontWeight.w500, // Medium
           fontSize: 14,
+          letterSpacing: 0.5,
         ),
         labelSmall: baseTextTheme.labelSmall?.copyWith(
           color: textSecondary,
@@ -95,15 +107,25 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
+          backgroundColor: primary, // Black
           foregroundColor: Colors.white,
           elevation: 0,
+          minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: baseTextTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.bold,
+            fontSize: 16,
           ),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: primary, // Black
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -126,12 +148,12 @@ class AppTheme {
         hintStyle: baseTextTheme.bodyMedium?.copyWith(color: textSecondary),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: surface,
-        selectedColor: primary,
+        backgroundColor: AppColors.primaryLight,
+        selectedColor: primary, // Black
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: textSecondary.withOpacity(0.2)),
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide.none,
         ),
         labelStyle: baseTextTheme.bodyMedium?.copyWith(
           color: textPrimary,

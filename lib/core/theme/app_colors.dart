@@ -15,6 +15,7 @@ class ColorPalette {
 class AppColors {
   // Palette definitions
   static const List<ColorPalette> palettes = [
+    ColorPalette(name: 'Midnight Black', primary: Color(0xFF1A1A1A)),
     ColorPalette(name: 'Sheep Green', primary: Color(0xFF20C997)),
     ColorPalette(name: 'Rose Petal', primary: Color(0xFFFF85A1)),
     ColorPalette(name: 'Sunset Glow', primary: Color(0xFFFF9E7D)),
@@ -29,17 +30,17 @@ class AppColors {
   }
 
   // Base Colors
-  static const Color primary = Color(0xFF20C997);
-  static const Color primaryLight = Color(0xFFE8FAF4);
-  static const Color expense = Color(0xFFFF6B6B);
-  static const Color income = Color(0xFF20C997);
-  static const Color savings = Color(0xFF3498DB);
+  static const Color primary = Color(0xFF1A1A1A); // Black as Primary
+  static const Color primaryLight = Color(0xFFF1F1F1);
+  static const Color expense = Color(0xFFEE6055); // Professional Red
+  static const Color income = Color(0xFF20C997);  // Professional Green
+  static const Color savings = Color(0xFF1A1A1A);
   
   // Backward compatibility constants (Light Mode defaults)
-  static const Color bgLight = Color(0xFFF8F9FA);
+  static const Color bgLight = Color(0xFFFBFBFB);
   static const Color surfLight = Color(0xFFFFFFFF);
-  static const Color textPriLight = Color(0xFF2B2D42);
-  static const Color textSecLight = Color(0xFF8D99AE);
+  static const Color textPriLight = Color(0xFF000000); // Absolute Black for maximum clarity
+  static const Color textSecLight = Color(0xFF616161); // Clearer Gray
 
   // Dynamic Background & Surface
   static Color getBackground(Brightness b) => b == Brightness.light ? bgLight : const Color(0xFF0D0D0D);

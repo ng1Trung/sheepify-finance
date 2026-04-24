@@ -202,16 +202,16 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_back_ios_new,
                   size: 14,
-                  color: AppColors.primary,
+                  color: AppColors.getTextPrimary(theme.brightness),
                 ),
                 onPressed: () => _changeTime(-1),
               ),
               InkWell(
                 onTap: _pickTime,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -219,12 +219,12 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: theme.brightness == Brightness.light ? Colors.white : AppColors.getSurface(theme.brightness),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.primaryColor.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -235,7 +235,7 @@ class _MainScreenState extends State<MainScreen> {
                             ? Icons.calendar_month
                             : Icons.calendar_today,
                         size: 14,
-                        color: theme.primaryColor,
+                        color: AppColors.getTextPrimary(theme.brightness),
                       ),
                       const SizedBox(width: 10),
                       Text(
@@ -243,7 +243,7 @@ class _MainScreenState extends State<MainScreen> {
                           style: theme.textTheme.bodyLarge?.copyWith(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            color: theme.primaryColor,
+                            color: AppColors.getTextPrimary(theme.brightness),
                           ),
                         ),
                     ],
@@ -255,7 +255,7 @@ class _MainScreenState extends State<MainScreen> {
                 icon: Icon(
                   Icons.arrow_forward_ios,
                   size: 14,
-                  color: theme.primaryColor,
+                  color: AppColors.getTextPrimary(theme.brightness),
                 ),
                 onPressed: () => _changeTime(1),
               ),
@@ -301,7 +301,7 @@ class _MainScreenState extends State<MainScreen> {
               backgroundColor: theme.primaryColor,
               elevation: 4,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
                 _currentIndex == 1 ? Icons.add : Icons.create_new_folder,
@@ -322,10 +322,10 @@ class _MainScreenState extends State<MainScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: GNav(
               gap: 8,
-              activeColor: theme.primaryColor,
+              activeColor: Colors.white,
               iconSize: 22,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              tabBackgroundColor: theme.primaryColor.withOpacity(0.08),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              tabBackgroundColor: AppColors.primary, // Black
               color: AppColors.getTextSecondary(theme.brightness),
               tabs: [
                 GButton(icon: LineIcons.pieChart, text: l10n.stats),
