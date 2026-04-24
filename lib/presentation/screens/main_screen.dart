@@ -108,8 +108,10 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildModeToggleItem(String title, bool isActive) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
-    final displayTitle = title == 'Ngày' ? l10n.get('day') : (title == 'Tháng' ? l10n.get('month') : title);
-    
+    final displayTitle = title == 'Ngày'
+        ? l10n.get('day')
+        : (title == 'Tháng' ? l10n.get('month') : title);
+
     return GestureDetector(
       onTap: () => setState(() => _isMonthlyView = (title == 'Tháng')),
       child: Container(
@@ -133,7 +135,9 @@ class _MainScreenState extends State<MainScreen> {
           style: theme.textTheme.labelSmall?.copyWith(
             fontSize: 12,
             fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-            color: isActive ? theme.primaryColor : AppColors.getTextSecondary(theme.brightness),
+            color: isActive
+                ? theme.primaryColor
+                : AppColors.getTextSecondary(theme.brightness),
           ),
         ),
       ),
@@ -183,7 +187,9 @@ class _MainScreenState extends State<MainScreen> {
               height: 32,
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: theme.brightness == Brightness.light ? Colors.grey[100] : Colors.white.withOpacity(0.05),
+                color: theme.brightness == Brightness.light
+                    ? Colors.grey[100]
+                    : Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: theme.dividerColor, width: 0.5),
               ),
@@ -218,7 +224,9 @@ class _MainScreenState extends State<MainScreen> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.brightness == Brightness.light ? Colors.white : AppColors.getSurface(theme.brightness),
+                    color: theme.brightness == Brightness.light
+                        ? Colors.white
+                        : AppColors.getSurface(theme.brightness),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
@@ -240,12 +248,12 @@ class _MainScreenState extends State<MainScreen> {
                       const SizedBox(width: 10),
                       Text(
                         dateText,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.getTextPrimary(theme.brightness),
-                          ),
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.getTextPrimary(theme.brightness),
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -293,54 +301,43 @@ class _MainScreenState extends State<MainScreen> {
         title: buildAppBarTitle(),
       ),
       body: buildBody(),
-      floatingActionButton: (_currentIndex == 1 || _currentIndex == 2)
-          ? FloatingActionButton(
-              onPressed: _currentIndex == 1
-                  ? _showAddTransactionForm
-                  : _showAddCategoryForm,
-              backgroundColor: theme.primaryColor,
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                _currentIndex == 1 ? Icons.add : Icons.create_new_folder,
-                color: Colors.white,
-                size: 30,
-              ),
-            )
-          : null,
-      bottomNavigationBar: SafeArea(
+      bottomNavigationBar: BottomAppBar(
+        color: AppColors.getSurface(theme.brightness),
+        elevation: 0,
+        padding: EdgeInsets.zero,
         child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          height: 130, // Tăng chiều cao để chứa nút 84px
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           decoration: BoxDecoration(
             color: AppColors.getSurface(theme.brightness),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: AppColors.getSoftShadow(theme.brightness),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: GNav(
-              gap: 8,
-              activeColor: Colors.white,
-              iconSize: 22,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              tabBackgroundColor: AppColors.primary, // Black
-              color: AppColors.getTextSecondary(theme.brightness),
-              tabs: [
-                GButton(icon: LineIcons.pieChart, text: l10n.stats),
-                GButton(icon: LineIcons.book, text: l10n.get('diary')),
-                GButton(icon: LineIcons.tags, text: l10n.categories),
-                GButton(icon: LineIcons.user, text: l10n.settings),
-              ],
-              selectedIndex: _currentIndex,
-              onTabChange: (index) {
-                setState(() {
-                  _currentIndex = index;
-                  _selectedDate = DateTime.now();
-                });
-              },
+            border: Border(
+              top: BorderSide(color: Colors.black.withOpacity(0.05), width: 1),
             ),
+          ),
+          child: Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // Căn giữa tuyệt đối theo trục dọc
+            children: [
+              // --- LEFT: TAB ICONS ---
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildIconNavItem(0, Icons.pie_chart_rounded),
+                    const SizedBox(width: 25),
+                    _buildIconNavItem(1, Icons.history_rounded),
+                    const SizedBox(width: 25),
+                    _buildIconNavItem(2, Icons.style_rounded),
+                    const SizedBox(width: 25),
+                    _buildIconNavItem(3, Icons.settings_rounded),
+                  ],
+                ),
+              ),
+
+              // --- RIGHT: ADD BUTTON ---
+              _buildRightAddButton(),
+            ],
           ),
         ),
       ),
@@ -377,6 +374,43 @@ class _MainScreenState extends State<MainScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => const CategoryForm(category: null),
+    );
+  }
+
+  Widget _buildIconNavItem(int index, IconData icon) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? Colors.black : Colors.grey[400];
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentIndex = index;
+          _selectedDate = DateTime.now();
+        });
+      },
+      child: Icon(icon, color: color, size: 28),
+    );
+  }
+
+  Widget _buildRightAddButton() {
+    return GestureDetector(
+      onTap: _showAddTransactionForm,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.add, color: Colors.white, size: 24),
+      ),
     );
   }
 }
