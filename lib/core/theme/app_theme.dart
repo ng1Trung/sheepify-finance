@@ -36,9 +36,10 @@ class AppTheme {
           return GoogleFonts.pacificoTextTheme(baseText);
         case 'Special Elite':
           return GoogleFonts.specialEliteTextTheme(baseText);
-        case 'Quicksand':
+        case 'Outfit':
+          return GoogleFonts.outfitTextTheme(baseText);
         default:
-          return GoogleFonts.quicksandTextTheme(baseText);
+          return GoogleFonts.outfitTextTheme(baseText);
       }
     }
 

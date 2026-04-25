@@ -37,7 +37,7 @@ class AppColors {
   static const Color savings = Color(0xFF1A1A1A);
   
   // Backward compatibility constants (Light Mode defaults)
-  static const Color bgLight = Color(0xFFFBFBFB);
+  static const Color bgLight = Color(0xFFF2F2F7);
   static const Color surfLight = Color(0xFFFFFFFF);
   static const Color textPriLight = Color(0xFF000000); // Absolute Black for maximum clarity
   static const Color textSecLight = Color(0xFF616161); // Clearer Gray

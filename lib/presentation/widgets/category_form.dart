@@ -39,6 +39,7 @@ class _CategoryFormState extends State<CategoryForm> {
   late Color _selectedColor;
 
   final List<Color> _vibrantColors = [
+    Colors.black, // Màu đen hệ thống làm mặc định
     const Color(0xFFFF6B6B), // Coral Red
     const Color(0xFF4ECDC4), // Medium Turquoise
     const Color(0xFF45B7D1), // Sky Blue

@@ -78,20 +78,82 @@ class _HomeTabState extends State<HomeTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Hi Jason.',
-                          style: theme.textTheme.displayMedium?.copyWith(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.getTextPrimary(theme.brightness),
-                          ),
-                        ),
-                        Text(
-                          _getGreeting(context),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.getTextSecondary(theme.brightness),
-                            fontWeight: FontWeight.w600,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.black,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      'J',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Hi Jason.',
+                                      style: theme.textTheme.displayMedium
+                                          ?.copyWith(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.getTextPrimary(
+                                              theme.brightness,
+                                            ),
+                                          ),
+                                    ),
+                                    Text(
+                                      _getGreeting(context),
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: AppColors.getTextSecondary(
+                                              theme.brightness,
+                                            ),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.03),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(LineIcons.bell, size: 16),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 24),
                         // THE BALANCE CARD (BRIGHT MINIMALIST)
@@ -160,7 +222,8 @@ class _HomeTabState extends State<HomeTab> {
                                     : '${settings.currencyCode ?? 'VND'} **********',
                                 style: const TextStyle(
                                   fontSize: 28,
-                                  fontWeight: FontWeight.w900, // Đậm hơn để nổi bật
+                                  fontWeight:
+                                      FontWeight.w900, // Đậm hơn để nổi bật
                                   color: Colors.black,
                                   letterSpacing: -0.5,
                                 ),
@@ -204,6 +267,7 @@ class _HomeTabState extends State<HomeTab> {
                 if (savingsCategories.isNotEmpty)
                   SliverToBoxAdapter(
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -232,28 +296,49 @@ class _HomeTabState extends State<HomeTab> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          height: 150,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: savingsCategories.length,
-                            itemBuilder: (context, index) {
-                              final cat = savingsCategories[index];
-                              return _buildSavingsCard(
-                                context,
-                                cat,
-                                transactions,
-                                settings.currencyCode,
-                              );
-                            },
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(32),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.015),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: SizedBox(
+                              height:
+                                  115, // Cân đối lại cho vòng tròn 60px + text
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(),
+                                padding: const EdgeInsets.only(
+                                  left: 20,
+                                  right: 40,
+                                ),
+                                itemCount: savingsCategories.length,
+                                itemBuilder: (context, index) {
+                                  final cat = savingsCategories[index];
+                                  return _buildSavingsCard(
+                                    context,
+                                    cat,
+                                    transactions,
+                                    settings.currencyCode,
+                                  );
+                                },
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 20), // Giảm từ 40 xuống 20
                       ],
                     ),
                   ),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
                 // --- TODAY'S TRANSACTIONS (STICKY) ---
                 SliverPersistentHeader(
@@ -266,11 +351,11 @@ class _HomeTabState extends State<HomeTab> {
                       alignment: Alignment.centerLeft,
                       color: AppColors.getBackground(theme.brightness),
                       child: Text(
-                        l10n.get('today_transactions').toUpperCase(),
+                        "Giao dịch gần đây".toUpperCase(),
                         style: theme.textTheme.labelSmall?.copyWith(
                           letterSpacing: 1.5,
-                          fontWeight: FontWeight.w800, // Đồng bộ
-                          color: Colors.grey[700], // Đồng bộ
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey[700],
                         ),
                       ),
                     ),
@@ -280,23 +365,28 @@ class _HomeTabState extends State<HomeTab> {
                 if (todayTxs.isEmpty)
                   SliverToBoxAdapter(
                     child: Container(
-                      height: 250,
+                      height: 120,
                       alignment: Alignment.center,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Chưa có giao dịch nào.',
+                            'Chưa có giao dịch nào',
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: AppColors.getTextPrimary(theme.brightness),
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            'Các khoản thu chi trong ngày sẽ xuất hiện tại đây.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[500],
+                          SizedBox(
+                            width: 250,
+                            child: Text(
+                              'Các khoản thu chi trong ngày sẽ xuất hiện tại đây.',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: Colors.grey[500],
+                                height: 1.4,
+                              ),
                             ),
                           ),
                         ],
@@ -304,57 +394,109 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   )
                 else
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final tx = todayTxs[index];
-                      final cat = categories.firstWhere(
-                        (c) => c.id == tx.categoryId,
-                        orElse: () => CategoryModel(
-                          id: '?',
-                          name: '?',
-                          iconCode: Icons.help_outline.codePoint,
-                          isExpense: tx.isExpense,
-                        ),
-                      );
-                      return Padding(
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverToBoxAdapter(
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 4,
+                          vertical: 8,
                         ),
-                        child: SheepListTile(
-                          title: cat.name,
-                          subtitle: Text(
-                            tx.note.isEmpty ? l10n.get('no_note') : tx.note,
-                          ),
-                          trailing: Text(
-                            CurrencyUtil.formatByCurrency(
-                              tx.amount,
-                              settings.currencyCode ?? 'VND',
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.02),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
                             ),
-                            style: TextStyle(
-                              color: tx.isExpense
-                                  ? AppColors.expense
-                                  : AppColors.income,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          leading: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryLight,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              cat.iconData,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
-                          ),
+                          ],
                         ),
-                      );
-                    }, childCount: todayTxs.length),
-                  ),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: todayTxs.length,
+                          separatorBuilder: (context, index) => Divider(
+                            color: Colors.grey[200]!.withOpacity(0.5),
+                            height: 1,
+                            indent: 16,
+                            endIndent: 16,
+                          ),
+                          itemBuilder: (context, index) {
+                            final tx = todayTxs[index];
+                            final cat = categories.firstWhere(
+                              (c) => c.id == tx.categoryId,
+                              orElse: () => CategoryModel(
+                                id: '?',
+                                name: '?',
+                                iconCode: Icons.help_outline.codePoint,
+                                isExpense: tx.isExpense,
+                              ),
+                            );
 
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      cat.iconData,
+                                      size: 18,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          tx.note.isEmpty ? cat.name : tx.note,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          DateFormat('HH:mm').format(tx.date),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey[400],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    '${settings.currencyCode ?? 'VND'} ${tx.isExpense ? '-' : '+'} ${CurrencyUtil.formatNumber(tx.amount)}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      color: tx.isExpense
+                                          ? AppColors.expense
+                                          : AppColors.income,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
                 const SliverToBoxAdapter(child: SizedBox(height: 140)),
               ],
             );
@@ -410,7 +552,6 @@ class _HomeTabState extends State<HomeTab> {
     List<Transaction> allTxs,
     String? currencyCode,
   ) {
-    final theme = Theme.of(context);
     double saved = allTxs
         .where((tx) => tx.categoryId == cat.id)
         .fold<double>(0.0, (sum, tx) => sum + tx.amount);
@@ -419,50 +560,54 @@ class _HomeTabState extends State<HomeTab> {
     double progress = (saved / target).clamp(0.0, 1.0);
 
     return Container(
-      width: 140,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      child: SheepCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 3,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.income),
-                  ),
+      width: 96, // Thu hẹp card
+      margin: const EdgeInsets.only(
+        right: 4,
+      ), // Thu hẹp khoảng cách giữa các item
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 3.5,
+                  backgroundColor: Colors.grey[100],
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.black),
                 ),
-                Icon(cat.iconData, color: AppColors.primary, size: 20),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              cat.name,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              CurrencyUtil.formatByCurrency(saved, currencyCode ?? 'VND'),
-              style: TextStyle(
-                color: AppColors.getTextSecondary(theme.brightness),
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
+              Icon(
+                cat.iconData,
+                color: Color(cat.colorValue ?? Colors.black.value),
+                size: 24,
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            cat.name,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
             ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${currencyCode ?? 'VND'} ${CurrencyUtil.formatCompact(saved)}',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
