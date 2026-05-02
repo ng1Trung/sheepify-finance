@@ -305,22 +305,26 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.getBackground(theme.brightness),
-      appBar: _currentIndex == 0
+      appBar: (_currentIndex == 0 || _currentIndex == 1)
           ? null
           : AppBar(
               elevation: 0,
               centerTitle: true,
               backgroundColor: Colors.transparent,
-              toolbarHeight:
-                  (_currentIndex == 3 || _currentIndex == 4) ? 60 : 100,
+              toolbarHeight: (_currentIndex == 3 || _currentIndex == 4)
+                  ? 60
+                  : 100,
               title: buildAppBarTitle(),
               actions: [
                 if (_currentIndex == 3)
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
                     child: IconButton(
-                      icon: const Icon(Icons.add_circle_outline_rounded,
-                          color: Colors.black, size: 28),
+                      icon: const Icon(
+                        Icons.add_circle_outline_rounded,
+                        color: Colors.black,
+                        size: 28,
+                      ),
                       onPressed: _showAddCategoryForm,
                     ),
                   ),

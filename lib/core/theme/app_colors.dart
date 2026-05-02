@@ -26,32 +26,43 @@ class AppColors {
   ];
 
   static ColorPalette getPalette(String name) {
-    return palettes.firstWhere((p) => p.name == name, orElse: () => palettes[0]);
+    return palettes.firstWhere(
+      (p) => p.name == name,
+      orElse: () => palettes[0],
+    );
   }
 
   // Base Colors
   static const Color primary = Color(0xFF1A1A1A); // Black as Primary
   static const Color primaryLight = Color(0xFFF1F1F1);
   static const Color expense = Color(0xFFEE6055); // Professional Red
-  static const Color income = Color(0xFF20C997);  // Professional Green
+  static const Color income = Color(0xFF20C997); // Professional Green
   static const Color savings = Color(0xFF1A1A1A);
-  
+
   // Backward compatibility constants (Light Mode defaults)
   static const Color bgLight = Color(0xFFF2F2F7);
   static const Color surfLight = Color(0xFFFFFFFF);
-  static const Color textPriLight = Color(0xFF000000); // Absolute Black for maximum clarity
+  static const Color textPriLight = Color(
+    0xFF000000,
+  ); // Absolute Black for maximum clarity
   static const Color textSecLight = Color(0xFF616161); // Clearer Gray
 
   // Dynamic Background & Surface
-  static Color getBackground(Brightness b) => b == Brightness.light ? bgLight : const Color(0xFF0D0D0D);
-  static Color getSurface(Brightness b) => b == Brightness.light ? surfLight : const Color(0xFF1A1A1A);
-  static Color getTextPrimary(Brightness b) => b == Brightness.light ? textPriLight : const Color(0xFFFFFFFF);
-  static Color getTextSecondary(Brightness b) => b == Brightness.light ? textSecLight : const Color(0xFFAAAAAA);
+  static Color getBackground(Brightness b) =>
+      b == Brightness.light ? bgLight : const Color(0xFF0D0D0D);
+  static Color getSurface(Brightness b) =>
+      b == Brightness.light ? surfLight : const Color(0xFF1A1A1A);
+  static Color getTextPrimary(Brightness b) =>
+      b == Brightness.light ? textPriLight : const Color(0xFFFFFFFF);
+  static Color getTextSecondary(Brightness b) =>
+      b == Brightness.light ? textSecLight : const Color(0xFFAAAAAA);
 
   // Effects
   static List<BoxShadow> getSoftShadow(Brightness b) => [
     BoxShadow(
-      color: b == Brightness.light ? Colors.black.withOpacity(0.03) : Colors.black.withOpacity(0.2),
+      color: b == Brightness.light
+          ? Colors.black.withOpacity(0.03)
+          : Colors.black.withOpacity(0.2),
       blurRadius: 15,
       offset: const Offset(0, 5),
     ),

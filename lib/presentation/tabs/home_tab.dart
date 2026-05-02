@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:line_icons/line_icons.dart';
+import 'package:lottie/lottie.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/currency_util.dart';
@@ -53,18 +54,13 @@ class _HomeTabState extends State<HomeTab> {
                 .where((c) => c.typeIndex == 2)
                 .toList();
 
-            // 3. Filter Today's Transactions
+            // 3. Filter Recent Transactions (Last 7 Days)
             final now = DateTime.now();
-            final todayTxs =
-                transactions
-                    .where(
-                      (tx) =>
-                          tx.date.year == now.year &&
-                          tx.date.month == now.month &&
-                          tx.date.day == now.day,
-                    )
-                    .toList()
-                  ..sort((a, b) => b.date.compareTo(a.date));
+            final sevenDaysAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+            final recentTxs = transactions
+                .where((tx) => tx.date.isAfter(sevenDaysAgo.subtract(const Duration(seconds: 1))))
+                .toList()
+              ..sort((a, b) => b.date.compareTo(a.date));
 
             final topPadding = MediaQuery.of(context).padding.top;
 
@@ -362,34 +358,46 @@ class _HomeTabState extends State<HomeTab> {
                   ),
                 ),
 
-                if (todayTxs.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Container(
-                      height: 120,
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Chưa có giao dịch nào',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.getTextPrimary(theme.brightness),
+                if (recentTxs.isEmpty)
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverToBoxAdapter(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.015),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: 250,
-                            child: Text(
-                              'Các khoản thu chi trong ngày sẽ xuất hiện tại đây.',
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Lottie.asset('assets/empty.json', width: 180),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Chưa có giao dịch gần đây',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.getTextPrimary(theme.brightness),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Các khoản thu chi trong 7 ngày qua sẽ xuất hiện tại đây.',
                               textAlign: TextAlign.center,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: Colors.grey[500],
                                 height: 1.4,
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   )
@@ -400,16 +408,16 @@ class _HomeTabState extends State<HomeTab> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 8,
+                          vertical: 12, // Tăng thêm một chút padding dọc
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: BorderRadius.circular(32), // Đồng bộ 32px
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              color: Colors.black.withOpacity(0.015), // Đồng bộ shadow
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
                             ),
                           ],
                         ),
@@ -417,7 +425,7 @@ class _HomeTabState extends State<HomeTab> {
                           shrinkWrap: true,
                           padding: EdgeInsets.zero,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: todayTxs.length,
+                          itemCount: recentTxs.length,
                           separatorBuilder: (context, index) => Divider(
                             color: Colors.grey[200]!.withOpacity(0.5),
                             height: 1,
@@ -425,7 +433,7 @@ class _HomeTabState extends State<HomeTab> {
                             endIndent: 16,
                           ),
                           itemBuilder: (context, index) {
-                            final tx = todayTxs[index];
+                            final tx = recentTxs[index];
                             final cat = categories.firstWhere(
                               (c) => c.id == tx.categoryId,
                               orElse: () => CategoryModel(
@@ -469,7 +477,7 @@ class _HomeTabState extends State<HomeTab> {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         Text(
-                                          DateFormat('HH:mm').format(tx.date),
+                                          DateFormat('dd/MM HH:mm').format(tx.date), // Thêm ngày vì hiển thị 7 ngày
                                           style: TextStyle(
                                             fontSize: 11,
                                             color: Colors.grey[400],
