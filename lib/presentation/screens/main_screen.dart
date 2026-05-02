@@ -420,7 +420,7 @@ class _MainScreenState extends State<MainScreen> {
           _selectedDate = DateTime.now();
         });
       },
-      child: Icon(icon, color: color, size: 28),
+      child: Icon(icon, color: color, size: 32), // Tăng từ 28 lên 32
     );
   }
 
@@ -428,8 +428,8 @@ class _MainScreenState extends State<MainScreen> {
     return GestureDetector(
       onTap: _showAddTransactionForm,
       child: Container(
-        width: 48,
-        height: 48,
+        width: 52, // Tăng từ 48 lên 52
+        height: 52, // Tăng từ 48 lên 52
         decoration: BoxDecoration(
           color: Colors.black,
           shape: BoxShape.circle,
@@ -441,7 +441,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ],
         ),
-        child: const Icon(Icons.add, color: Colors.white, size: 24),
+        child: const Icon(Icons.add, color: Colors.white, size: 30), // Tăng từ 24 lên 30
       ),
     );
   }
