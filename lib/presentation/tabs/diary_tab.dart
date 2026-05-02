@@ -129,7 +129,7 @@ class _DiaryTabState extends State<DiaryTab> {
                     vertical: 8,
                   ),
                   child: SheepCard(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
                         Text(
@@ -138,7 +138,9 @@ class _DiaryTabState extends State<DiaryTab> {
                               : l10n.get('daily_balance'),
                           style: Theme.of(
                             context,
-                          ).textTheme.labelSmall?.copyWith(letterSpacing: 1),
+                          ).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.getTextSecondary(theme.brightness),
+                          ),
                         ),
                         const SizedBox(height: 5),
                         Text(
@@ -158,7 +160,7 @@ class _DiaryTabState extends State<DiaryTab> {
                             Container(width: 1, height: 20, color: theme.dividerColor),
                             _buildStatItem(l10n.expense, totalExpense, AppColors.expense, settings.languageCode),
                             Container(width: 1, height: 20, color: theme.dividerColor),
-                            _buildStatItem(l10n.balance, totalIncome - totalExpense, theme.primaryColor, settings.languageCode),
+                            _buildStatItem(l10n.balance, totalIncome - totalExpense, AppColors.getTextPrimary(theme.brightness), settings.languageCode),
                           ],
                         ),
                       ],
@@ -219,10 +221,10 @@ class _DiaryTabState extends State<DiaryTab> {
                                         'EEEE, dd/MM/yyyy',
                                         'en_US',
                                       ).format(DateTime.parse(dKey)),
-                                      style: theme.textTheme.labelSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.getTextPrimary(theme.brightness),
+                                      ),
                                     ),
                                   ),
                                 ...dayTxs.map((tx) {
@@ -276,12 +278,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                       leading: Container(
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: (cat.colorValue != null
-                                                  ? Color(cat.colorValue!)
-                                                  : (tx.isExpense
-                                                      ? AppColors.expense
-                                                      : AppColors.income))
-                                              .withOpacity(0.08),
+                                          color: AppColors.primaryLight,
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
@@ -291,11 +288,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                             cat.iconCode,
                                             fontFamily: 'MaterialIcons',
                                           ),
-                                          color: cat.colorValue != null
-                                              ? Color(cat.colorValue!)
-                                              : (tx.isExpense
-                                                  ? AppColors.expense
-                                                  : AppColors.income),
+                                          color: AppColors.primary,
                                           size: 20,
                                         ),
                                       ),

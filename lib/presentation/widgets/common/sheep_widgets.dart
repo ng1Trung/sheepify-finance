@@ -29,7 +29,7 @@ class SheepCard extends StatelessWidget {
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color ?? AppColors.getSurface(brightness),
-        borderRadius: BorderRadius.circular(borderRadius ?? 20),
+        borderRadius: BorderRadius.circular(borderRadius ?? 16),
         border: border,
         boxShadow: AppColors.getSoftShadow(brightness),
       ),
@@ -62,7 +62,8 @@ class SheepButton extends StatelessWidget {
     final style = ElevatedButton.styleFrom(
       backgroundColor: backgroundColor ?? theme.primaryColor,
       foregroundColor: foregroundColor ?? Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      minimumSize: Size.fromHeight(icon != null ? 56 : 48), // Use icon presence as proxy for primary actions
     );
 
     Widget buttonChild = icon != null
@@ -109,7 +110,7 @@ class SheepListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return SheepCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         onTap: onTap,
         child: Row(
@@ -124,10 +125,7 @@ class SheepListTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
                   if (subtitle != null) subtitle!,
                 ],

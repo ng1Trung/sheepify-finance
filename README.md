@@ -29,11 +29,12 @@
 - **Modern Input Experience**: Replaced clunky list pickers with a compact, Apple-inspired **Wheel Picker** for Month, Year, and Day selection within a smooth bottom sheet.
 - **Extended Planning**: Support for long-term goals up to the year 2100.
 
-### 5. Premium Design & UX
-- **Sheep Design System**: Custom widget system (SheepCard, SheepButton, SheepListTile) ensures consistency and elegance.
-- **Lottie Notification System**: High-quality animations for category milestones (Budget Exceeded 🔴, Goal Reached 🏆) using Lottie files for a truly "alive" UI.
-- **Smooth Transitions**: Horizontal PageView-based navigation for Category tabs to eliminate layout shifts and provide a premium feel.
-- **Glassmorphism**: Subtle blur effects and soft shadows for a modern aesthetic.
+### 5. Premium Design & UX (v2.0)
+- **Absolute Minimalist System**: Strictly follows the [Sheepify Design System (v2.0)](./DESIGN_SYSTEM.md) targeting a "Black & White / High-Contrast" aesthetic.
+- **Color with Purpose**: Color is strictly reserved for financial flow status (Income: Green 🟢, Expense: Red 🔴), while the core UI remains neutral.
+- **Refined Aesthetics**: Off-white backgrounds, pitch-black text for clarity, and 16px rounded cards inspired by Uber/Fuse designs.
+- **Lottie Notification System**: High-quality animations for category milestones.
+- **Smooth Transitions**: Horizontal PageView-based navigation for Category tabs.
 
 ### 6. Privacy & Security
 - **Offline-First**: All data is stored locally on your device using Hive. Your financial life never leaves your phone.

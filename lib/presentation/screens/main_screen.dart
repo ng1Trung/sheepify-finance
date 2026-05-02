@@ -7,6 +7,7 @@ import 'package:line_icons/line_icons.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
 import '../widgets/transaction_form.dart';
+import '../tabs/home_tab.dart';
 import '../tabs/stats_tab.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
@@ -25,7 +26,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 1;
+  int _currentIndex = 0; // Bắt đầu từ Trang chủ
 
   // TIME AND VIEW MODE MANAGEMENT
   DateTime _selectedDate = DateTime.now();
@@ -108,8 +109,10 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildModeToggleItem(String title, bool isActive) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
-    final displayTitle = title == 'Ngày' ? l10n.get('day') : (title == 'Tháng' ? l10n.get('month') : title);
-    
+    final displayTitle = title == 'Ngày'
+        ? l10n.get('day')
+        : (title == 'Tháng' ? l10n.get('month') : title);
+
     return GestureDetector(
       onTap: () => setState(() => _isMonthlyView = (title == 'Tháng')),
       child: Container(
@@ -133,7 +136,9 @@ class _MainScreenState extends State<MainScreen> {
           style: theme.textTheme.labelSmall?.copyWith(
             fontSize: 12,
             fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-            color: isActive ? theme.primaryColor : AppColors.getTextSecondary(theme.brightness),
+            color: isActive
+                ? theme.primaryColor
+                : AppColors.getTextSecondary(theme.brightness),
           ),
         ),
       ),
@@ -147,7 +152,10 @@ class _MainScreenState extends State<MainScreen> {
 
     // PREMIUM APPBAR NAVIGATOR
     Widget buildAppBarTitle() {
-      if (_currentIndex == 2) {
+      if (_currentIndex == 0) {
+        return const SizedBox.shrink(); // HomeTab handles its own header
+      }
+      if (_currentIndex == 3) {
         return Text(
           l10n.categories,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -156,7 +164,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
         );
       }
-      if (_currentIndex == 3) {
+      if (_currentIndex == 4) {
         return Text(
           l10n.settings,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -166,9 +174,13 @@ class _MainScreenState extends State<MainScreen> {
         );
       }
 
+      if (_currentIndex == 0 || _currentIndex == 3 || _currentIndex == 4) {
+        return const SizedBox.shrink();
+      }
+
       String dateText;
       final locale = Localizations.localeOf(context).toString();
-      if (_currentIndex == 0 || _isMonthlyView) {
+      if (_currentIndex == 1 || _isMonthlyView) {
         dateText = DateFormat('MMMM yyyy', locale).format(_selectedDate);
       } else {
         dateText = DateFormat('dd/MM/yyyy', locale).format(_selectedDate);
@@ -177,13 +189,15 @@ class _MainScreenState extends State<MainScreen> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // MODE TOGGLE (DAY/MONTH) - ONLY IN DIARY TAB
-          if (_currentIndex == 1)
+          // MODE TOGGLE (DAY/MONTH) - ONLY IN DIARY TAB (Index 2)
+          if (_currentIndex == 2)
             Container(
               height: 32,
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: theme.brightness == Brightness.light ? Colors.grey[100] : Colors.white.withOpacity(0.05),
+                color: theme.brightness == Brightness.light
+                    ? Colors.grey[100]
+                    : Colors.white.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: theme.dividerColor, width: 0.5),
               ),
@@ -202,50 +216,52 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_back_ios_new,
                   size: 14,
-                  color: AppColors.primary,
+                  color: AppColors.getTextPrimary(theme.brightness),
                 ),
                 onPressed: () => _changeTime(-1),
               ),
               InkWell(
                 onTap: _pickTime,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.brightness == Brightness.light ? Colors.white : AppColors.getSurface(theme.brightness),
-                    borderRadius: BorderRadius.circular(20),
+                    color: theme.brightness == Brightness.light
+                        ? Colors.white
+                        : AppColors.getSurface(theme.brightness),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.primaryColor.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        (_currentIndex == 0 || _isMonthlyView)
+                        (_currentIndex == 1 || _isMonthlyView)
                             ? Icons.calendar_month
                             : Icons.calendar_today,
                         size: 14,
-                        color: theme.primaryColor,
+                        color: AppColors.getTextPrimary(theme.brightness),
                       ),
                       const SizedBox(width: 10),
                       Text(
                         dateText,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: theme.primaryColor,
-                          ),
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.getTextPrimary(theme.brightness),
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -255,7 +271,7 @@ class _MainScreenState extends State<MainScreen> {
                 icon: Icon(
                   Icons.arrow_forward_ios,
                   size: 14,
-                  color: theme.primaryColor,
+                  color: AppColors.getTextPrimary(theme.brightness),
                 ),
                 onPressed: () => _changeTime(1),
               ),
@@ -268,15 +284,19 @@ class _MainScreenState extends State<MainScreen> {
     Widget buildBody() {
       switch (_currentIndex) {
         case 0:
-          return StatsTab(currentMonth: _selectedDate);
+          return HomeTab(
+            onViewAllSavings: () => setState(() => _currentIndex = 3),
+          );
         case 1:
+          return StatsTab(currentMonth: _selectedDate);
+        case 2:
           return DiaryTab(
             selectedDate: _selectedDate,
             isMonthly: _isMonthlyView,
           );
-        case 2:
-          return const CategoryTab();
         case 3:
+          return const CategoryTab();
+        case 4:
           return const SettingsTab();
         default:
           return const SizedBox();
@@ -285,62 +305,71 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.getBackground(theme.brightness),
-      appBar: AppBar(
-        elevation: 0,
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        toolbarHeight: (_currentIndex == 2 || _currentIndex == 3) ? 60 : 100,
-        title: buildAppBarTitle(),
-      ),
+      appBar: (_currentIndex == 0 || _currentIndex == 1)
+          ? null
+          : AppBar(
+              elevation: 0,
+              centerTitle: true,
+              backgroundColor: Colors.transparent,
+              toolbarHeight: (_currentIndex == 3 || _currentIndex == 4)
+                  ? 60
+                  : 100,
+              title: buildAppBarTitle(),
+              actions: [
+                if (_currentIndex == 3)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.add_circle_outline_rounded,
+                        color: Colors.black,
+                        size: 28,
+                      ),
+                      onPressed: _showAddCategoryForm,
+                    ),
+                  ),
+              ],
+            ),
       body: buildBody(),
-      floatingActionButton: (_currentIndex == 1 || _currentIndex == 2)
-          ? FloatingActionButton(
-              onPressed: _currentIndex == 1
-                  ? _showAddTransactionForm
-                  : _showAddCategoryForm,
-              backgroundColor: theme.primaryColor,
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(
-                _currentIndex == 1 ? Icons.add : Icons.create_new_folder,
-                color: Colors.white,
-                size: 30,
-              ),
-            )
-          : null,
-      bottomNavigationBar: SafeArea(
+      bottomNavigationBar: BottomAppBar(
+        color: AppColors.getSurface(theme.brightness),
+        elevation: 0,
+        padding: EdgeInsets.zero,
         child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          height: 130, // Tăng chiều cao để chứa nút 84px
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           decoration: BoxDecoration(
             color: AppColors.getSurface(theme.brightness),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: AppColors.getSoftShadow(theme.brightness),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: GNav(
-              gap: 8,
-              activeColor: theme.primaryColor,
-              iconSize: 22,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              tabBackgroundColor: theme.primaryColor.withOpacity(0.08),
-              color: AppColors.getTextSecondary(theme.brightness),
-              tabs: [
-                GButton(icon: LineIcons.pieChart, text: l10n.stats),
-                GButton(icon: LineIcons.book, text: l10n.get('diary')),
-                GButton(icon: LineIcons.tags, text: l10n.categories),
-                GButton(icon: LineIcons.user, text: l10n.settings),
-              ],
-              selectedIndex: _currentIndex,
-              onTabChange: (index) {
-                setState(() {
-                  _currentIndex = index;
-                  _selectedDate = DateTime.now();
-                });
-              },
+            border: Border(
+              top: BorderSide(color: Colors.black.withOpacity(0.05), width: 1),
             ),
+          ),
+          child: Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // Căn giữa tuyệt đối theo trục dọc
+            children: [
+              // --- LEFT: TAB ICONS ---
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildIconNavItem(0, Icons.home_rounded),
+                    const SizedBox(width: 18),
+                    _buildIconNavItem(1, Icons.pie_chart_rounded),
+                    const SizedBox(width: 18),
+                    _buildIconNavItem(2, Icons.history_rounded),
+                    const SizedBox(width: 18),
+                    _buildIconNavItem(3, Icons.style_rounded),
+                    const SizedBox(width: 18),
+                    _buildIconNavItem(4, Icons.settings_rounded),
+                  ],
+                ),
+              ),
+
+              // --- RIGHT: ADD BUTTON ---
+              _buildRightAddButton(),
+            ],
           ),
         ),
       ),
@@ -377,6 +406,43 @@ class _MainScreenState extends State<MainScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => const CategoryForm(category: null),
+    );
+  }
+
+  Widget _buildIconNavItem(int index, IconData icon) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? Colors.black : Colors.grey[400];
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentIndex = index;
+          _selectedDate = DateTime.now();
+        });
+      },
+      child: Icon(icon, color: color, size: 32), // Tăng từ 28 lên 32
+    );
+  }
+
+  Widget _buildRightAddButton() {
+    return GestureDetector(
+      onTap: _showAddTransactionForm,
+      child: Container(
+        width: 52, // Tăng từ 48 lên 52
+        height: 52, // Tăng từ 48 lên 52
+        decoration: BoxDecoration(
+          color: Colors.black,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.add, color: Colors.white, size: 30), // Tăng từ 24 lên 30
+      ),
     );
   }
 }
