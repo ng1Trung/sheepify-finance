@@ -28,7 +28,8 @@ class SheepTypeToggle extends StatelessWidget {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE8E8E8)),
           ),
           child: Stack(
             children: [
@@ -41,16 +42,32 @@ class SheepTypeToggle extends StatelessWidget {
                 bottom: 0,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.light ? Colors.white : AppColors.getSurface(Theme.of(context).brightness),
-                    borderRadius: BorderRadius.circular(21),
-                    boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? Colors.white
+                        : AppColors.getSurface(Theme.of(context).brightness),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: AppColors.getSoftShadow(
+                      Theme.of(context).brightness,
+                    ),
                   ),
                 ),
               ),
               Row(
                 children: [
-                   _buildToggleItem(context, leftLabel ?? L10n.of(context).get('expense'), isExpense, AppColors.expense, () => onChanged(true)),
-                   _buildToggleItem(context, rightLabel ?? L10n.of(context).get('income'), !isExpense, AppColors.income, () => onChanged(false)),
+                  _buildToggleItem(
+                    context,
+                    leftLabel ?? L10n.of(context).get('expense'),
+                    isExpense,
+                    AppColors.primary,
+                    () => onChanged(true),
+                  ),
+                  _buildToggleItem(
+                    context,
+                    rightLabel ?? L10n.of(context).get('income'),
+                    !isExpense,
+                    AppColors.primary,
+                    () => onChanged(false),
+                  ),
                 ],
               ),
             ],
@@ -60,7 +77,13 @@ class SheepTypeToggle extends StatelessWidget {
     );
   }
 
-  Widget _buildToggleItem(BuildContext context, String title, bool isActive, Color color, VoidCallback onTap) {
+  Widget _buildToggleItem(
+    BuildContext context,
+    String title,
+    bool isActive,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -71,7 +94,9 @@ class SheepTypeToggle extends StatelessWidget {
             style: Theme.of(context).textTheme.labelSmall!.copyWith(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: isActive ? color : Theme.of(context).textTheme.labelSmall?.color,
+              color: isActive
+                  ? color
+                  : Theme.of(context).textTheme.labelSmall?.color,
             ),
             child: Text(title),
           ),
@@ -100,7 +125,9 @@ class SheepTripleToggle extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final l10n = L10n.of(context);
-        final currentLabels = labels ?? [l10n.get('expense'), l10n.get('income'), l10n.get('savings')];
+        final currentLabels =
+            labels ??
+            [l10n.get('expense'), l10n.get('income'), l10n.get('savings')];
         final totalWidth = constraints.maxWidth;
         final itemWidth = (totalWidth - 8) / currentLabels.length;
 
@@ -109,50 +136,46 @@ class SheepTripleToggle extends StatelessWidget {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE8E8E8)),
           ),
           child: Stack(
             children: [
               // SLIDING INDICATOR DRIVEN BY CONTROLLER OR INDEX
-              controller != null 
-                ? AnimatedBuilder(
-                    animation: controller!,
-                    builder: (context, _) {
-                      double page = selectedIndex.toDouble();
-                      if (controller!.hasClients) {
-                        try {
-                          page = controller!.page ?? selectedIndex.toDouble();
-                        } catch (_) {}
-                      }
-                      return Positioned(
-                        left: page * itemWidth,
-                        width: itemWidth,
-                        top: 0,
-                        bottom: 0,
-                        child: _buildIndicator(context),
-                      );
-                    },
-                  )
-                : AnimatedPositioned(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    left: selectedIndex * itemWidth,
-                    width: itemWidth,
-                    top: 0,
-                    bottom: 0,
-                    child: _buildIndicator(context),
-                  ),
-              
+              controller != null
+                  ? AnimatedBuilder(
+                      animation: controller!,
+                      builder: (context, _) {
+                        double page = selectedIndex.toDouble();
+                        if (controller!.hasClients) {
+                          try {
+                            page = controller!.page ?? selectedIndex.toDouble();
+                          } catch (_) {}
+                        }
+                        return Positioned(
+                          left: page * itemWidth,
+                          width: itemWidth,
+                          top: 0,
+                          bottom: 0,
+                          child: _buildIndicator(context),
+                        );
+                      },
+                    )
+                  : AnimatedPositioned(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      left: selectedIndex * itemWidth,
+                      width: itemWidth,
+                      top: 0,
+                      bottom: 0,
+                      child: _buildIndicator(context),
+                    ),
+
               // TEXT LABELS
               Row(
                 children: List.generate(currentLabels.length, (index) {
                   final isActive = selectedIndex == index;
-                  Color activeColor;
-                  switch (index) {
-                    case 0: activeColor = AppColors.expense; break;
-                    case 1: activeColor = AppColors.income; break;
-                    default: activeColor = AppColors.savings; break;
-                  }
+                  const activeColor = AppColors.primary;
 
                   return Expanded(
                     child: GestureDetector(
@@ -161,11 +184,16 @@ class SheepTripleToggle extends StatelessWidget {
                       child: Center(
                         child: AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 200),
-                          style: Theme.of(context).textTheme.labelSmall!.copyWith(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isActive ? activeColor : Theme.of(context).textTheme.labelSmall?.color,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall!
+                              .copyWith(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isActive
+                                    ? activeColor
+                                    : Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall?.color,
+                              ),
                           child: Text(currentLabels[index]),
                         ),
                       ),
@@ -183,8 +211,10 @@ class SheepTripleToggle extends StatelessWidget {
   Widget _buildIndicator(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.light ? Colors.white : AppColors.getSurface(Theme.of(context).brightness),
-        borderRadius: BorderRadius.circular(21),
+        color: Theme.of(context).brightness == Brightness.light
+            ? Colors.white
+            : AppColors.getSurface(Theme.of(context).brightness),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
       ),
     );

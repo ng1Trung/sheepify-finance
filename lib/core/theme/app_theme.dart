@@ -3,7 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
-  static ThemeData getTheme(ColorPalette palette, bool isDarkMode, String fontFamily) {
+  static ThemeData getTheme(
+    ColorPalette palette,
+    bool isDarkMode,
+    String fontFamily,
+  ) {
     final brightness = isDarkMode ? Brightness.dark : Brightness.light;
     final primary = palette.primary;
     final background = AppColors.getBackground(brightness);
@@ -44,6 +48,8 @@ class AppTheme {
     }
 
     final baseTextTheme = resolveTextTheme(fontFamily);
+
+    const outlineColor = Color(0xFFE8E8E8);
 
     return ThemeData(
       useMaterial3: true,
@@ -113,7 +119,7 @@ class AppTheme {
           elevation: 0,
           minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: baseTextTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.bold,
@@ -124,25 +130,26 @@ class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primary, // Black
         foregroundColor: Colors.white,
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: outlineColor),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: outlineColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: primary, width: 1.5),
         ),
         labelStyle: baseTextTheme.bodyMedium?.copyWith(color: textSecondary),
@@ -153,8 +160,8 @@ class AppTheme {
         selectedColor: primary, // Black
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: outlineColor),
         ),
         labelStyle: baseTextTheme.bodyMedium?.copyWith(
           color: textPrimary,

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
-import 'package:line_icons/line_icons.dart';
 
 import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
@@ -16,7 +14,7 @@ import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/l10n.dart';
 
-import '../widgets/common/sheep_notifications.dart';
+import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_widgets.dart';
 
 class MainScreen extends StatefulWidget {
@@ -106,45 +104,6 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  Widget _buildModeToggleItem(String title, bool isActive) {
-    final theme = Theme.of(context);
-    final l10n = L10n.of(context);
-    final displayTitle = title == 'Ngày'
-        ? l10n.get('day')
-        : (title == 'Tháng' ? l10n.get('month') : title);
-
-    return GestureDetector(
-      onTap: () => setState(() => _isMonthlyView = (title == 'Tháng')),
-      child: Container(
-        width: 80,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          displayTitle,
-          style: theme.textTheme.labelSmall?.copyWith(
-            fontSize: 12,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-            color: isActive
-                ? theme.primaryColor
-                : AppColors.getTextSecondary(theme.brightness),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -191,22 +150,14 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           // MODE TOGGLE (DAY/MONTH) - ONLY IN DIARY TAB (Index 2)
           if (_currentIndex == 2)
-            Container(
-              height: 32,
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: theme.brightness == Brightness.light
-                    ? Colors.grey[100]
-                    : Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: theme.dividerColor, width: 0.5),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildModeToggleItem('Ngày', !_isMonthlyView),
-                  _buildModeToggleItem('Tháng', _isMonthlyView),
-                ],
+            SizedBox(
+              width: 180,
+              child: SheepTripleToggle(
+                selectedIndex: _isMonthlyView ? 1 : 0,
+                labels: [l10n.get('day'), l10n.get('month')],
+                onChanged: (index) {
+                  setState(() => _isMonthlyView = index == 1);
+                },
               ),
             ),
           const SizedBox(height: 8),
@@ -336,12 +287,12 @@ class _MainScreenState extends State<MainScreen> {
         elevation: 0,
         padding: EdgeInsets.zero,
         child: Container(
-          height: 130, // Tăng chiều cao để chứa nút 84px
+          height: 92,
           padding: const EdgeInsets.symmetric(horizontal: 24),
           decoration: BoxDecoration(
             color: AppColors.getSurface(theme.brightness),
             border: Border(
-              top: BorderSide(color: Colors.black.withOpacity(0.05), width: 1),
+              top: BorderSide(color: Colors.black.withOpacity(0.08), width: 1),
             ),
           ),
           child: Row(
@@ -420,7 +371,7 @@ class _MainScreenState extends State<MainScreen> {
           _selectedDate = DateTime.now();
         });
       },
-      child: Icon(icon, color: color, size: 32), // Tăng từ 28 lên 32
+      child: Icon(icon, color: color, size: 26),
     );
   }
 
@@ -429,19 +380,19 @@ class _MainScreenState extends State<MainScreen> {
       onTap: _showAddTransactionForm,
       child: Container(
         width: 52, // Tăng từ 48 lên 52
-        height: 52, // Tăng từ 48 lên 52
+        height: 52,
         decoration: BoxDecoration(
           color: Colors.black,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: Colors.black.withOpacity(0.10),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: const Icon(Icons.add, color: Colors.white, size: 30), // Tăng từ 24 lên 30
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
     );
   }

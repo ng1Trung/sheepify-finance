@@ -24,10 +24,10 @@ class AppSettings extends HiveObject {
 
   AppSettings({
     this.accumulateBalance = true,
-    this.themePresetName = 'Sheep Green',
+    this.themePresetName = 'Midnight Black',
     this.languageCode = 'vi',
     this.currencyCode = 'VND',
-    this.fontFamily = 'Quicksand',
+    this.fontFamily = 'Inter',
     this.isDarkMode = false,
   });
 }

@@ -16,6 +16,7 @@ import 'core/utils/l10n.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('vi_VN', null);
   await Hive.initFlutter();
   
   // Register Adapters

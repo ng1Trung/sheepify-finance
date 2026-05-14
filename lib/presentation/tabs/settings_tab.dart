@@ -50,15 +50,9 @@ class SettingsTab extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      l10n.userGreeting,
-                      style: theme.textTheme.titleLarge,
-                    ),
+                    Text(l10n.userGreeting, style: theme.textTheme.titleLarge),
                     const SizedBox(height: 4),
-                    Text(
-                      l10n.userSub,
-                      style: theme.textTheme.labelSmall,
-                    ),
+                    Text(l10n.userSub, style: theme.textTheme.labelSmall),
                   ],
                 ),
               ),
@@ -72,14 +66,23 @@ class SettingsTab extends StatelessWidget {
                 child: Column(
                   children: [
                     SwitchListTile(
-                      secondary: Icon(LineIcons.coins, color: theme.primaryColor),
+                      secondary: Icon(
+                        LineIcons.coins,
+                        color: theme.primaryColor,
+                      ),
                       title: Text(
                         l10n.accumulateBalance,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       subtitle: Text(
                         l10n.accumulateSubtitle,
-                        style: TextStyle(fontSize: 12, color: theme.textTheme.labelSmall?.color),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.textTheme.labelSmall?.color,
+                        ),
                       ),
                       value: settings.accumulateBalance,
                       activeColor: theme.primaryColor,
@@ -101,24 +104,24 @@ class SettingsTab extends StatelessWidget {
                 child: Row(
                   children: [
                     _buildModeItem(
-                      context, 
-                      'Light', 
-                      Icons.wb_sunny_rounded, 
-                      !settings.isDarkMode, 
+                      context,
+                      'Light',
+                      Icons.wb_sunny_rounded,
+                      !settings.isDarkMode,
                       () {
                         settings.isDarkMode = false;
                         settings.save();
-                      }
+                      },
                     ),
                     _buildModeItem(
-                      context, 
-                      'Dark', 
-                      Icons.nightlight_round, 
-                      settings.isDarkMode, 
+                      context,
+                      'Dark',
+                      Icons.nightlight_round,
+                      settings.isDarkMode,
                       () {
                         settings.isDarkMode = true;
                         settings.save();
-                      }
+                      },
                     ),
                   ],
                 ),
@@ -146,9 +149,11 @@ class SettingsTab extends StatelessWidget {
                         margin: const EdgeInsets.only(right: 12),
                         decoration: BoxDecoration(
                           color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected ? palette.primary : Colors.transparent,
+                            color: isSelected
+                                ? palette.primary
+                                : Colors.transparent,
                             width: 2,
                           ),
                           boxShadow: AppColors.getSoftShadow(theme.brightness),
@@ -162,17 +167,34 @@ class SettingsTab extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: palette.primary,
                                 shape: BoxShape.circle,
-                                border: isSelected ? Border.all(color: AppColors.getTextPrimary(theme.brightness).withOpacity(0.5), width: 2) : null,
+                                border: isSelected
+                                    ? Border.all(
+                                        color: AppColors.getTextPrimary(
+                                          theme.brightness,
+                                        ).withOpacity(0.5),
+                                        width: 2,
+                                      )
+                                    : null,
                               ),
-                              child: isSelected ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
+                              child: isSelected
+                                  ? const Icon(
+                                      Icons.check,
+                                      size: 16,
+                                      color: Colors.white,
+                                    )
+                                  : null,
                             ),
                             const SizedBox(height: 8),
                             Text(
                               palette.name.split(' ').last,
                               style: TextStyle(
                                 fontSize: 10,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                color: AppColors.getTextPrimary(theme.brightness),
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: AppColors.getTextPrimary(
+                                  theme.brightness,
+                                ),
                               ),
                             ),
                           ],
@@ -205,8 +227,14 @@ class SettingsTab extends StatelessWidget {
                           dropdownColor: theme.cardColor,
                           style: theme.textTheme.bodyMedium,
                           items: const [
-                            DropdownMenuItem(value: 'vi', child: Text('Tiếng Việt')),
-                            DropdownMenuItem(value: 'en', child: Text('English')),
+                            DropdownMenuItem(
+                              value: 'vi',
+                              child: Text('Tiếng Việt'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'en',
+                              child: Text('English'),
+                            ),
                           ],
                           onChanged: (val) {
                             if (val != null) {
@@ -229,9 +257,18 @@ class SettingsTab extends StatelessWidget {
                           dropdownColor: theme.cardColor,
                           style: theme.textTheme.bodyMedium,
                           items: const [
-                            DropdownMenuItem(value: 'VND', child: Text('VND (đ)')),
-                            DropdownMenuItem(value: 'USD', child: Text('USD (\$)')),
-                            DropdownMenuItem(value: 'EUR', child: Text('EUR (€)')),
+                            DropdownMenuItem(
+                              value: 'VND',
+                              child: Text('VND (đ)'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'USD',
+                              child: Text('USD (\$)'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'EUR',
+                              child: Text('EUR (€)'),
+                            ),
                           ],
                           onChanged: (val) {
                             if (val != null) {
@@ -287,40 +324,73 @@ class SettingsTab extends StatelessWidget {
   Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1.2, fontWeight: FontWeight.bold),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        letterSpacing: 1.2,
+        fontWeight: FontWeight.bold,
+      ),
     );
   }
 
-  Widget _buildFontItem(BuildContext context, String font, AppSettings settings) {
+  Widget _buildFontItem(
+    BuildContext context,
+    String font,
+    AppSettings settings,
+  ) {
     final isSelected = settings.fontFamily == font;
     final theme = Theme.of(context);
-    
+
     // Determine the text style for this specific font
     TextStyle fontStyle;
     switch (font) {
-      case 'Inter': fontStyle = GoogleFonts.inter(); break;
-      case 'Montserrat': fontStyle = GoogleFonts.montserrat(); break;
-      case 'Roboto': fontStyle = GoogleFonts.roboto(); break;
-      case 'Be Vietnam Pro': fontStyle = GoogleFonts.beVietnamPro(); break;
-      case 'Comfortaa': fontStyle = GoogleFonts.comfortaa(); break;
-      case 'Lexend': fontStyle = GoogleFonts.lexend(); break;
-      case 'Bungee': fontStyle = GoogleFonts.bungee(); break;
-      case 'Righteous': fontStyle = GoogleFonts.righteous(); break;
-      case 'Pacifico': fontStyle = GoogleFonts.pacifico(); break;
-      case 'Special Elite': fontStyle = GoogleFonts.specialElite(); break;
-      default: fontStyle = GoogleFonts.quicksand(); break;
+      case 'Inter':
+        fontStyle = GoogleFonts.inter();
+        break;
+      case 'Montserrat':
+        fontStyle = GoogleFonts.montserrat();
+        break;
+      case 'Roboto':
+        fontStyle = GoogleFonts.roboto();
+        break;
+      case 'Be Vietnam Pro':
+        fontStyle = GoogleFonts.beVietnamPro();
+        break;
+      case 'Comfortaa':
+        fontStyle = GoogleFonts.comfortaa();
+        break;
+      case 'Lexend':
+        fontStyle = GoogleFonts.lexend();
+        break;
+      case 'Bungee':
+        fontStyle = GoogleFonts.bungee();
+        break;
+      case 'Righteous':
+        fontStyle = GoogleFonts.righteous();
+        break;
+      case 'Pacifico':
+        fontStyle = GoogleFonts.pacifico();
+        break;
+      case 'Special Elite':
+        fontStyle = GoogleFonts.specialElite();
+        break;
+      default:
+        fontStyle = GoogleFonts.quicksand();
+        break;
     }
 
     return ListTile(
       title: Text(
-        font, 
+        font,
         style: fontStyle.copyWith(
           fontSize: 15,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isSelected ? theme.primaryColor : theme.textTheme.bodyLarge?.color,
-        )
+          color: isSelected
+              ? theme.primaryColor
+              : theme.textTheme.bodyLarge?.color,
+        ),
       ),
-      trailing: isSelected ? Icon(Icons.check, color: theme.primaryColor) : null,
+      trailing: isSelected
+          ? Icon(Icons.check, color: theme.primaryColor)
+          : null,
       onTap: () {
         settings.fontFamily = font;
         settings.save();
@@ -328,7 +398,13 @@ class SettingsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildModeItem(BuildContext context, String label, IconData icon, bool isActive, VoidCallback onTap) {
+  Widget _buildModeItem(
+    BuildContext context,
+    String label,
+    IconData icon,
+    bool isActive,
+    VoidCallback onTap,
+  ) {
     final theme = Theme.of(context);
     return Expanded(
       child: GestureDetector(
@@ -336,13 +412,15 @@ class SettingsTab extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: isActive ? theme.primaryColor.withOpacity(0.1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            color: isActive
+                ? theme.primaryColor.withOpacity(0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             children: [
               Icon(
-                icon, 
+                icon,
                 color: isActive ? theme.primaryColor : Colors.grey,
                 size: 28,
               ),

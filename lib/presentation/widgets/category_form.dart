@@ -440,58 +440,12 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Widget _buildGoalTypeToggle(L10n l10n) {
-    return Row(
-      children: [
-        _buildSimplifiedToggleItem(
-          l10n.recurringMonthly,
-          _selectedGoalTypeIndex == 1,
-          () => setState(() => _selectedGoalTypeIndex = 1),
-        ),
-        const SizedBox(width: 8),
-        _buildSimplifiedToggleItem(
-          l10n.goal,
-          _selectedGoalTypeIndex == 2,
-          () => setState(() => _selectedGoalTypeIndex = 2),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSimplifiedToggleItem(
-    String label,
-    bool active,
-    VoidCallback onTap,
-  ) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: active
-                ? AppColors.savings.withOpacity(0.1)
-                : Colors.grey[50],
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(
-              color: active ? AppColors.savings : Colors.grey[200]!,
-              width: 1,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: active
-                    ? AppColors.savings
-                    : theme.textTheme.labelSmall?.color,
-                fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ),
-      ),
+    return SheepTripleToggle(
+      selectedIndex: _selectedGoalTypeIndex == 1 ? 0 : 1,
+      labels: [l10n.recurringMonthly, l10n.goal],
+      onChanged: (index) {
+        setState(() => _selectedGoalTypeIndex = index == 0 ? 1 : 2);
+      },
     );
   }
 

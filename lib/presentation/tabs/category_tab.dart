@@ -40,7 +40,6 @@ class _CategoryTabState extends State<CategoryTab> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = L10n.of(context);
     return Column(
       children: [
         // --- 1. MODE TOGGLE ---
@@ -89,7 +88,7 @@ class _CategoryTabState extends State<CategoryTab> {
         final now = DateTime.now();
 
         List<Transaction> allTransactions = txBox.values.toList();
-        
+
         final categories = box.values
             .where((c) => c.effectiveTypeIndex == typeIndex)
             .toList();
@@ -103,13 +102,18 @@ class _CategoryTabState extends State<CategoryTab> {
           itemCount: categories.length,
           itemBuilder: (context, index) {
             final cat = categories[index];
-            
+
             // Calculate spent for this category
             double spent = 0;
             final goalType = cat.effectiveGoalTypeIndex;
             if (goalType == 1) {
               spent = allTransactions
-                  .where((tx) => tx.categoryId == cat.id && tx.date.month == now.month && tx.date.year == now.year)
+                  .where(
+                    (tx) =>
+                        tx.categoryId == cat.id &&
+                        tx.date.month == now.month &&
+                        tx.date.year == now.year,
+                  )
                   .fold(0.0, (sum, tx) => sum + tx.amount);
             } else if (goalType == 2) {
               spent = allTransactions
@@ -117,12 +121,21 @@ class _CategoryTabState extends State<CategoryTab> {
                   .fold(0.0, (sum, tx) => sum + tx.amount);
             } else {
               spent = allTransactions
-                  .where((tx) => tx.categoryId == cat.id && tx.date.month == now.month && tx.date.year == now.year)
+                  .where(
+                    (tx) =>
+                        tx.categoryId == cat.id &&
+                        tx.date.month == now.month &&
+                        tx.date.year == now.year,
+                  )
                   .fold(0.0, (sum, tx) => sum + tx.amount);
             }
 
-            final bool isOverBudget = typeIndex == 0 && cat.budget != null && spent > cat.budget!;
-            final bool isGoalDone = typeIndex == 2 && cat.targetAmount != null && spent >= cat.targetAmount!;
+            final bool isOverBudget =
+                typeIndex == 0 && cat.budget != null && spent > cat.budget!;
+            final bool isGoalDone =
+                typeIndex == 2 &&
+                cat.targetAmount != null &&
+                spent >= cat.targetAmount!;
 
             return Dismissible(
               key: ValueKey(cat.id),
@@ -143,19 +156,26 @@ class _CategoryTabState extends State<CategoryTab> {
                 color: isOverBudget
                     ? AppColors.expense.withOpacity(0.05)
                     : isGoalDone
-                        ? AppColors.savings.withOpacity(0.05)
-                        : null,
+                    ? AppColors.savings.withOpacity(0.05)
+                    : null,
                 child: InkWell(
-                  onTap: () => _showTransactionHistory(context, cat, allTransactions),
-                  borderRadius: BorderRadius.circular(20),
+                  onTap: () =>
+                      _showTransactionHistory(context, cat, allTransactions),
+                  borderRadius: BorderRadius.circular(14),
                   child: Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(14),
                       border: isOverBudget
-                          ? Border.all(color: AppColors.expense.withOpacity(0.5), width: 1.5)
+                          ? Border.all(
+                              color: AppColors.expense.withOpacity(0.5),
+                              width: 1.5,
+                            )
                           : isGoalDone
-                              ? Border.all(color: AppColors.savings.withOpacity(0.5), width: 1.5)
-                              : null,
+                          ? Border.all(
+                              color: AppColors.savings.withOpacity(0.5),
+                              width: 1.5,
+                            )
+                          : null,
                     ),
                     padding: EdgeInsets.zero,
                     child: Stack(
@@ -164,32 +184,43 @@ class _CategoryTabState extends State<CategoryTab> {
                           padding: const EdgeInsets.all(16),
                           child: Row(
                             children: [
-                            _buildIcon(cat, typeIndex),
-                            const SizedBox(width: 15),
-                            _buildInfo(cat, spent, typeIndex),
-                            IconButton(
-                              icon: const Icon(LineIcons.edit, color: Colors.grey),
-                              onPressed: () => _showCategoryForm(context, cat),
-                            ),
-                          ],
+                              _buildIcon(cat, typeIndex),
+                              const SizedBox(width: 15),
+                              _buildInfo(cat, spent, typeIndex),
+                              IconButton(
+                                icon: const Icon(
+                                  LineIcons.edit,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () =>
+                                    _showCategoryForm(context, cat),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                         if (isOverBudget)
                           Positioned(
                             top: 0,
                             right: 0,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.expense,
                                 borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(20),
-                                  bottomLeft: Radius.circular(12),
+                                  topRight: Radius.circular(14),
+                                  bottomLeft: Radius.circular(10),
                                 ),
                               ),
                               child: Text(
                                 l10n.overBudget.toUpperCase(),
-                                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
@@ -198,17 +229,24 @@ class _CategoryTabState extends State<CategoryTab> {
                             top: 0,
                             right: 0,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.savings,
                                 borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(20),
-                                  bottomLeft: Radius.circular(12),
+                                  topRight: Radius.circular(14),
+                                  bottomLeft: Radius.circular(10),
                                 ),
                               ),
                               child: Text(
                                 l10n.targetAchieved.toUpperCase(),
-                                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
@@ -233,9 +271,11 @@ class _CategoryTabState extends State<CategoryTab> {
           Icon(LineIcons.tags, size: 60, color: Colors.grey[300]),
           const SizedBox(height: 10),
           Text(
-            typeIndex == 0 
-                ? l10n.get('no_cat_expense') 
-                : (typeIndex == 1 ? l10n.get('no_cat_income') : l10n.get('no_cat_savings')),
+            typeIndex == 0
+                ? l10n.get('no_cat_expense')
+                : (typeIndex == 1
+                      ? l10n.get('no_cat_income')
+                      : l10n.get('no_cat_savings')),
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
@@ -245,23 +285,23 @@ class _CategoryTabState extends State<CategoryTab> {
 
   Widget _buildIcon(CategoryModel cat, int typeIndex) {
     Color color;
-    if (typeIndex == 0) color = AppColors.expense;
-    else if (typeIndex == 1) color = AppColors.income;
-    else color = AppColors.savings;
-    
+    if (typeIndex == 0) {
+      color = AppColors.expense;
+    } else if (typeIndex == 1) {
+      color = AppColors.income;
+    } else {
+      color = AppColors.savings;
+    }
+
     if (cat.colorValue != null) color = Color(cat.colorValue!);
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(15),
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(
-        cat.iconData,
-        color: color,
-        size: 24,
-      ),
+      child: Icon(cat.iconData, color: color, size: 24),
     );
   }
 
@@ -271,10 +311,12 @@ class _CategoryTabState extends State<CategoryTab> {
     bool isSavings = typeIndex == 2;
     double? target = isSavings ? cat.targetAmount : cat.budget;
     final remaining = (target ?? 0) - spent;
-    
+
     final spentStr = CurrencyUtil.formatCompact(spent);
     final targetStr = target != null ? CurrencyUtil.formatCompact(target) : '';
-    final infoLabel = (target != null && target > 0) ? '$spentStr / $targetStr' : spentStr;
+    final infoLabel = (target != null && target > 0)
+        ? '$spentStr / $targetStr'
+        : spentStr;
 
     String goalSubtitle = '';
     if (isSavings) {
@@ -283,7 +325,8 @@ class _CategoryTabState extends State<CategoryTab> {
         goalSubtitle = l10n.recurringMonthly;
       } else {
         // Goal (merged 2 and 3)
-        goalSubtitle = '${l10n.goal} • T${cat.targetMonth ?? cat.targetDate?.month ?? ''}/${cat.targetYear ?? cat.targetDate?.year ?? ''}';
+        goalSubtitle =
+            '${l10n.goal} • T${cat.targetMonth ?? cat.targetDate?.month ?? ''}/${cat.targetYear ?? cat.targetDate?.year ?? ''}';
       }
     }
 
@@ -296,7 +339,9 @@ class _CategoryTabState extends State<CategoryTab> {
             children: [
               Text(
                 cat.name,
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -313,9 +358,11 @@ class _CategoryTabState extends State<CategoryTab> {
                     infoLabel,
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontSize: 10,
-                      color: (typeIndex == 0 && remaining < 0) 
-                          ? AppColors.expense 
-                          : (typeIndex == 2 && remaining <= 0) ? AppColors.savings : null,
+                      color: (typeIndex == 0 && remaining < 0)
+                          ? AppColors.expense
+                          : (typeIndex == 2 && remaining <= 0)
+                          ? AppColors.savings
+                          : null,
                       fontWeight: (remaining <= 0) ? FontWeight.bold : null,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -341,14 +388,16 @@ class _CategoryTabState extends State<CategoryTab> {
 
   Widget _buildProgressBar(CategoryModel cat, double spent, int typeIndex) {
     double? target = typeIndex == 2 ? cat.targetAmount : cat.budget;
-    double progress = (target != null && target > 0)
-        ? (spent / target)
-        : 0.0;
+    double progress = (target != null && target > 0) ? (spent / target) : 0.0;
     if (progress > 1.0) progress = 1.0;
     if (progress < 0) progress = 0;
 
-    final baseColor = cat.colorValue != null ? Color(cat.colorValue!) : (typeIndex == 2 ? AppColors.savings : AppColors.primary);
-    final barColor = (typeIndex == 0 && spent > (cat.budget ?? 0)) ? AppColors.expense : baseColor;
+    final baseColor = cat.colorValue != null
+        ? Color(cat.colorValue!)
+        : (typeIndex == 2 ? AppColors.savings : AppColors.primary);
+    final barColor = (typeIndex == 0 && spent > (cat.budget ?? 0))
+        ? AppColors.expense
+        : baseColor;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),
@@ -361,12 +410,11 @@ class _CategoryTabState extends State<CategoryTab> {
     );
   }
 
-
   Widget _buildDeleteBackground() {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.expense.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
       ),
       alignment: Alignment.centerRight,
       padding: const EdgeInsets.only(right: 20),
@@ -374,7 +422,11 @@ class _CategoryTabState extends State<CategoryTab> {
     );
   }
 
-  void _showTransactionHistory(BuildContext context, CategoryModel cat, List<Transaction> txs) {
+  void _showTransactionHistory(
+    BuildContext context,
+    CategoryModel cat,
+    List<Transaction> txs,
+  ) {
     final catTxs = txs.where((tx) => tx.categoryId == cat.id).toList();
     showModalBottomSheet(
       context: context,
@@ -382,7 +434,8 @@ class _CategoryTabState extends State<CategoryTab> {
       isDismissible: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => TransactionHistorySheet(category: cat, transactions: catTxs),
+      builder: (_) =>
+          TransactionHistorySheet(category: cat, transactions: catTxs),
     );
   }
 
@@ -393,7 +446,7 @@ class _CategoryTabState extends State<CategoryTab> {
       isDismissible: true,
       enableDrag: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => CategoryForm(category: category),
     );
@@ -401,8 +454,9 @@ class _CategoryTabState extends State<CategoryTab> {
 
   Future<bool?> _confirmDelete(BuildContext context, CategoryModel item) {
     final txBox = Hive.box<Transaction>(kMoneyBox);
-    final relatedTxsCount =
-        txBox.values.where((tx) => tx.categoryId == item.id).length;
+    final relatedTxsCount = txBox.values
+        .where((tx) => tx.categoryId == item.id)
+        .length;
 
     return showDialog<bool>(
       context: context,
@@ -410,7 +464,9 @@ class _CategoryTabState extends State<CategoryTab> {
         final l10n = L10n.of(context);
         final theme = Theme.of(context);
         return SheepConfirmDialog(
-          title: relatedTxsCount > 0 ? l10n.get('delete_cat_confirm') : l10n.get('delete_cat_simple'),
+          title: relatedTxsCount > 0
+              ? l10n.get('delete_cat_confirm')
+              : l10n.get('delete_cat_simple'),
           richContent: Text.rich(
             TextSpan(
               text: relatedTxsCount > 0
@@ -426,25 +482,29 @@ class _CategoryTabState extends State<CategoryTab> {
                 if (relatedTxsCount > 0) ...[
                   const TextSpan(text: ' hiện đang chứa '),
                   TextSpan(
-                    text: l10n.get('num_transactions', params: {'count': relatedTxsCount.toString()}),
+                    text: l10n.get(
+                      'num_transactions',
+                      params: {'count': relatedTxsCount.toString()},
+                    ),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: theme.textTheme.bodyLarge?.color,
                     ),
                   ),
                   TextSpan(
-                    text: '. ' + l10n.get('delete_cat_confirm_msg').split('}')[1],
+                    text:
+                        '. ' + l10n.get('delete_cat_confirm_msg').split('}')[1],
                   ),
                 ] else
                   const TextSpan(text: '?'),
               ],
             ),
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              height: 1.5,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
           ),
-          confirmLabel: relatedTxsCount > 0 ? l10n.get('delete_cat_confirm').split('?')[0] : l10n.delete,
+          confirmLabel: relatedTxsCount > 0
+              ? l10n.get('delete_cat_confirm').split('?')[0]
+              : l10n.delete,
           onConfirm: () {},
         );
       },

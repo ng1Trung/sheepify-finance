@@ -22,11 +22,14 @@ class TransactionHistorySheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
-    final Color catColor = category.colorValue != null 
-        ? Color(category.colorValue!) 
+    final Color catColor = category.colorValue != null
+        ? Color(category.colorValue!)
         : AppColors.primary;
 
-    final double totalAccumulated = transactions.fold(0.0, (sum, tx) => sum + tx.amount);
+    final double totalAccumulated = transactions.fold(
+      0.0,
+      (sum, tx) => sum + tx.amount,
+    );
     final DateTime now = DateTime.now();
     final double totalInMonth = transactions
         .where((tx) => tx.date.month == now.month && tx.date.year == now.year)
@@ -48,14 +51,14 @@ class TransactionHistorySheet extends StatelessWidget {
             const SizedBox(height: 12),
             _buildDragHandle(),
             const SizedBox(height: 15),
-            
+
             _buildHeader(context, catColor, totalAccumulated),
-            
+
             if (isSavings && category.targetAmount != null) ...[
               const SizedBox(height: 15),
               _buildGoalDashboard(context, catColor, totalAccumulated),
             ],
-            
+
             const SizedBox(height: 15),
             Expanded(
               child: _buildTransactionList(context, scrollController, catColor),
@@ -105,12 +108,19 @@ class TransactionHistorySheet extends StatelessWidget {
                 children: [
                   Text(
                     category.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                    Text(
-                      l10n.get('num_transactions', params: {'count': transactions.length.toString()}),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  Text(
+                    l10n.get(
+                      'num_transactions',
+                      params: {'count': transactions.length.toString()},
+                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(fontSize: 10),
+                  ),
                 ],
               ),
             ),
@@ -118,18 +128,27 @@ class TransactionHistorySheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
-                  Text(
-                    category.effectiveTypeIndex == 2 ? l10n.get('total_target') : l10n.get('total_spent_cat'),
-                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Theme.of(context).hintColor),
+                Text(
+                  category.effectiveTypeIndex == 2
+                      ? l10n.get('total_target')
+                      : l10n.get('total_spent_cat'),
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    color: Theme.of(context).hintColor,
                   ),
+                ),
                 Text(
                   CurrencyUtil.formatMoney(total),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: category.effectiveTypeIndex == 2 
-                        ? AppColors.savings 
-                        : (category.effectiveTypeIndex == 0 ? AppColors.expense : AppColors.income),
+                    color: category.effectiveTypeIndex == 2
+                        ? AppColors.savings
+                        : (category.effectiveTypeIndex == 0
+                              ? AppColors.expense
+                              : AppColors.income),
                   ),
                 ),
               ],
@@ -140,7 +159,11 @@ class TransactionHistorySheet extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionList(BuildContext context, ScrollController controller, Color catColor) {
+  Widget _buildTransactionList(
+    BuildContext context,
+    ScrollController controller,
+    Color catColor,
+  ) {
     final l10n = L10n.of(context);
     if (transactions.isEmpty) {
       return Center(
@@ -164,34 +187,26 @@ class TransactionHistorySheet extends StatelessWidget {
       itemCount: transactions.length,
       itemBuilder: (_, i) {
         final tx = transactions[i];
-        return SheepListTile(
-          onTap: () {},
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: catColor.withOpacity(0.05),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(category.iconData, color: catColor, size: 18),
-          ),
-          title: tx.note.isNotEmpty ? tx.note : l10n.get('unnamed_transaction'),
-          subtitle: Text(
-            DateFormat('dd/MM/yyyy').format(tx.date),
-            style: Theme.of(context).textTheme.labelSmall,
-          ),
-          trailing: Text(
-            '${tx.isExpense ? '-' : '+'}${CurrencyUtil.formatMoney(tx.amount)}',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: tx.isExpense ? AppColors.expense : AppColors.income,
-            ),
-          ),
+        final isExpense = tx.isExpense;
+        return SheepTransactionCard(
+          icon: category.iconData,
+          iconColor: catColor,
+          title: category.name,
+          dateText: tx.note.isNotEmpty ? tx.note : l10n.get('no_note'),
+          amountText:
+              '${isExpense ? '-' : '+'}${CurrencyUtil.formatMoney(tx.amount)}',
+          amountColor: isExpense ? AppColors.expense : AppColors.income,
+          badgeText: isExpense ? l10n.expense : l10n.income,
         );
       },
     );
   }
 
-  Widget _buildGoalDashboard(BuildContext context, Color catColor, double totalAllTime) {
+  Widget _buildGoalDashboard(
+    BuildContext context,
+    Color catColor,
+    double totalAllTime,
+  ) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
     final now = DateTime.now();
@@ -204,55 +219,72 @@ class TransactionHistorySheet extends StatelessWidget {
       // --- LOẠI: ĐỊNH KỲ HÀNG THÁNG ---
       final target = category.targetAmount ?? 0;
       final remaining = target - totalInMonth;
-      final progress = target > 0 ? (totalInMonth / target).clamp(0.0, 1.0) : 0.0;
-      
+      final progress = target > 0
+          ? (totalInMonth / target).clamp(0.0, 1.0)
+          : 0.0;
+
       // Calculate days left until reminder day in this month
       int reminderDay = category.reminderDay ?? 10;
       // Handle end of month
       int lastDay = DateTime(now.year, now.month + 1, 0).day;
       if (reminderDay > lastDay) reminderDay = lastDay;
-      
+
       int daysLeft = reminderDay - now.day;
       String infoText = "";
       String planningText = "";
-      
+
       if (daysLeft > 0 && remaining > 0) {
         final daily = remaining / daysLeft;
-        infoText = l10n.get('need_more', params: {'amount': CurrencyUtil.formatMoney(daily)});
-        planningText = '${l10n.get('target_date')}: ${l10n.get('day')} $reminderDay ${l10n.get('month')} ${now.month} (${l10n.get('days_left', params: {'count': daysLeft.toString()})})';
+        infoText = l10n.get(
+          'need_more',
+          params: {'amount': CurrencyUtil.formatMoney(daily)},
+        );
+        planningText =
+            '${l10n.get('target_date')}: ${l10n.get('day')} $reminderDay ${l10n.get('month')} ${now.month} (${l10n.get('days_left', params: {'count': daysLeft.toString()})})';
       } else if (remaining <= 0) {
         planningText = l10n.get('done_this_month');
       } else {
-        planningText = '${l10n.get('overdue')} (${l10n.get('day')} $reminderDay)';
+        planningText =
+            '${l10n.get('overdue')} (${l10n.get('day')} $reminderDay)';
       }
 
       return _buildDashboardCard(
         context,
-        title: '${l10n.get('accumulate_periodic').toUpperCase()} ${l10n.get('month').toUpperCase()} ${now.month}',
+        title:
+            '${l10n.get('accumulate_periodic').toUpperCase()} ${l10n.get('month').toUpperCase()} ${now.month}',
         subtitle: planningText,
         progress: progress,
         info: infoText,
-        footerLeft: '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatMoney(totalInMonth)}',
-        footerRight: '${l10n.get('monthly_goal_label')}: ${CurrencyUtil.formatMoney(target)}',
+        footerLeft:
+            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatMoney(totalInMonth)}',
+        footerRight:
+            '${l10n.get('monthly_goal_label')}: ${CurrencyUtil.formatMoney(target)}',
       );
     } else if (goalType == 2 || goalType == 3) {
       // --- LOẠI: MỤC TIÊU DÀI HẠN / NGẮN HẠN ---
       final target = category.targetAmount ?? 0;
       final remaining = target - totalAllTime;
-      final progress = target > 0 ? (totalAllTime / target).clamp(0.0, 1.0) : 0.0;
-      
-      final targetDate = category.targetDate ?? DateTime(category.targetYear ?? now.year, 12, 31);
-      final monthsLeft = ((targetDate.year - now.year) * 12) + targetDate.month - now.month;
-      
+      final progress = target > 0
+          ? (totalAllTime / target).clamp(0.0, 1.0)
+          : 0.0;
+
+      final targetDate =
+          category.targetDate ??
+          DateTime(category.targetYear ?? now.year, 12, 31);
+      final monthsLeft =
+          ((targetDate.year - now.year) * 12) + targetDate.month - now.month;
+
       String infoText = "";
       String planningText = "";
-      
+
       if (monthsLeft > 0 && remaining > 0) {
-        planningText = '${l10n.get('target_date')}: ${DateFormat('MM/yyyy').format(targetDate)} (${l10n.get('months_left', params: {'count': monthsLeft.toString()})})';
+        planningText =
+            '${l10n.get('target_date')}: ${DateFormat('MM/yyyy').format(targetDate)} (${l10n.get('months_left', params: {'count': monthsLeft.toString()})})';
       } else if (remaining <= 0) {
         planningText = l10n.get('target_achieved');
       } else {
-        planningText = '${l10n.get('overdue')} (${DateFormat('MM/yyyy').format(targetDate)})';
+        planningText =
+            '${l10n.get('overdue')} (${DateFormat('MM/yyyy').format(targetDate)})';
       }
 
       return _buildDashboardCard(
@@ -261,11 +293,13 @@ class TransactionHistorySheet extends StatelessWidget {
         subtitle: planningText,
         progress: progress,
         info: infoText,
-        footerLeft: '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatMoney(totalAllTime)}',
-        footerRight: '${l10n.get('target_amount')}: ${CurrencyUtil.formatMoney(target)}',
+        footerLeft:
+            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatMoney(totalAllTime)}',
+        footerRight:
+            '${l10n.get('target_amount')}: ${CurrencyUtil.formatMoney(target)}',
       );
     }
-    
+
     return const SizedBox.shrink();
   }
 
@@ -303,18 +337,29 @@ class TransactionHistorySheet extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.savings, letterSpacing: 1),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.savings,
+                    letterSpacing: 1,
+                  ),
                 ),
                 Text(
                   '${(progress * 100).toInt()}%',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.savings),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.savings,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
               subtitle,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             ClipRRect(
@@ -323,18 +368,28 @@ class TransactionHistorySheet extends StatelessWidget {
                 value: progress,
                 minHeight: 8,
                 backgroundColor: AppColors.savings.withOpacity(0.1),
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.savings),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.savings,
+                ),
               ),
             ),
             if (info.isNotEmpty) ...[
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(LineIcons.calculator, size: 16, color: AppColors.savings),
+                  const Icon(
+                    LineIcons.calculator,
+                    size: 16,
+                    color: AppColors.savings,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     info,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.savings),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.savings,
+                    ),
                   ),
                 ],
               ),
@@ -343,8 +398,20 @@ class TransactionHistorySheet extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(footerLeft, style: TextStyle(fontSize: 10, color: Theme.of(context).hintColor)),
-                Text(footerRight, style: TextStyle(fontSize: 10, color: Theme.of(context).hintColor)),
+                Text(
+                  footerLeft,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).hintColor,
+                  ),
+                ),
+                Text(
+                  footerRight,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).hintColor,
+                  ),
+                ),
               ],
             ),
           ],

@@ -2,16 +2,15 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:line_icons/line_icons.dart';
-import 'package:lottie/lottie.dart';
 
 import '../../core/constants/constants.dart';
 import '../../core/utils/currency_util.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/utils/l10n.dart';
+import '../widgets/common/sheep_toggles.dart';
+import '../widgets/common/sheep_widgets.dart';
 
 class StatsTab extends StatefulWidget {
   final DateTime currentMonth;
@@ -30,6 +29,7 @@ class _StatEntry {
 class _StatsTabState extends State<StatsTab> {
   int _selectedTypeIndex = 0; // 0: expense, 1: income, 2: savings
   int _touchedIndex = -1;
+  late DateTime _selectedMonth;
   DateTimeRange _selectedRange = DateTimeRange(
     start: DateTime.now(),
     end: DateTime.now(),
@@ -38,37 +38,64 @@ class _StatsTabState extends State<StatsTab> {
   @override
   void initState() {
     super.initState();
+    _selectedMonth = DateTime(
+      widget.currentMonth.year,
+      widget.currentMonth.month,
+      1,
+    );
+    _syncSelectedRange();
+  }
+
+  @override
+  void didUpdateWidget(covariant StatsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentMonth.year != widget.currentMonth.year ||
+        oldWidget.currentMonth.month != widget.currentMonth.month) {
+      _selectedMonth = DateTime(
+        widget.currentMonth.year,
+        widget.currentMonth.month,
+        1,
+      );
+      _syncSelectedRange();
+    }
+  }
+
+  void _syncSelectedRange() {
     _selectedRange = DateTimeRange(
-      start: DateTime(widget.currentMonth.year, widget.currentMonth.month, 1),
-      end: DateTime(widget.currentMonth.year, widget.currentMonth.month + 1, 0, 23, 59, 59),
+      start: DateTime(_selectedMonth.year, _selectedMonth.month, 1),
+      end: DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month + 1,
+        0,
+        23,
+        59,
+        59,
+      ),
     );
   }
 
-  Future<void> _pickDateRange() async {
-    final DateTimeRange? picked = await showDateRangePicker(
+  void _changeMonth(int offset) {
+    setState(() {
+      _selectedMonth = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month + offset,
+        1,
+      );
+      _syncSelectedRange();
+    });
+  }
+
+  Future<void> _pickMonth() async {
+    final picked = await SheepDatePicker.show(
       context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-      initialDateRange: _selectedRange,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Colors.black,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(foregroundColor: Colors.black),
-            ),
-          ),
-          child: child!,
-        );
-      },
+      initialDate: _selectedMonth,
+      mode: SheepDateMode.month,
     );
     if (picked != null) {
-      setState(() => _selectedRange = picked);
+      setState(() {
+        _selectedMonth = DateTime(picked.year, picked.month, 1);
+        _syncSelectedRange();
+      });
     }
   }
 
@@ -88,9 +115,15 @@ class _StatsTabState extends State<StatsTab> {
             final catBox = Hive.box<CategoryModel>(kCatBox);
             final allTransactions = box.values.cast<Transaction>().toList();
 
-            final filteredTransactions = allTransactions.where((tx) =>
-                tx.date.isAfter(_selectedRange.start.subtract(const Duration(seconds: 1))) &&
-                tx.date.isBefore(_selectedRange.end.add(const Duration(seconds: 1))));
+            final filteredTransactions = allTransactions.where(
+              (tx) =>
+                  tx.date.isAfter(
+                    _selectedRange.start.subtract(const Duration(seconds: 1)),
+                  ) &&
+                  tx.date.isBefore(
+                    _selectedRange.end.add(const Duration(seconds: 1)),
+                  ),
+            );
 
             Map<String, _StatEntry> statsMap = {};
             for (var tx in filteredTransactions) {
@@ -114,53 +147,77 @@ class _StatsTabState extends State<StatsTab> {
               }
             }
 
-            double displayTotal = statsMap.values.fold(0, (sum, item) => sum + item.amount);
-            var sortedStats = statsMap.values.toList()..sort((a, b) => b.amount.compareTo(a.amount));
+            double displayTotal = statsMap.values.fold(
+              0,
+              (sum, item) => sum + item.amount,
+            );
+            var sortedStats = statsMap.values.toList()
+              ..sort((a, b) => b.amount.compareTo(a.amount));
 
-            final screenHeight = MediaQuery.of(context).size.height;
-            final headerHeight = topPadding + 20 + 44 + 28 + 48 + 28; //Ước tính chiều cao phần header
-            final minCardHeight = screenHeight - headerHeight - 120; // Trừ đi khoảng trống phía dưới
+            Widget buildStatsCard({required Widget child}) {
+              return Container(
+                margin: SheepSpacing.pageHorizontal,
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 24,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFEAEAEA)),
+                ),
+                child: child,
+              );
+            }
+
+            if (displayTotal == 0) {
+              return Padding(
+                padding: EdgeInsets.only(top: topPadding + 20, bottom: 24),
+                child: Column(
+                  children: [
+                    _buildDateRangeBar(),
+                    const SizedBox(height: 28),
+                    _buildTabSelector(l10n),
+                    const SizedBox(height: 28),
+                    Expanded(
+                      child: buildStatsCard(child: _buildEmptyState(l10n)),
+                    ),
+                  ],
+                ),
+              );
+            }
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.only(top: topPadding + 20, bottom: 120), // Trả lại bottom padding lớn hơn để thoát khỏi Menu
+              padding: EdgeInsets.only(top: topPadding + 20, bottom: 24),
               child: Column(
                 children: [
-                   _buildDateRangeBar(),
+                  _buildDateRangeBar(),
                   const SizedBox(height: 28),
                   _buildTabSelector(l10n),
                   const SizedBox(height: 28),
 
-                  ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: minCardHeight),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      width: double.infinity, // Đảm bảo luôn lấy hết chiều ngang
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.015),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          )
-                        ],
-                      ),
-                      child: displayTotal == 0 
-                        ? _buildEmptyState(l10n)
-                        : Column(
-                            children: [
-                              _buildPieChart(sortedStats, displayTotal, settings.currencyCode, l10n),
-                              
-                              const SizedBox(height: 32),
-                              const Divider(height: 1, color: Color(0xFFF8F8F8)),
-                              const SizedBox(height: 16),
-
-                              ...sortedStats.map((stat) => _buildStatRow(stat, displayTotal, settings.currencyCode)),
-                            ],
+                  buildStatsCard(
+                    child: Column(
+                      children: [
+                        _buildPieChart(
+                          sortedStats,
+                          displayTotal,
+                          settings.currencyCode,
+                          l10n,
+                        ),
+                        const SizedBox(height: 32),
+                        const Divider(height: 1, color: Color(0xFFF8F8F8)),
+                        const SizedBox(height: 16),
+                        ...sortedStats.map(
+                          (stat) => _buildStatRow(
+                            stat,
+                            displayTotal,
+                            settings.currencyCode,
                           ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -173,113 +230,69 @@ class _StatsTabState extends State<StatsTab> {
   }
 
   Widget _buildDateRangeBar() {
-    final df = DateFormat('dd/MM/yy');
-    final rangeText = "${df.format(_selectedRange.start)} - ${df.format(_selectedRange.end)}";
+    final locale = Localizations.localeOf(context).toString();
+    final monthText = DateFormat('MMMM yyyy', locale).format(_selectedMonth);
 
-    return GestureDetector(
-      onTap: _pickDateRange,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            )
-          ],
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+          onPressed: () => _changeMonth(-1),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(LineIcons.calendar, size: 16, color: Colors.black54),
-            const SizedBox(width: 10),
-            Text(
-              rangeText,
-              style: const TextStyle(
-                fontFamily: 'Outfit',
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: Colors.black,
-              ),
+        InkWell(
+          onTap: _pickMonth,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFEAEAEA)),
             ),
-          ],
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_month, size: 16, color: Colors.black),
+                const SizedBox(width: 10),
+                Text(
+                  monthText,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.arrow_forward_ios, size: 18),
+          onPressed: () => _changeMonth(1),
+        ),
+      ],
     );
   }
 
   Widget _buildTabSelector(L10n l10n) {
-    final labels = [l10n.get('expense'), l10n.get('income'), l10n.get('savings')];
-    const unselectedColor = Color(0xFF8E8E93);
-    
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(4),
-      height: 48,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E5EA), // Màu xám đậm hơn để nổi bật trên nền Scaffold
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: Colors.black.withOpacity(0.05)), // Thêm viền mỏng
-      ),
-      child: Stack(
-        children: [
-          // Sliding Pill Background
-          AnimatedAlign(
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.fastOutSlowIn,
-            alignment: Alignment(
-              _selectedTypeIndex == 0 ? -1 : (_selectedTypeIndex == 1 ? 0 : 1),
-              0,
-            ),
-            child: FractionallySizedBox(
-              widthFactor: 1 / 3,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(100),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    )
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Tab Buttons
-          Row(
-            children: List.generate(labels.length, (index) {
-              final isSelected = _selectedTypeIndex == index;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedTypeIndex = index),
-                  behavior: HitTestBehavior.opaque,
-                  child: Center(
-                    child: Text(
-                      labels[index],
-                      style: TextStyle(
-                        fontFamily: 'Outfit',
-                        fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                        color: isSelected ? Colors.white : unselectedColor,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ],
+    return Padding(
+      padding: SheepSpacing.pageHorizontal,
+      child: SheepTripleToggle(
+        selectedIndex: _selectedTypeIndex,
+        labels: [l10n.get('expense'), l10n.get('income'), l10n.get('savings')],
+        onChanged: (index) => setState(() => _selectedTypeIndex = index),
       ),
     );
   }
 
-  Widget _buildPieChart(List<_StatEntry> stats, double total, String currency, L10n l10n) {
+  Widget _buildPieChart(
+    List<_StatEntry> stats,
+    double total,
+    String currency,
+    L10n l10n,
+  ) {
     return SizedBox(
       height: 220,
       child: Stack(
@@ -292,8 +305,8 @@ class _StatsTabState extends State<StatsTab> {
               sections: List.generate(stats.length, (i) {
                 final isTouched = i == _touchedIndex;
                 final stat = stats[i];
-                final catColor = stat.category.colorValue != null 
-                    ? Color(stat.category.colorValue!) 
+                final catColor = stat.category.colorValue != null
+                    ? Color(stat.category.colorValue!)
                     : Colors.black;
 
                 double visualValue = stat.amount;
@@ -312,11 +325,14 @@ class _StatsTabState extends State<StatsTab> {
               pieTouchData: PieTouchData(
                 touchCallback: (event, response) {
                   setState(() {
-                    if (!event.isInterestedForInteractions || response == null || response.touchedSection == null) {
+                    if (!event.isInterestedForInteractions ||
+                        response == null ||
+                        response.touchedSection == null) {
                       _touchedIndex = -1;
                       return;
                     }
-                    _touchedIndex = response.touchedSection!.touchedSectionIndex;
+                    _touchedIndex =
+                        response.touchedSection!.touchedSectionIndex;
                   });
                 },
               ),
@@ -328,9 +344,10 @@ class _StatsTabState extends State<StatsTab> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  (_touchedIndex != -1 ? stats[_touchedIndex].category.name : l10n.get('all_total')).toUpperCase(),
+                  _touchedIndex != -1
+                      ? stats[_touchedIndex].category.name
+                      : l10n.get('all_total'),
                   style: const TextStyle(
-                    fontFamily: 'Outfit',
                     fontSize: 9,
                     fontWeight: FontWeight.w400,
                     letterSpacing: 0.8,
@@ -345,11 +362,10 @@ class _StatsTabState extends State<StatsTab> {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     CurrencyUtil.formatByCurrency(
-                      _touchedIndex != -1 ? stats[_touchedIndex].amount : total, 
-                      currency
+                      _touchedIndex != -1 ? stats[_touchedIndex].amount : total,
+                      currency,
                     ),
                     style: const TextStyle(
-                      fontFamily: 'Outfit',
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: Colors.black,
@@ -366,8 +382,8 @@ class _StatsTabState extends State<StatsTab> {
 
   Widget _buildStatRow(_StatEntry stat, double total, String currency) {
     final percent = (stat.amount / total * 100).toStringAsFixed(1);
-    final catColor = stat.category.colorValue != null 
-        ? Color(stat.category.colorValue!) 
+    final catColor = stat.category.colorValue != null
+        ? Color(stat.category.colorValue!)
         : Colors.black;
 
     return Padding(
@@ -393,28 +409,15 @@ class _StatsTabState extends State<StatsTab> {
               children: [
                 Text(
                   stat.category.name,
-                  style: const TextStyle(
-                    fontFamily: 'Outfit',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+                  style: SheepTextStyles.itemTitle(context),
                 ),
-                Text(
-                  '$percent%',
-                  style: const TextStyle(
-                    fontFamily: 'Outfit',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w300,
-                    color: Colors.grey,
-                  ),
-                ),
+                Text('$percent%', style: SheepTextStyles.itemMeta(context)),
               ],
             ),
           ),
           Text(
             CurrencyUtil.formatByCurrency(stat.amount, currency),
             style: TextStyle(
-              fontFamily: 'Outfit',
               fontWeight: FontWeight.w700,
               fontSize: 16,
               color: catColor,
@@ -438,32 +441,6 @@ class _StatsTabState extends State<StatsTab> {
         message = l10n.get('no_data_savings');
     }
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const SizedBox(height: 20), // Giảm từ 60 xuống 20 để bớt trống trải
-        Lottie.asset(
-          'assets/empty.json',
-          width: 200,
-          repeat: true,
-        ),
-        const SizedBox(height: 24),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16), // Giảm từ 40 xuống 16 cho đồng bộ
-          child: Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'Outfit',
-              color: Colors.black54,
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              height: 1.5,
-            ),
-          ),
-        ),
-        const SizedBox(height: 20), // Giảm từ 60 xuống 20
-      ],
-    );
+    return SheepEmptyState(message: message);
   }
 }
