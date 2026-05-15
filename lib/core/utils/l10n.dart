@@ -37,8 +37,10 @@ class L10n {
       'month': 'Tháng',
       'monthly_balance': 'SỐ DƯ THÁNG',
       'daily_balance': 'SỐ DƯ NGÀY',
+      'range_balance': 'SỐ DƯ KHOẢNG NGÀY',
       'no_tx_month': 'Tháng này chưa có giao dịch',
       'no_tx_today': 'Hôm nay chưa có giao dịch',
+      'no_tx_range': 'Khoảng ngày này chưa có giao dịch',
       'delete_confirm_title': 'Xoá giao dịch?',
       'delete_confirm_msg':
           'Bạn có chắc chắn muốn xoá giao dịch này không? Hành động này không thể hoàn tác.',
@@ -148,8 +150,10 @@ class L10n {
       'month': 'Month',
       'monthly_balance': 'MONTHLY BALANCE',
       'daily_balance': 'DAILY BALANCE',
+      'range_balance': 'RANGE BALANCE',
       'no_tx_month': 'No transactions this month',
       'no_tx_today': 'No transactions today',
+      'no_tx_range': 'No transactions in this range',
       'delete_confirm_title': 'Delete transaction?',
       'delete_confirm_msg':
           'Are you sure you want to delete this transaction? This action cannot be undone.',

@@ -561,3 +561,236 @@ class SheepDatePicker {
     );
   }
 }
+
+class SheepDateRangePicker {
+  static Future<DateTimeRange?> show({
+    required BuildContext context,
+    required DateTimeRange initialRange,
+  }) {
+    final theme = Theme.of(context);
+    final locale = Localizations.localeOf(context).toString();
+
+    return showModalBottomSheet<DateTimeRange>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        DateTime visibleMonth = DateTime(
+          initialRange.start.year,
+          initialRange.start.month,
+        );
+        DateTime? start = DateTime(
+          initialRange.start.year,
+          initialRange.start.month,
+          initialRange.start.day,
+        );
+        DateTime? end = DateTime(
+          initialRange.end.year,
+          initialRange.end.month,
+          initialRange.end.day,
+        );
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final firstDay = DateTime(visibleMonth.year, visibleMonth.month, 1);
+            final daysInMonth = DateTime(
+              visibleMonth.year,
+              visibleMonth.month + 1,
+              0,
+            ).day;
+            final leadingDays = firstDay.weekday - 1;
+            final totalCells = leadingDays + daysInMonth;
+
+            bool isSameDay(DateTime? a, DateTime b) =>
+                a != null &&
+                a.year == b.year &&
+                a.month == b.month &&
+                a.day == b.day;
+
+            bool isInRange(DateTime date) =>
+                start != null &&
+                end != null &&
+                date.isAfter(start!) &&
+                date.isBefore(end!);
+
+            void selectDate(DateTime date) {
+              setModalState(() {
+                if (start == null || end != null) {
+                  start = date;
+                  end = null;
+                  return;
+                }
+
+                if (date.isBefore(start!)) {
+                  end = start;
+                  start = date;
+                } else {
+                  end = date;
+                }
+              });
+            }
+
+            return Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      end == null
+                          ? DateFormat('dd MMMM yyyy', locale).format(start!)
+                          : '${DateFormat('dd/MM/yyyy', locale).format(start!)} - ${DateFormat('dd/MM/yyyy', locale).format(end!)}',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Text(
+                          DateFormat('MMMM yyyy', locale).format(visibleMonth),
+                          style: SheepTextStyles.itemTitle(context),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => setModalState(
+                            () => visibleMonth = DateTime(
+                              visibleMonth.year,
+                              visibleMonth.month - 1,
+                            ),
+                          ),
+                          icon: const Icon(Icons.chevron_left),
+                        ),
+                        IconButton(
+                          onPressed: () => setModalState(
+                            () => visibleMonth = DateTime(
+                              visibleMonth.year,
+                              visibleMonth.month + 1,
+                            ),
+                          ),
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Row(
+                      children: [
+                        _WeekdayLabel('T2'),
+                        _WeekdayLabel('T3'),
+                        _WeekdayLabel('T4'),
+                        _WeekdayLabel('T5'),
+                        _WeekdayLabel('T6'),
+                        _WeekdayLabel('T7'),
+                        _WeekdayLabel('CN'),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: totalCells,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 7,
+                            childAspectRatio: 1,
+                          ),
+                      itemBuilder: (context, index) {
+                        if (index < leadingDays) return const SizedBox.shrink();
+                        final date = DateTime(
+                          visibleMonth.year,
+                          visibleMonth.month,
+                          index - leadingDays + 1,
+                        );
+                        final isEndpoint =
+                            isSameDay(start, date) || isSameDay(end, date);
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(999),
+                          onTap: () => selectDate(date),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isEndpoint
+                                  ? Colors.black
+                                  : isInRange(date)
+                                  ? const Color(0xFFEFEFEF)
+                                  : Colors.transparent,
+                              shape: isEndpoint
+                                  ? BoxShape.circle
+                                  : BoxShape.rectangle,
+                            ),
+                            child: Text(
+                              '${date.day}',
+                              style: TextStyle(
+                                color: isEndpoint ? Colors.white : Colors.black,
+                                fontWeight: isEndpoint
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final selectedEnd = end ?? start!;
+                          Navigator.pop(
+                            context,
+                            DateTimeRange(
+                              start: start!,
+                              end: DateTime(
+                                selectedEnd.year,
+                                selectedEnd.month,
+                                selectedEnd.day,
+                                23,
+                                59,
+                                59,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text('Lưu'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _WeekdayLabel extends StatelessWidget {
+  final String label;
+
+  const _WeekdayLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Center(
+        child: Text(label, style: SheepTextStyles.itemMeta(context)),
+      ),
+    );
+  }
+}

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:line_icons/line_icons.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_colors.dart';

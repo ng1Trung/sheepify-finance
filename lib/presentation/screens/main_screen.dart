@@ -14,7 +14,6 @@ import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/l10n.dart';
 
-import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_widgets.dart';
 
 class MainScreen extends StatefulWidget {
@@ -28,7 +27,14 @@ class _MainScreenState extends State<MainScreen> {
 
   // TIME AND VIEW MODE MANAGEMENT
   DateTime _selectedDate = DateTime.now();
-  bool _isMonthlyView = false; // Default is Daily view
+  late DateTimeRange _diaryRange = _dayRange(DateTime.now());
+
+  static DateTimeRange _dayRange(DateTime date) {
+    return DateTimeRange(
+      start: DateTime(date.year, date.month, date.day),
+      end: DateTime(date.year, date.month, date.day, 23, 59, 59),
+    );
+  }
 
   final _catBox = Hive.box<CategoryModel>(kCatBox);
 
@@ -78,22 +84,35 @@ class _MainScreenState extends State<MainScreen> {
 
   void _changeTime(int offset) {
     setState(() {
-      if (_isMonthlyView || _currentIndex == 0) {
-        // Monthly mode or Stats Tab
+      if (_currentIndex == 2) {
+        final start = _diaryRange.start.add(Duration(days: offset));
+        final end = _diaryRange.end.add(Duration(days: offset));
+        _diaryRange = DateTimeRange(start: start, end: end);
+      } else if (_currentIndex == 0) {
         _selectedDate = DateTime(
           _selectedDate.year,
           _selectedDate.month + offset,
           1,
         );
       } else {
-        // Daily mode
         _selectedDate = _selectedDate.add(Duration(days: offset));
       }
     });
   }
 
   Future<void> _pickTime() async {
-    final bool isMonthOnly = (_currentIndex == 0 || _isMonthlyView);
+    if (_currentIndex == 2) {
+      final picked = await SheepDateRangePicker.show(
+        context: context,
+        initialRange: _diaryRange,
+      );
+      if (picked != null) {
+        setState(() => _diaryRange = picked);
+      }
+      return;
+    }
+
+    final bool isMonthOnly = _currentIndex == 0;
     final picked = await SheepDatePicker.show(
       context: context,
       initialDate: _selectedDate,
@@ -139,7 +158,14 @@ class _MainScreenState extends State<MainScreen> {
 
       String dateText;
       final locale = Localizations.localeOf(context).toString();
-      if (_currentIndex == 1 || _isMonthlyView) {
+      if (_currentIndex == 2) {
+        final start = DateFormat(
+          'dd/MM/yyyy',
+          locale,
+        ).format(_diaryRange.start);
+        final end = DateFormat('dd/MM/yyyy', locale).format(_diaryRange.end);
+        dateText = start == end ? start : '$start - $end';
+      } else if (_currentIndex == 1) {
         dateText = DateFormat('MMMM yyyy', locale).format(_selectedDate);
       } else {
         dateText = DateFormat('dd/MM/yyyy', locale).format(_selectedDate);
@@ -148,19 +174,6 @@ class _MainScreenState extends State<MainScreen> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // MODE TOGGLE (DAY/MONTH) - ONLY IN DIARY TAB (Index 2)
-          if (_currentIndex == 2)
-            SizedBox(
-              width: 180,
-              child: SheepTripleToggle(
-                selectedIndex: _isMonthlyView ? 1 : 0,
-                labels: [l10n.get('day'), l10n.get('month')],
-                onChanged: (index) {
-                  setState(() => _isMonthlyView = index == 1);
-                },
-              ),
-            ),
-          const SizedBox(height: 8),
           // NAVIGATOR < DATE/MONTH >
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -198,7 +211,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        (_currentIndex == 1 || _isMonthlyView)
+                        _currentIndex == 1
                             ? Icons.calendar_month
                             : Icons.calendar_today,
                         size: 14,
@@ -241,10 +254,7 @@ class _MainScreenState extends State<MainScreen> {
         case 1:
           return StatsTab(currentMonth: _selectedDate);
         case 2:
-          return DiaryTab(
-            selectedDate: _selectedDate,
-            isMonthly: _isMonthlyView,
-          );
+          return DiaryTab(selectedRange: _diaryRange);
         case 3:
           return const CategoryTab();
         case 4:
@@ -264,7 +274,7 @@ class _MainScreenState extends State<MainScreen> {
               backgroundColor: Colors.transparent,
               toolbarHeight: (_currentIndex == 3 || _currentIndex == 4)
                   ? 60
-                  : 100,
+                  : 68,
               title: buildAppBarTitle(),
               actions: [
                 if (_currentIndex == 3)
@@ -334,14 +344,14 @@ class _MainScreenState extends State<MainScreen> {
       isDismissible: true,
       enableDrag: true,
       builder: (_) => TransactionForm(
-        initialDate: _isMonthlyView ? DateTime.now() : _selectedDate,
+        initialDate: _currentIndex == 2 ? _diaryRange.start : _selectedDate,
       ),
     );
 
     if (resultDate != null) {
       setState(() {
         _selectedDate = resultDate;
-        _isMonthlyView = false;
+        _diaryRange = _dayRange(resultDate);
         _currentIndex = 1;
       });
     }
@@ -369,6 +379,9 @@ class _MainScreenState extends State<MainScreen> {
         setState(() {
           _currentIndex = index;
           _selectedDate = DateTime.now();
+          if (index == 2) {
+            _diaryRange = _dayRange(DateTime.now());
+          }
         });
       },
       child: Icon(icon, color: color, size: 26),

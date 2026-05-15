@@ -16,13 +16,8 @@ import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
 
 class DiaryTab extends StatefulWidget {
-  final DateTime selectedDate;
-  final bool isMonthly;
-  const DiaryTab({
-    super.key,
-    required this.selectedDate,
-    required this.isMonthly,
-  });
+  final DateTimeRange selectedRange;
+  const DiaryTab({super.key, required this.selectedRange});
 
   @override
   State<DiaryTab> createState() => _DiaryTabState();
@@ -49,16 +44,23 @@ class _DiaryTabState extends State<DiaryTab> {
                 .map((c) => c.id)
                 .toSet();
 
-            // 2. Filter transactions for display (Include all transactions for the date)
+            final isSingleDay =
+                widget.selectedRange.start.year ==
+                    widget.selectedRange.end.year &&
+                widget.selectedRange.start.month ==
+                    widget.selectedRange.end.month &&
+                widget.selectedRange.start.day == widget.selectedRange.end.day;
+
+            // 2. Filter transactions for display (Include all transactions for the range)
             final displayTxs = box.values.cast<Transaction>().where((tx) {
-              if (widget.isMonthly) {
-                return tx.date.month == widget.selectedDate.month &&
-                    tx.date.year == widget.selectedDate.year;
-              } else {
-                return tx.date.day == widget.selectedDate.day &&
-                    tx.date.month == widget.selectedDate.month &&
-                    tx.date.year == widget.selectedDate.year;
-              }
+              return tx.date.isAfter(
+                    widget.selectedRange.start.subtract(
+                      const Duration(seconds: 1),
+                    ),
+                  ) &&
+                  tx.date.isBefore(
+                    widget.selectedRange.end.add(const Duration(seconds: 1)),
+                  );
             }).toList();
 
             // 3. Summary Statistics (Exclude goals)
@@ -103,9 +105,9 @@ class _DiaryTabState extends State<DiaryTab> {
                           child: Column(
                             children: [
                               Text(
-                                widget.isMonthly
-                                    ? l10n.get('monthly_balance')
-                                    : l10n.get('daily_balance'),
+                                isSingleDay
+                                    ? l10n.get('daily_balance')
+                                    : l10n.get('range_balance'),
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(
                                       color: AppColors.getTextSecondary(
@@ -190,9 +192,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                     minHeight: minContentHeight,
                                   ),
                                   child: SheepEmptyState(
-                                    message: widget.isMonthly
-                                        ? l10n.get('no_tx_month')
-                                        : l10n.get('no_tx_today'),
+                                    message: isSingleDay
+                                        ? l10n.get('no_tx_today')
+                                        : l10n.get('no_tx_range'),
                                   ),
                                 ),
                               ),
@@ -237,7 +239,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            if (widget.isMonthly)
+                                            if (!isSingleDay)
                                               Padding(
                                                 padding:
                                                     const EdgeInsets.fromLTRB(

@@ -74,27 +74,37 @@ class _StatsTabState extends State<StatsTab> {
     );
   }
 
+  DateTime _shiftDateMonth(DateTime date, int offset) {
+    final targetMonth = DateTime(date.year, date.month + offset);
+    final lastDay = DateTime(targetMonth.year, targetMonth.month + 1, 0).day;
+    return DateTime(
+      targetMonth.year,
+      targetMonth.month,
+      date.day > lastDay ? lastDay : date.day,
+    );
+  }
+
   void _changeMonth(int offset) {
     setState(() {
-      _selectedMonth = DateTime(
-        _selectedMonth.year,
-        _selectedMonth.month + offset,
-        1,
+      final start = _shiftDateMonth(_selectedRange.start, offset);
+      final end = _shiftDateMonth(_selectedRange.end, offset);
+      _selectedRange = DateTimeRange(
+        start: start,
+        end: DateTime(end.year, end.month, end.day, 23, 59, 59),
       );
-      _syncSelectedRange();
+      _selectedMonth = DateTime(start.year, start.month);
     });
   }
 
-  Future<void> _pickMonth() async {
-    final picked = await SheepDatePicker.show(
+  Future<void> _pickRange() async {
+    final picked = await SheepDateRangePicker.show(
       context: context,
-      initialDate: _selectedMonth,
-      mode: SheepDateMode.month,
+      initialRange: _selectedRange,
     );
     if (picked != null) {
       setState(() {
-        _selectedMonth = DateTime(picked.year, picked.month, 1);
-        _syncSelectedRange();
+        _selectedRange = picked;
+        _selectedMonth = DateTime(picked.start.year, picked.start.month);
       });
     }
   }
@@ -231,7 +241,8 @@ class _StatsTabState extends State<StatsTab> {
 
   Widget _buildDateRangeBar() {
     final locale = Localizations.localeOf(context).toString();
-    final monthText = DateFormat('MMMM yyyy', locale).format(_selectedMonth);
+    final rangeText =
+        '${DateFormat('dd/MM/yy', locale).format(_selectedRange.start)} - ${DateFormat('dd/MM/yy', locale).format(_selectedRange.end)}';
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -242,7 +253,7 @@ class _StatsTabState extends State<StatsTab> {
           onPressed: () => _changeMonth(-1),
         ),
         InkWell(
-          onTap: _pickMonth,
+          onTap: _pickRange,
           borderRadius: BorderRadius.circular(16),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -256,7 +267,7 @@ class _StatsTabState extends State<StatsTab> {
                 const Icon(Icons.calendar_month, size: 16, color: Colors.black),
                 const SizedBox(width: 10),
                 Text(
-                  monthText,
+                  rangeText,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
