@@ -1,20 +1,25 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:intl/intl.dart';
-
 import '../../core/constants/constants.dart';
 import '../../core/utils/currency_util.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
 import '../../core/utils/l10n.dart';
-import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_widgets.dart';
 
 class StatsTab extends StatefulWidget {
-  final DateTime currentMonth;
-  const StatsTab({super.key, required this.currentMonth});
+  final DateTimeRange selectedRange;
+  final int selectedTypeIndex;
+  final Widget typeFilter;
+
+  const StatsTab({
+    super.key,
+    required this.selectedRange,
+    required this.selectedTypeIndex,
+    required this.typeFilter,
+  });
 
   @override
   State<StatsTab> createState() => _StatsTabState();
@@ -27,92 +32,10 @@ class _StatEntry {
 }
 
 class _StatsTabState extends State<StatsTab> {
-  int _selectedTypeIndex = 0; // 0: expense, 1: income, 2: savings
   int _touchedIndex = -1;
-  late DateTime _selectedMonth;
-  DateTimeRange _selectedRange = DateTimeRange(
-    start: DateTime.now(),
-    end: DateTime.now(),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedMonth = DateTime(
-      widget.currentMonth.year,
-      widget.currentMonth.month,
-      1,
-    );
-    _syncSelectedRange();
-  }
-
-  @override
-  void didUpdateWidget(covariant StatsTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentMonth.year != widget.currentMonth.year ||
-        oldWidget.currentMonth.month != widget.currentMonth.month) {
-      _selectedMonth = DateTime(
-        widget.currentMonth.year,
-        widget.currentMonth.month,
-        1,
-      );
-      _syncSelectedRange();
-    }
-  }
-
-  void _syncSelectedRange() {
-    _selectedRange = DateTimeRange(
-      start: DateTime(_selectedMonth.year, _selectedMonth.month, 1),
-      end: DateTime(
-        _selectedMonth.year,
-        _selectedMonth.month + 1,
-        0,
-        23,
-        59,
-        59,
-      ),
-    );
-  }
-
-  DateTime _shiftDateMonth(DateTime date, int offset) {
-    final targetMonth = DateTime(date.year, date.month + offset);
-    final lastDay = DateTime(targetMonth.year, targetMonth.month + 1, 0).day;
-    return DateTime(
-      targetMonth.year,
-      targetMonth.month,
-      date.day > lastDay ? lastDay : date.day,
-    );
-  }
-
-  void _changeMonth(int offset) {
-    setState(() {
-      final start = _shiftDateMonth(_selectedRange.start, offset);
-      final end = _shiftDateMonth(_selectedRange.end, offset);
-      _selectedRange = DateTimeRange(
-        start: start,
-        end: DateTime(end.year, end.month, end.day, 23, 59, 59),
-      );
-      _selectedMonth = DateTime(start.year, start.month);
-    });
-  }
-
-  Future<void> _pickRange() async {
-    final picked = await SheepDateRangePicker.show(
-      context: context,
-      initialRange: _selectedRange,
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedRange = picked;
-        _selectedMonth = DateTime(picked.start.year, picked.start.month);
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
-
     return ValueListenableBuilder(
       valueListenable: Hive.box<AppSettings>(kSettingsBox).listenable(),
       builder: (context, settingsBox, _) {
@@ -128,10 +51,12 @@ class _StatsTabState extends State<StatsTab> {
             final filteredTransactions = allTransactions.where(
               (tx) =>
                   tx.date.isAfter(
-                    _selectedRange.start.subtract(const Duration(seconds: 1)),
+                    widget.selectedRange.start.subtract(
+                      const Duration(seconds: 1),
+                    ),
                   ) &&
                   tx.date.isBefore(
-                    _selectedRange.end.add(const Duration(seconds: 1)),
+                    widget.selectedRange.end.add(const Duration(seconds: 1)),
                   ),
             );
 
@@ -148,7 +73,7 @@ class _StatsTabState extends State<StatsTab> {
                 ),
               );
 
-              if (cat.effectiveTypeIndex == _selectedTypeIndex) {
+              if (cat.effectiveTypeIndex == widget.selectedTypeIndex) {
                 if (statsMap.containsKey(cat.id)) {
                   statsMap[cat.id]!.amount += tx.amount;
                 } else {
@@ -182,35 +107,32 @@ class _StatsTabState extends State<StatsTab> {
             }
 
             if (displayTotal == 0) {
-              return Padding(
-                padding: EdgeInsets.only(top: topPadding + 20, bottom: 24),
-                child: Column(
-                  children: [
-                    _buildDateRangeBar(),
-                    const SizedBox(height: 28),
-                    _buildTabSelector(l10n),
-                    const SizedBox(height: 28),
-                    Expanded(
-                      child: buildStatsCard(child: _buildEmptyState(l10n)),
-                    ),
-                  ],
+              return Expanded(
+                child: buildStatsCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      widget.typeFilter,
+                      Expanded(child: _buildEmptyState(l10n)),
+                    ],
+                  ),
                 ),
               );
             }
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.only(top: topPadding + 20, bottom: 24),
+              padding: const EdgeInsets.only(bottom: 24),
               child: Column(
                 children: [
-                  _buildDateRangeBar(),
-                  const SizedBox(height: 28),
-                  _buildTabSelector(l10n),
-                  const SizedBox(height: 28),
-
                   buildStatsCard(
                     child: Column(
                       children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: widget.typeFilter,
+                        ),
+                        const SizedBox(height: 8),
                         _buildPieChart(
                           sortedStats,
                           displayTotal,
@@ -236,65 +158,6 @@ class _StatsTabState extends State<StatsTab> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildDateRangeBar() {
-    final locale = Localizations.localeOf(context).toString();
-    final rangeText =
-        '${DateFormat('dd/MM/yy', locale).format(_selectedRange.start)} - ${DateFormat('dd/MM/yy', locale).format(_selectedRange.end)}';
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-          onPressed: () => _changeMonth(-1),
-        ),
-        InkWell(
-          onTap: _pickRange,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFEAEAEA)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.calendar_month, size: 16, color: Colors.black),
-                const SizedBox(width: 10),
-                Text(
-                  rangeText,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.arrow_forward_ios, size: 18),
-          onPressed: () => _changeMonth(1),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabSelector(L10n l10n) {
-    return Padding(
-      padding: SheepSpacing.pageHorizontal,
-      child: SheepTripleToggle(
-        selectedIndex: _selectedTypeIndex,
-        labels: [l10n.get('expense'), l10n.get('income'), l10n.get('savings')],
-        onChanged: (index) => setState(() => _selectedTypeIndex = index),
-      ),
     );
   }
 
@@ -428,10 +291,10 @@ class _StatsTabState extends State<StatsTab> {
           ),
           Text(
             CurrencyUtil.formatByCurrency(stat.amount, currency),
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 16,
-              color: catColor,
+              color: Colors.black,
             ),
           ),
         ],
@@ -441,7 +304,7 @@ class _StatsTabState extends State<StatsTab> {
 
   Widget _buildEmptyState(L10n l10n) {
     String message;
-    switch (_selectedTypeIndex) {
+    switch (widget.selectedTypeIndex) {
       case 0:
         message = l10n.get('no_data_expense');
         break;

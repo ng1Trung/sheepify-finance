@@ -6,7 +6,6 @@ import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
 import '../widgets/transaction_form.dart';
 import '../tabs/home_tab.dart';
-import '../tabs/stats_tab.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
 import '../tabs/settings_tab.dart';
@@ -84,7 +83,7 @@ class _MainScreenState extends State<MainScreen> {
 
   void _changeTime(int offset) {
     setState(() {
-      if (_currentIndex == 2) {
+      if (_currentIndex == 1) {
         final start = _diaryRange.start.add(Duration(days: offset));
         final end = _diaryRange.end.add(Duration(days: offset));
         _diaryRange = DateTimeRange(start: start, end: end);
@@ -101,7 +100,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _pickTime() async {
-    if (_currentIndex == 2) {
+    if (_currentIndex == 1) {
       final picked = await SheepDateRangePicker.show(
         context: context,
         initialRange: _diaryRange,
@@ -133,7 +132,7 @@ class _MainScreenState extends State<MainScreen> {
       if (_currentIndex == 0) {
         return const SizedBox.shrink(); // HomeTab handles its own header
       }
-      if (_currentIndex == 3) {
+      if (_currentIndex == 2) {
         return Text(
           l10n.categories,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -142,7 +141,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
         );
       }
-      if (_currentIndex == 4) {
+      if (_currentIndex == 3) {
         return Text(
           l10n.settings,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -152,21 +151,19 @@ class _MainScreenState extends State<MainScreen> {
         );
       }
 
-      if (_currentIndex == 0 || _currentIndex == 3 || _currentIndex == 4) {
+      if (_currentIndex == 0 || _currentIndex == 2 || _currentIndex == 3) {
         return const SizedBox.shrink();
       }
 
       String dateText;
       final locale = Localizations.localeOf(context).toString();
-      if (_currentIndex == 2) {
+      if (_currentIndex == 1) {
         final start = DateFormat(
           'dd/MM/yyyy',
           locale,
         ).format(_diaryRange.start);
         final end = DateFormat('dd/MM/yyyy', locale).format(_diaryRange.end);
         dateText = start == end ? start : '$start - $end';
-      } else if (_currentIndex == 1) {
-        dateText = DateFormat('MMMM yyyy', locale).format(_selectedDate);
       } else {
         dateText = DateFormat('dd/MM/yyyy', locale).format(_selectedDate);
       }
@@ -211,9 +208,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        _currentIndex == 1
-                            ? Icons.calendar_month
-                            : Icons.calendar_today,
+                        Icons.calendar_today,
                         size: 14,
                         color: AppColors.getTextPrimary(theme.brightness),
                       ),
@@ -249,15 +244,13 @@ class _MainScreenState extends State<MainScreen> {
       switch (_currentIndex) {
         case 0:
           return HomeTab(
-            onViewAllSavings: () => setState(() => _currentIndex = 3),
+            onViewAllSavings: () => setState(() => _currentIndex = 2),
           );
         case 1:
-          return StatsTab(currentMonth: _selectedDate);
-        case 2:
           return DiaryTab(selectedRange: _diaryRange);
-        case 3:
+        case 2:
           return const CategoryTab();
-        case 4:
+        case 3:
           return const SettingsTab();
         default:
           return const SizedBox();
@@ -266,18 +259,18 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.getBackground(theme.brightness),
-      appBar: (_currentIndex == 0 || _currentIndex == 1)
+      appBar: _currentIndex == 0
           ? null
           : AppBar(
               elevation: 0,
               centerTitle: true,
               backgroundColor: Colors.transparent,
-              toolbarHeight: (_currentIndex == 3 || _currentIndex == 4)
+              toolbarHeight: (_currentIndex == 2 || _currentIndex == 3)
                   ? 60
                   : 68,
               title: buildAppBarTitle(),
               actions: [
-                if (_currentIndex == 3)
+                if (_currentIndex == 2)
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
                     child: IconButton(
@@ -317,13 +310,11 @@ class _MainScreenState extends State<MainScreen> {
                   children: [
                     _buildIconNavItem(0, Icons.home_rounded),
                     const SizedBox(width: 18),
-                    _buildIconNavItem(1, Icons.pie_chart_rounded),
+                    _buildIconNavItem(1, Icons.receipt_long_rounded),
                     const SizedBox(width: 18),
-                    _buildIconNavItem(2, Icons.history_rounded),
+                    _buildIconNavItem(2, Icons.style_rounded),
                     const SizedBox(width: 18),
-                    _buildIconNavItem(3, Icons.style_rounded),
-                    const SizedBox(width: 18),
-                    _buildIconNavItem(4, Icons.settings_rounded),
+                    _buildIconNavItem(3, Icons.settings_rounded),
                   ],
                 ),
               ),
@@ -344,7 +335,7 @@ class _MainScreenState extends State<MainScreen> {
       isDismissible: true,
       enableDrag: true,
       builder: (_) => TransactionForm(
-        initialDate: _currentIndex == 2 ? _diaryRange.start : _selectedDate,
+        initialDate: _currentIndex == 1 ? _diaryRange.start : _selectedDate,
       ),
     );
 
@@ -379,7 +370,7 @@ class _MainScreenState extends State<MainScreen> {
         setState(() {
           _currentIndex = index;
           _selectedDate = DateTime.now();
-          if (index == 2) {
+          if (index == 1) {
             _diaryRange = _dayRange(DateTime.now());
           }
         });

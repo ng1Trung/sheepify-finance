@@ -121,6 +121,11 @@ class L10n {
       'today_transactions': 'Giao dịch hôm nay',
       'no_data_today': 'Hôm nay chưa có giao dịch nào.',
       'no_note': 'Không có ghi chú',
+      'chart_view': 'Biểu đồ',
+      'list_view': 'Danh sách',
+      'image_view': 'Ảnh',
+      'image_view_coming_soon': 'Chế độ xem ảnh sẽ được triển khai sau',
+      'all': 'Tất cả',
     },
     'en': {
       'app_title': 'Sheepify',
@@ -234,6 +239,11 @@ class L10n {
       'today_transactions': 'Today\'s Transactions',
       'no_data_today': 'No transactions today.',
       'no_note': 'No note',
+      'chart_view': 'Chart',
+      'list_view': 'List',
+      'image_view': 'Images',
+      'image_view_coming_soon': 'Image view will be added later',
+      'all': 'All',
     },
   };
 
