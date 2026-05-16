@@ -180,18 +180,21 @@ class SettingsTab extends StatelessWidget {
   }
 
   Widget _buildCardSectionTitle(BuildContext context, String title) {
+    final brightness = Theme.of(context).brightness;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFAFAFA),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-        border: Border(bottom: BorderSide(color: Color(0xFFEAEAEA))),
+      decoration: BoxDecoration(
+        color: AppColors.getSectionHeader(brightness),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        border: Border(
+          bottom: BorderSide(color: AppColors.getBorder(brightness)),
+        ),
       ),
       child: Text(
         title,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: Colors.black87,
+          color: AppColors.getTextSecondary(brightness),
           fontSize: 12,
           letterSpacing: 1.2,
           fontWeight: FontWeight.w800,
@@ -319,7 +322,12 @@ class SettingsTab extends StatelessWidget {
   }
 
   Widget _buildDivider() {
-    return const Divider(height: 1, color: Color(0xFFEAEAEA));
+    return Builder(
+      builder: (context) => Divider(
+        height: 1,
+        color: AppColors.getBorder(Theme.of(context).brightness),
+      ),
+    );
   }
 
   Widget _buildSettingsRow(

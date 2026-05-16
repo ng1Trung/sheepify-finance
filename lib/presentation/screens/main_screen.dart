@@ -200,44 +200,10 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                     const SizedBox(width: 4),
                   ],
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxPillWidth),
-                    child: IntrinsicWidth(
-                      child: InkWell(
-                        onTap: _pickTime,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.brightness == Brightness.light
-                                ? Colors.white
-                                : AppColors.getSurface(theme.brightness),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            dateText,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.getTextPrimary(theme.brightness),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  SheepDatePill(
+                    label: dateText,
+                    onTap: _pickTime,
+                    maxWidth: maxPillWidth,
                   ),
                   if (isSingleDiaryDay) ...[
                     const SizedBox(width: 4),
@@ -293,9 +259,12 @@ class _MainScreenState extends State<MainScreen> {
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.add_circle_outline_rounded,
-                  color: Colors.black,
+                  color: AppColors.getInteractiveAccent(
+                    theme.brightness,
+                    theme.colorScheme.primary,
+                  ),
                   size: 28,
                 ),
                 onPressed: _showAddCategoryForm,
@@ -306,8 +275,6 @@ class _MainScreenState extends State<MainScreen> {
       body: buildBody(),
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
               onPressed: _showAddTransactionForm,
               child: const Icon(Icons.add_rounded, size: 28),
             )
@@ -447,6 +414,10 @@ class _MainScreenState extends State<MainScreen> {
   }) {
     final theme = Theme.of(context);
     final isSelected = _currentIndex == index;
+    final accent = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
@@ -454,8 +425,8 @@ class _MainScreenState extends State<MainScreen> {
         leading: Icon(icon),
         title: Text(label),
         selected: isSelected,
-        selectedColor: AppColors.getTextPrimary(theme.brightness),
-        selectedTileColor: theme.primaryColor.withOpacity(0.08),
+        selectedColor: accent,
+        selectedTileColor: AppColors.getAccentSurface(theme.brightness, accent),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         onTap: () {
           Navigator.of(context).pop();

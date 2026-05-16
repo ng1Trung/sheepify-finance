@@ -18,16 +18,22 @@ class SheepSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    final activeTrackColor = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
     final isEnabled = onChanged != null;
-    final outlineColor = activeColor;
-    final thumbColor = activeColor;
-    const borderWidth = 2.0;
-    const inset = 3.0;
-    final thumbSize = height - (inset * 2) - (borderWidth * 2);
-    final thumbLeft = value
-        ? width - thumbSize - inset - borderWidth
-        : inset + borderWidth;
+    final inactiveTrackColor = theme.brightness == Brightness.dark
+        ? const Color(0xFF3A3A3A)
+        : const Color(0xFFE5E7EB);
+    final trackColor = value ? activeTrackColor : inactiveTrackColor;
+    final thumbColor = value
+        ? AppColors.getOnAccent(theme.brightness, activeTrackColor)
+        : Colors.white;
+    const inset = 2.0;
+    final thumbSize = height - (inset * 2);
+    final thumbLeft = value ? width - thumbSize - inset : inset;
 
     return Semantics(
       toggled: value,
@@ -47,16 +53,15 @@ class SheepSwitch extends StatelessWidget {
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOutCubic,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: trackColor,
                     borderRadius: BorderRadius.circular(height / 2),
-                    border: Border.all(color: outlineColor, width: borderWidth),
                   ),
                 ),
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOutCubic,
                   left: thumbLeft,
-                  top: inset + borderWidth,
+                  top: inset,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOutCubic,
@@ -102,9 +107,11 @@ class SheepTypeToggle extends StatelessWidget {
           height: 48,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: AppColors.getSubtleSurface(Theme.of(context).brightness),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE8E8E8)),
+            border: Border.all(
+              color: AppColors.getBorder(Theme.of(context).brightness),
+            ),
           ),
           child: Stack(
             children: [
@@ -119,7 +126,10 @@ class SheepTypeToggle extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.light
                         ? Colors.white
-                        : AppColors.getSurface(Theme.of(context).brightness),
+                        : AppColors.getAccentSurface(
+                            Theme.of(context).brightness,
+                            Theme.of(context).colorScheme.primary,
+                          ),
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: AppColors.getSoftShadow(
                       Theme.of(context).brightness,
@@ -159,6 +169,10 @@ class SheepTypeToggle extends StatelessWidget {
     Color color,
     VoidCallback onTap,
   ) {
+    final activeColor = AppColors.getInteractiveAccent(
+      Theme.of(context).brightness,
+      Theme.of(context).colorScheme.primary,
+    );
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -170,7 +184,7 @@ class SheepTypeToggle extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.bold,
               color: isActive
-                  ? color
+                  ? activeColor
                   : Theme.of(context).textTheme.labelSmall?.color,
             ),
             child: Text(title),
@@ -210,9 +224,11 @@ class SheepTripleToggle extends StatelessWidget {
           height: 48,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: AppColors.getSubtleSurface(Theme.of(context).brightness),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE8E8E8)),
+            border: Border.all(
+              color: AppColors.getBorder(Theme.of(context).brightness),
+            ),
           ),
           child: Stack(
             children: [
@@ -250,7 +266,10 @@ class SheepTripleToggle extends StatelessWidget {
               Row(
                 children: List.generate(currentLabels.length, (index) {
                   final isActive = selectedIndex == index;
-                  const activeColor = AppColors.primary;
+                  final activeColor = AppColors.getInteractiveAccent(
+                    Theme.of(context).brightness,
+                    Theme.of(context).colorScheme.primary,
+                  );
 
                   return Expanded(
                     child: GestureDetector(
@@ -284,11 +303,15 @@ class SheepTripleToggle extends StatelessWidget {
   }
 
   Widget _buildIndicator(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.light
+        color: theme.brightness == Brightness.light
             ? Colors.white
-            : AppColors.getSurface(Theme.of(context).brightness),
+            : AppColors.getAccentSurface(
+                theme.brightness,
+                theme.colorScheme.primary,
+              ),
         borderRadius: BorderRadius.circular(10),
         boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
       ),

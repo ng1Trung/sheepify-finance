@@ -334,6 +334,11 @@ class _CategoryFormState extends State<CategoryForm> {
 
   Widget _buildStickyFooter() {
     final l10n = L10n.of(context);
+    final accent = _effectiveSelectedColor(context);
+    final onAccent = AppColors.getOnAccent(
+      Theme.of(context).brightness,
+      accent,
+    );
     return Container(
       padding: EdgeInsets.only(
         left: 20,
@@ -356,13 +361,11 @@ class _CategoryFormState extends State<CategoryForm> {
         child: Container(
           height: 55,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_selectedColor, _selectedColor.withOpacity(0.8)],
-            ),
+            gradient: LinearGradient(colors: [accent, accent.withOpacity(0.8)]),
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: _selectedColor.withOpacity(0.3),
+                color: accent.withOpacity(0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
@@ -373,8 +376,8 @@ class _CategoryFormState extends State<CategoryForm> {
               widget.category == null
                   ? l10n.get('create_category')
                   : l10n.get('save_changes'),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: onAccent,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
                 fontSize: 15,
@@ -399,22 +402,20 @@ class _CategoryFormState extends State<CategoryForm> {
 
   Widget _buildHeaderPreview(L10n l10n) {
     final theme = Theme.of(context);
+    final accent = _effectiveSelectedColor(context);
     return Row(
       children: [
         Container(
           width: 70,
           height: 70,
           decoration: BoxDecoration(
-            color: _selectedColor.withOpacity(0.15),
+            color: accent.withOpacity(0.15),
             borderRadius: BorderRadius.circular(25),
-            border: Border.all(
-              color: _selectedColor.withOpacity(0.3),
-              width: 1,
-            ),
+            border: Border.all(color: accent.withOpacity(0.3), width: 1),
           ),
           child: Icon(
             IconData(_selectedIcon, fontFamily: 'MaterialIcons'),
-            color: _selectedColor,
+            color: accent,
             size: 32,
           ),
         ),
@@ -451,6 +452,10 @@ class _CategoryFormState extends State<CategoryForm> {
 
   Widget _buildReminderDayPicker(L10n l10n) {
     final theme = Theme.of(context);
+    final accent = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,17 +468,13 @@ class _CategoryFormState extends State<CategoryForm> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: AppColors.savings.withOpacity(0.05),
+              color: AppColors.getAccentSurface(theme.brightness, accent),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.savings.withOpacity(0.2)),
+              border: Border.all(color: accent.withOpacity(0.4)),
             ),
             child: Row(
               children: [
-                const Icon(
-                  LineIcons.calendar,
-                  color: AppColors.savings,
-                  size: 20,
-                ),
+                Icon(LineIcons.calendar, color: accent, size: 20),
                 const SizedBox(width: 12),
                 Text(
                   l10n.get(
@@ -481,12 +482,12 @@ class _CategoryFormState extends State<CategoryForm> {
                     params: {'day': _selectedReminderDay.toString()},
                   ),
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppColors.savings,
+                    color: accent,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const Spacer(),
-                const Icon(Icons.keyboard_arrow_down, color: AppColors.savings),
+                Icon(Icons.keyboard_arrow_down, color: accent),
               ],
             ),
           ),
@@ -553,6 +554,10 @@ class _CategoryFormState extends State<CategoryForm> {
 
   Widget _buildGoalDatePicker(L10n l10n) {
     final theme = Theme.of(context);
+    final accent = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
     final monthLabel = l10n.locale.languageCode == 'vi'
         ? 'Tháng ${_selectedTargetMonth.toString().padLeft(2, '0')}'
         : DateFormat.MMMM(
@@ -570,27 +575,23 @@ class _CategoryFormState extends State<CategoryForm> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: AppColors.savings.withOpacity(0.05),
+              color: AppColors.getAccentSurface(theme.brightness, accent),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.savings.withOpacity(0.2)),
+              border: Border.all(color: accent.withOpacity(0.4)),
             ),
             child: Row(
               children: [
-                const Icon(
-                  LineIcons.calendar,
-                  color: AppColors.savings,
-                  size: 20,
-                ),
+                Icon(LineIcons.calendar, color: accent, size: 20),
                 const SizedBox(width: 12),
                 Text(
                   '$monthLabel, $_selectedTargetYear',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppColors.savings,
+                    color: accent,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const Spacer(),
-                const Icon(Icons.keyboard_arrow_down, color: AppColors.savings),
+                Icon(Icons.keyboard_arrow_down, color: accent),
               ],
             ),
           ),
@@ -787,6 +788,7 @@ class _CategoryFormState extends State<CategoryForm> {
     String? suffix,
   }) {
     final theme = Theme.of(context);
+    final accent = _effectiveSelectedColor(context);
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -810,7 +812,7 @@ class _CategoryFormState extends State<CategoryForm> {
           ),
           prefixIcon: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Icon(icon, color: _selectedColor.withOpacity(0.7), size: 20),
+            child: Icon(icon, color: accent.withOpacity(0.8), size: 20),
           ),
           prefixIconConstraints: const BoxConstraints(minWidth: 40),
           suffixText: suffix,
@@ -853,7 +855,14 @@ class _CategoryFormState extends State<CategoryForm> {
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border:
+                    color == Colors.black && theme.brightness == Brightness.dark
+                    ? Border.all(color: AppColors.getBorder(theme.brightness))
+                    : null,
+              ),
               child: isSelected
                   ? const Icon(Icons.check, color: Colors.white, size: 18)
                   : null,
@@ -884,12 +893,14 @@ class _CategoryFormState extends State<CategoryForm> {
         itemBuilder: (context, index) {
           final icon = _iconList[index];
           final isSelected = _selectedIcon == icon.codePoint;
+          final accent = _effectiveSelectedColor(context);
+          final onAccent = AppColors.getOnAccent(theme.brightness, accent);
           return GestureDetector(
             onTap: () => setState(() => _selectedIcon = icon.codePoint),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
-                color: isSelected ? _selectedColor : theme.cardColor,
+                color: isSelected ? accent : theme.cardColor,
                 shape: BoxShape.circle,
                 border: isSelected
                     ? null
@@ -898,7 +909,7 @@ class _CategoryFormState extends State<CategoryForm> {
               child: Icon(
                 icon,
                 color: isSelected
-                    ? Colors.white
+                    ? onAccent
                     : theme.textTheme.labelSmall?.color,
                 size: 20,
               ),
@@ -906,6 +917,13 @@ class _CategoryFormState extends State<CategoryForm> {
           );
         },
       ),
+    );
+  }
+
+  Color _effectiveSelectedColor(BuildContext context) {
+    return AppColors.getInteractiveAccent(
+      Theme.of(context).brightness,
+      _selectedColor,
     );
   }
 }

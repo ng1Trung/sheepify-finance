@@ -6,6 +6,7 @@ import '../../core/utils/currency_util.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/utils/l10n.dart';
 import '../widgets/common/sheep_widgets.dart';
 
@@ -90,6 +91,7 @@ class _StatsTabState extends State<StatsTab> {
               ..sort((a, b) => b.amount.compareTo(a.amount));
 
             Widget buildStatsCard({required Widget child}) {
+              final brightness = Theme.of(context).brightness;
               return Container(
                 margin: SheepSpacing.pageHorizontal,
                 width: double.infinity,
@@ -98,9 +100,9 @@ class _StatsTabState extends State<StatsTab> {
                   vertical: 24,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.getSurface(brightness),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFEAEAEA)),
+                  border: Border.all(color: AppColors.getBorder(brightness)),
                 ),
                 child: child,
               );
@@ -140,7 +142,12 @@ class _StatsTabState extends State<StatsTab> {
                           settings.hideAmounts,
                         ),
                         const SizedBox(height: 32),
-                        const Divider(height: 1, color: Color(0xFFF8F8F8)),
+                        Divider(
+                          height: 1,
+                          color: AppColors.getBorder(
+                            Theme.of(context).brightness,
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         ...sortedStats.map(
                           (stat) => _buildStatRow(
@@ -241,10 +248,12 @@ class _StatsTabState extends State<StatsTab> {
                       currency,
                       isHidden: hideAmounts,
                     ),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: Colors.black,
+                      color: AppColors.getTextPrimary(
+                        Theme.of(context).brightness,
+                      ),
                     ),
                   ),
                 ),
@@ -263,9 +272,10 @@ class _StatsTabState extends State<StatsTab> {
     bool hideAmounts,
   ) {
     final percent = (stat.amount / total * 100).toStringAsFixed(1);
+    final brightness = Theme.of(context).brightness;
     final catColor = stat.category.colorValue != null
         ? Color(stat.category.colorValue!)
-        : Colors.black;
+        : AppColors.getTextPrimary(brightness);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -302,10 +312,10 @@ class _StatsTabState extends State<StatsTab> {
               currency,
               isHidden: hideAmounts,
             ),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 16,
-              color: Colors.black,
+              color: AppColors.getTextPrimary(brightness),
             ),
           ),
         ],

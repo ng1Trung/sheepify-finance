@@ -366,38 +366,12 @@ class _TransactionFormState extends State<TransactionForm> {
 
   // Interactive pill to display and change date/time
   Widget _buildDatePill() {
-    return InkWell(
+    return SheepDatePill(
+      label: DateFormat(
+        'dd/MM/yyyy',
+        Localizations.localeOf(context).toString(),
+      ).format(_selectedDate),
       onTap: _pickDate,
-      borderRadius: BorderRadius.circular(15),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: AppColors.primary.withOpacity(0.1),
-            width: 0.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(LineIcons.calendar, size: 14, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              DateFormat(
-                'dd MMMM, yyyy',
-                Localizations.localeOf(context).toString(),
-              ).format(_selectedDate),
-              style: TextStyle(
-                color: Theme.of(context).primaryColor,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

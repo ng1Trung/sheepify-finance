@@ -10,6 +10,10 @@ class AppTheme {
   ) {
     final brightness = isDarkMode ? Brightness.dark : Brightness.light;
     final primary = palette.primary;
+    final interactiveAccent = AppColors.getInteractiveAccent(
+      brightness,
+      primary,
+    );
     final background = AppColors.getBackground(brightness);
     final surface = AppColors.getSurface(brightness);
     final textPrimary = AppColors.getTextPrimary(brightness);
@@ -49,18 +53,20 @@ class AppTheme {
 
     final baseTextTheme = resolveTextTheme(fontFamily);
 
-    const outlineColor = Color(0xFFE8E8E8);
+    final outlineColor = AppColors.getBorder(brightness);
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       fontFamily: fontFamily,
       scaffoldBackgroundColor: background,
-      primaryColor: AppColors.primary, // Black
+      dividerColor: outlineColor,
+      cardColor: surface,
+      primaryColor: interactiveAccent,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         brightness: brightness,
-        primary: primary,
+        primary: interactiveAccent,
         secondary: const Color(0xFF757575),
         surface: surface,
         error: AppColors.expense,
@@ -114,8 +120,10 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary, // Black
-          foregroundColor: Colors.white,
+          backgroundColor: interactiveAccent,
+          foregroundColor: interactiveAccent.computeLuminance() > 0.45
+              ? Colors.black
+              : Colors.white,
           elevation: 0,
           minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(
@@ -128,8 +136,10 @@ class AppTheme {
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: primary, // Black
-        foregroundColor: Colors.white,
+        backgroundColor: interactiveAccent,
+        foregroundColor: interactiveAccent.computeLuminance() > 0.45
+            ? Colors.black
+            : Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -142,26 +152,26 @@ class AppTheme {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: outlineColor),
+          borderSide: BorderSide(color: outlineColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: outlineColor),
+          borderSide: BorderSide(color: outlineColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: primary, width: 1.5),
+          borderSide: BorderSide(color: interactiveAccent, width: 1.5),
         ),
         labelStyle: baseTextTheme.bodyMedium?.copyWith(color: textSecondary),
         hintStyle: baseTextTheme.bodyMedium?.copyWith(color: textSecondary),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.primaryLight,
-        selectedColor: primary, // Black
+        backgroundColor: AppColors.getSubtleSurface(brightness),
+        selectedColor: interactiveAccent,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: outlineColor),
+          side: BorderSide(color: outlineColor),
         ),
         labelStyle: baseTextTheme.bodyMedium?.copyWith(
           color: textPrimary,

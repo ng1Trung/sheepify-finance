@@ -56,6 +56,35 @@ class AppColors {
       b == Brightness.light ? textPriLight : const Color(0xFFFFFFFF);
   static Color getTextSecondary(Brightness b) =>
       b == Brightness.light ? textSecLight : const Color(0xFFAAAAAA);
+  static Color getBorder(Brightness b) =>
+      b == Brightness.light ? const Color(0xFFEAEAEA) : const Color(0xFF2A2A2A);
+  static Color getSubtleSurface(Brightness b) =>
+      b == Brightness.light ? const Color(0xFFF5F5F5) : const Color(0xFF242424);
+  static Color getSectionHeader(Brightness b) =>
+      b == Brightness.light ? const Color(0xFFFAFAFA) : const Color(0xFF202020);
+  static Color getInteractiveAccent(Brightness b, Color accent) {
+    if (b == Brightness.dark && accent.computeLuminance() < 0.18) {
+      return const Color(0xFFF5F5F5);
+    }
+    return accent;
+  }
+
+  static Color getAccentSurface(Brightness b, Color accent) =>
+      getInteractiveAccent(
+        b,
+        accent,
+      ).withOpacity(b == Brightness.dark ? 0.18 : 0.12);
+  static Color getOnAccent(Brightness b, Color accent) =>
+      getInteractiveAccent(b, accent).computeLuminance() > 0.45
+      ? Colors.black
+      : Colors.white;
+  static Color getSwitchAccent(Brightness b, Color accent) {
+    final interactive = getInteractiveAccent(b, accent);
+    if (b == Brightness.dark && interactive.computeLuminance() > 0.45) {
+      return const Color(0xFF111111);
+    }
+    return interactive;
+  }
 
   // Effects
   static List<BoxShadow> getSoftShadow(Brightness b) => [];

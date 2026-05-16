@@ -138,11 +138,13 @@ class _DiaryTabState extends State<DiaryTab> {
 
               return PopupMenuTheme(
                 data: PopupMenuThemeData(
-                  color: Colors.white,
+                  color: AppColors.getSurface(theme.brightness),
                   surfaceTintColor: Colors.transparent,
                   elevation: 8,
                   shape: RoundedRectangleBorder(
-                    side: const BorderSide(color: Color(0xFFEAEAEA)),
+                    side: BorderSide(
+                      color: AppColors.getBorder(theme.brightness),
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
@@ -172,7 +174,9 @@ class _DiaryTabState extends State<DiaryTab> {
                             child: Text(
                               labels[index],
                               style: SheepTextStyles.itemMeta(context).copyWith(
-                                color: Colors.black,
+                                color: AppColors.getTextPrimary(
+                                  theme.brightness,
+                                ),
                                 fontSize: 13,
                                 fontWeight: selectedTypeIndex == index
                                     ? FontWeight.w700
@@ -192,9 +196,11 @@ class _DiaryTabState extends State<DiaryTab> {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.getSurface(theme.brightness),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFEAEAEA)),
+                      border: Border.all(
+                        color: AppColors.getBorder(theme.brightness),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -206,7 +212,7 @@ class _DiaryTabState extends State<DiaryTab> {
                               ? l10n.get('all')
                               : labels[selectedTypeIndex],
                           style: SheepTextStyles.itemMeta(context).copyWith(
-                            color: Colors.black,
+                            color: AppColors.getTextPrimary(theme.brightness),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -590,7 +596,10 @@ class _DiaryTabState extends State<DiaryTab> {
                                                             ? Color(
                                                                 cat.colorValue!,
                                                               )
-                                                            : Colors.black,
+                                                            : AppColors.getTextPrimary(
+                                                                theme
+                                                                    .brightness,
+                                                              ),
                                                         title: cat.name,
                                                         dateText:
                                                             tx.note.isNotEmpty

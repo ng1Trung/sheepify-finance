@@ -83,7 +83,7 @@ class SheepCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(
           borderRadius ?? SheepSpacing.cardRadius,
         ),
-        border: border ?? Border.all(color: const Color(0xFFEAEAEA)),
+        border: border ?? Border.all(color: AppColors.getBorder(brightness)),
         boxShadow: AppColors.getSoftShadow(brightness),
       ),
       child: child,
@@ -182,9 +182,13 @@ class SheepButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final resolvedBackground = backgroundColor ?? theme.primaryColor;
+    final resolvedForeground =
+        foregroundColor ??
+        AppColors.getOnAccent(theme.brightness, resolvedBackground);
     final style = ElevatedButton.styleFrom(
-      backgroundColor: backgroundColor ?? theme.primaryColor,
-      foregroundColor: foregroundColor ?? Colors.white,
+      backgroundColor: resolvedBackground,
+      foregroundColor: resolvedForeground,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       minimumSize: Size.fromHeight(
         icon != null ? 56 : 48,
@@ -268,8 +272,8 @@ class SheepTransactionCard extends StatelessWidget {
   final String badgeText;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry? margin;
-  final Color iconColor;
-  final Color iconBackground;
+  final Color? iconColor;
+  final Color? iconBackground;
 
   const SheepTransactionCard({
     super.key,
@@ -281,18 +285,20 @@ class SheepTransactionCard extends StatelessWidget {
     required this.badgeText,
     this.onTap,
     this.margin,
-    this.iconColor = Colors.black,
-    this.iconBackground = const Color(0xFFF5F5F5),
+    this.iconColor,
+    this.iconBackground,
   });
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final borderColor = AppColors.getBorder(brightness);
     return Container(
       margin: margin ?? const EdgeInsets.only(bottom: SheepSpacing.itemGap),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.getSurface(brightness),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEDEDED)),
+        border: Border.all(color: borderColor),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -307,10 +313,16 @@ class SheepTransactionCard extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: iconBackground,
+                      color:
+                          iconBackground ??
+                          AppColors.getSubtleSurface(brightness),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Icon(icon, size: 24, color: iconColor),
+                    child: Icon(
+                      icon,
+                      size: 24,
+                      color: iconColor ?? AppColors.getTextPrimary(brightness),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -348,8 +360,8 @@ class SheepTransactionCard extends StatelessWidget {
             ),
             Container(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: Color(0xFFF1F1F1))),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: borderColor)),
               ),
               child: Row(
                 children: [
@@ -369,9 +381,9 @@ class SheepTransactionCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.getSurface(brightness),
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: const Color(0xFFE7E7E7)),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Text(
                       badgeText,
@@ -389,6 +401,64 @@ class SheepTransactionCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class SheepDatePill extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final double? maxWidth;
+
+  const SheepDatePill({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.maxWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pill = IntrinsicWidth(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: theme.brightness == Brightness.light
+                ? Colors.white
+                : AppColors.getSurface(theme.brightness),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppColors.getTextPrimary(theme.brightness),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (maxWidth == null) return pill;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth!),
+      child: pill,
     );
   }
 }
@@ -412,6 +482,10 @@ class SheepDatePicker {
       backgroundColor: Colors.transparent,
       builder: (context) {
         DateTime tempDate = initialDate;
+        DateTime visibleDateMonth = DateTime(
+          initialDate.year,
+          initialDate.month,
+        );
         return StatefulBuilder(
           builder: (context, setModalState) {
             Widget pickerView;
@@ -499,60 +573,185 @@ class SheepDatePicker {
                 ),
               );
             } else {
-              pickerView = Theme(
-                data: theme.copyWith(
-                  colorScheme: theme.colorScheme.copyWith(
-                    primary: theme.primaryColor,
+              final locale = Localizations.localeOf(context).toString();
+              final visibleMonth = visibleDateMonth;
+              final firstDay = DateTime(
+                visibleMonth.year,
+                visibleMonth.month,
+                1,
+              );
+              final daysInMonth = DateTime(
+                visibleMonth.year,
+                visibleMonth.month + 1,
+                0,
+              ).day;
+              final leadingDays = firstDay.weekday - 1;
+              final totalCells = leadingDays + daysInMonth;
+              final weekdayLabels = locale.startsWith('vi')
+                  ? const ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+                  : const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+              final minDate = firstDate ?? DateTime(2000);
+              final maxDate = lastDate ?? DateTime(2100);
+
+              bool isSameDay(DateTime a, DateTime b) =>
+                  a.year == b.year && a.month == b.month && a.day == b.day;
+
+              bool isSelectable(DateTime date) =>
+                  !date.isBefore(
+                    DateTime(minDate.year, minDate.month, minDate.day),
+                  ) &&
+                  !date.isAfter(
+                    DateTime(maxDate.year, maxDate.month, maxDate.day),
+                  );
+
+              pickerView = Column(
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        DateFormat('MMMM yyyy', locale).format(visibleMonth),
+                        style: SheepTextStyles.itemTitle(context),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => setModalState(
+                          () => visibleDateMonth = DateTime(
+                            visibleMonth.year,
+                            visibleMonth.month - 1,
+                          ),
+                        ),
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      IconButton(
+                        onPressed: () => setModalState(
+                          () => visibleDateMonth = DateTime(
+                            visibleMonth.year,
+                            visibleMonth.month + 1,
+                          ),
+                        ),
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
                   ),
-                ),
-                child: SizedBox(
-                  height: 350,
-                  child: CalendarDatePicker(
-                    initialDate: tempDate,
-                    firstDate: firstDate ?? DateTime(2000),
-                    lastDate: lastDate ?? DateTime(2100),
-                    onDateChanged: (date) {
-                      Navigator.pop(context, date);
+                  const SizedBox(height: 8),
+                  Row(
+                    children: weekdayLabels
+                        .map((label) => _WeekdayLabel(label))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 10),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: totalCells,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          childAspectRatio: 1,
+                        ),
+                    itemBuilder: (context, index) {
+                      if (index < leadingDays) return const SizedBox.shrink();
+                      final date = DateTime(
+                        visibleMonth.year,
+                        visibleMonth.month,
+                        index - leadingDays + 1,
+                      );
+                      final selected = isSameDay(tempDate, date);
+                      final selectable = isSelectable(date);
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: selectable
+                            ? () => setModalState(() {
+                                tempDate = date;
+                                visibleDateMonth = DateTime(
+                                  date.year,
+                                  date.month,
+                                );
+                              })
+                            : null,
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppColors.getInteractiveAccent(
+                                    theme.brightness,
+                                    theme.colorScheme.primary,
+                                  )
+                                : Colors.transparent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '${date.day}',
+                            style: TextStyle(
+                              color: selected
+                                  ? AppColors.getOnAccent(
+                                      theme.brightness,
+                                      theme.colorScheme.primary,
+                                    )
+                                  : selectable
+                                  ? AppColors.getTextPrimary(theme.brightness)
+                                  : AppColors.getTextSecondary(
+                                      theme.brightness,
+                                    ),
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      );
                     },
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, tempDate),
+                      child: Text(l10n.save),
+                    ),
+                  ),
+                ],
               );
             }
 
             return Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
               decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
+                color: AppColors.getSurface(theme.brightness),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(24),
                 ),
+                border: Border.all(
+                  color: AppColors.getBorder(theme.brightness),
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    DateFormat(
-                      mode == SheepDateMode.month
-                          ? 'MMMM yyyy'
-                          : 'dd MMMM yyyy',
-                      Localizations.localeOf(context).toString(),
-                    ).format(tempDate),
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 10),
-                  pickerView,
-                  const SizedBox(height: 10),
-                  SizedBox(height: MediaQuery.of(context).padding.bottom),
-                ],
+                    const SizedBox(height: 20),
+                    Text(
+                      DateFormat(
+                        mode == SheepDateMode.month
+                            ? 'MMMM yyyy'
+                            : 'dd MMMM yyyy',
+                        Localizations.localeOf(context).toString(),
+                      ).format(tempDate),
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    SizedBox(height: mode == SheepDateMode.month ? 10 : 18),
+                    pickerView,
+                  ],
+                ),
               ),
             );
           },
@@ -636,9 +835,12 @@ class SheepDateRangePicker {
             return Container(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
               decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
+                color: AppColors.getSurface(theme.brightness),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(24),
+                ),
+                border: Border.all(
+                  color: AppColors.getBorder(theme.brightness),
                 ),
               ),
               child: SafeArea(
@@ -721,9 +923,15 @@ class SheepDateRangePicker {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: isEndpoint
-                                  ? Colors.black
+                                  ? AppColors.getInteractiveAccent(
+                                      Theme.of(context).brightness,
+                                      Theme.of(context).colorScheme.primary,
+                                    )
                                   : isInRange(date)
-                                  ? const Color(0xFFEFEFEF)
+                                  ? AppColors.getAccentSurface(
+                                      Theme.of(context).brightness,
+                                      Theme.of(context).colorScheme.primary,
+                                    )
                                   : Colors.transparent,
                               shape: isEndpoint
                                   ? BoxShape.circle
@@ -732,7 +940,14 @@ class SheepDateRangePicker {
                             child: Text(
                               '${date.day}',
                               style: TextStyle(
-                                color: isEndpoint ? Colors.white : Colors.black,
+                                color: isEndpoint
+                                    ? AppColors.getOnAccent(
+                                        Theme.of(context).brightness,
+                                        Theme.of(context).colorScheme.primary,
+                                      )
+                                    : AppColors.getTextPrimary(
+                                        Theme.of(context).brightness,
+                                      ),
                                 fontWeight: isEndpoint
                                     ? FontWeight.w700
                                     : FontWeight.w500,
