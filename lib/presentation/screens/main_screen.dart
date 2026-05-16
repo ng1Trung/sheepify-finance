@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
 import '../widgets/transaction_form.dart';
-import '../tabs/home_tab.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
 import '../tabs/settings_tab.dart';
@@ -22,7 +21,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 1; // Bắt đầu từ Nhật ký
+  int _currentIndex = 0; // Bắt đầu từ Nhật ký
 
   // TIME AND VIEW MODE MANAGEMENT
   DateTime _selectedDate = DateTime.now();
@@ -88,16 +87,10 @@ class _MainScreenState extends State<MainScreen> {
 
   void _changeTime(int offset) {
     setState(() {
-      if (_currentIndex == 1) {
+      if (_currentIndex == 0) {
         final start = _diaryRange.start.add(Duration(days: offset));
         final end = _diaryRange.end.add(Duration(days: offset));
         _diaryRange = DateTimeRange(start: start, end: end);
-      } else if (_currentIndex == 0) {
-        _selectedDate = DateTime(
-          _selectedDate.year,
-          _selectedDate.month + offset,
-          1,
-        );
       } else {
         _selectedDate = _selectedDate.add(Duration(days: offset));
       }
@@ -108,14 +101,14 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _currentIndex = index;
       _selectedDate = DateTime.now();
-      if (index == 1) {
+      if (index == 0) {
         _diaryRange = _dayRange(DateTime.now());
       }
     });
   }
 
   Future<void> _pickTime() async {
-    if (_currentIndex == 1) {
+    if (_currentIndex == 0) {
       final picked = await SheepDateRangePicker.show(
         context: context,
         initialRange: _diaryRange,
@@ -126,11 +119,10 @@ class _MainScreenState extends State<MainScreen> {
       return;
     }
 
-    final bool isMonthOnly = _currentIndex == 0;
     final picked = await SheepDatePicker.show(
       context: context,
       initialDate: _selectedDate,
-      mode: isMonthOnly ? SheepDateMode.month : SheepDateMode.day,
+      mode: SheepDateMode.day,
     );
     if (picked != null) {
       setState(() => _selectedDate = picked);
@@ -144,10 +136,7 @@ class _MainScreenState extends State<MainScreen> {
 
     // PREMIUM APPBAR NAVIGATOR
     Widget buildAppBarTitle() {
-      if (_currentIndex == 0) {
-        return const SizedBox.shrink(); // HomeTab handles its own header
-      }
-      if (_currentIndex == 2) {
+      if (_currentIndex == 1) {
         return Text(
           l10n.categories,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -156,7 +145,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
         );
       }
-      if (_currentIndex == 3) {
+      if (_currentIndex == 2) {
         return Text(
           l10n.settings,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -166,18 +155,18 @@ class _MainScreenState extends State<MainScreen> {
         );
       }
 
-      if (_currentIndex == 0 || _currentIndex == 2 || _currentIndex == 3) {
+      if (_currentIndex == 1 || _currentIndex == 2) {
         return const SizedBox.shrink();
       }
 
       String dateText;
       final locale = Localizations.localeOf(context).toString();
       final isSingleDiaryDay =
-          _currentIndex != 1 ||
+          _currentIndex != 0 ||
           (_diaryRange.start.year == _diaryRange.end.year &&
               _diaryRange.start.month == _diaryRange.end.month &&
               _diaryRange.start.day == _diaryRange.end.day);
-      if (_currentIndex == 1) {
+      if (_currentIndex == 0) {
         final start = DateFormat(
           'dd/MM/yyyy',
           locale,
@@ -273,14 +262,10 @@ class _MainScreenState extends State<MainScreen> {
     Widget buildBody() {
       switch (_currentIndex) {
         case 0:
-          return HomeTab(
-            onViewAllSavings: () => setState(() => _currentIndex = 2),
-          );
-        case 1:
           return DiaryTab(selectedRange: _diaryRange);
-        case 2:
+        case 1:
           return const CategoryTab();
-        case 3:
+        case 2:
           return const SettingsTab();
         default:
           return const SizedBox();
@@ -290,64 +275,36 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       backgroundColor: AppColors.getBackground(theme.brightness),
       drawer: _buildSideMenu(context),
-      appBar: _currentIndex == 0
-          ? null
-          : AppBar(
-              elevation: 0,
-              centerTitle: true,
-              backgroundColor: Colors.transparent,
-              toolbarHeight: (_currentIndex == 2 || _currentIndex == 3)
-                  ? 60
-                  : 68,
-              leading: Builder(
-                builder: (context) => IconButton(
-                  tooltip: MaterialLocalizations.of(
-                    context,
-                  ).openAppDrawerTooltip,
-                  icon: const Icon(Icons.menu_rounded),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
+      appBar: AppBar(
+        elevation: 0,
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        toolbarHeight: (_currentIndex == 1 || _currentIndex == 2) ? 60 : 68,
+        leading: Builder(
+          builder: (context) => IconButton(
+            tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        title: buildAppBarTitle(),
+        actions: [
+          if (_currentIndex == 1)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.add_circle_outline_rounded,
+                  color: Colors.black,
+                  size: 28,
                 ),
-              ),
-              title: buildAppBarTitle(),
-              actions: [
-                if (_currentIndex == 2)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.add_circle_outline_rounded,
-                        color: Colors.black,
-                        size: 28,
-                      ),
-                      onPressed: _showAddCategoryForm,
-                    ),
-                  ),
-              ],
-            ),
-      body: Stack(
-        children: [
-          buildBody(),
-          if (_currentIndex == 0)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 12,
-              left: 16,
-              child: Builder(
-                builder: (context) => Material(
-                  color: AppColors.getSurface(theme.brightness),
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    tooltip: MaterialLocalizations.of(
-                      context,
-                    ).openAppDrawerTooltip,
-                    icon: const Icon(Icons.menu_rounded),
-                    onPressed: () => Scaffold.of(context).openDrawer(),
-                  ),
-                ),
+                onPressed: _showAddCategoryForm,
               ),
             ),
         ],
       ),
-      floatingActionButton: _currentIndex == 1
+      body: buildBody(),
+      floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
@@ -429,24 +386,18 @@ class _MainScreenState extends State<MainScreen> {
           _buildDrawerItem(
             context,
             index: 0,
-            icon: Icons.home_rounded,
-            label: l10n.home,
-          ),
-          _buildDrawerItem(
-            context,
-            index: 1,
             icon: Icons.receipt_long_rounded,
             label: l10n.diary,
           ),
           _buildDrawerItem(
             context,
-            index: 2,
+            index: 1,
             icon: Icons.style_rounded,
             label: l10n.categories,
           ),
           _buildDrawerItem(
             context,
-            index: 3,
+            index: 2,
             icon: Icons.settings_rounded,
             label: l10n.settings,
           ),
@@ -462,7 +413,7 @@ class _MainScreenState extends State<MainScreen> {
       isDismissible: true,
       enableDrag: true,
       builder: (_) => TransactionForm(
-        initialDate: _currentIndex == 1 ? _diaryRange.start : _selectedDate,
+        initialDate: _currentIndex == 0 ? _diaryRange.start : _selectedDate,
       ),
     );
 
@@ -470,7 +421,7 @@ class _MainScreenState extends State<MainScreen> {
       setState(() {
         _selectedDate = resultDate;
         _diaryRange = _dayRange(resultDate);
-        _currentIndex = 1;
+        _currentIndex = 0;
       });
     }
   }
