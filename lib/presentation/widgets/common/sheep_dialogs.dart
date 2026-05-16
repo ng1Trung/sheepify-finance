@@ -20,8 +20,8 @@ class SheepConfirmDialog extends StatelessWidget {
     this.content,
     this.richContent,
     required this.onConfirm,
-    this.confirmLabel = 'Xác nhận',
-    this.cancelLabel = 'Huỷ',
+    this.confirmLabel = '',
+    this.cancelLabel = '',
     this.confirmColor,
     this.icon,
   }) : assert(content != null || richContent != null);
@@ -29,6 +29,7 @@ class SheepConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    final l10n = L10n.of(context);
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       elevation: 0,
@@ -96,7 +97,7 @@ class SheepConfirmDialog extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      cancelLabel,
+                      cancelLabel.isEmpty ? l10n.cancel : cancelLabel,
                       style: TextStyle(
                         color: AppColors.getTextSecondary(brightness),
                         fontWeight: FontWeight.w600,
@@ -121,7 +122,7 @@ class SheepConfirmDialog extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      confirmLabel,
+                      confirmLabel.isEmpty ? l10n.confirm : confirmLabel,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -146,7 +147,7 @@ class SheepGoalDialog extends StatelessWidget {
     super.key,
     required this.title,
     required this.message,
-    this.buttonLabel = 'Tuyệt vời!',
+    this.buttonLabel = '',
     required this.color,
     this.isSuccess = true,
   });
@@ -154,6 +155,7 @@ class SheepGoalDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    final l10n = L10n.of(context);
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       backgroundColor: Colors.transparent,
@@ -215,7 +217,7 @@ class SheepGoalDialog extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  buttonLabel,
+                  buttonLabel.isEmpty ? l10n.get('awesome') : buttonLabel,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,

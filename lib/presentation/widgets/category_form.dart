@@ -476,9 +476,10 @@ class _CategoryFormState extends State<CategoryForm> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  l10n.locale.languageCode == 'vi'
-                      ? 'Ngày $_selectedReminderDay hàng tháng'
-                      : 'Day $_selectedReminderDay of month',
+                  l10n.get(
+                    'day_of_month',
+                    params: {'day': _selectedReminderDay.toString()},
+                  ),
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: AppColors.savings,
                     fontWeight: FontWeight.bold,
@@ -531,9 +532,7 @@ class _CategoryFormState extends State<CategoryForm> {
                   31,
                   (i) => Center(
                     child: Text(
-                      l10n.locale.languageCode == 'vi'
-                          ? 'Ngày ${i + 1}'
-                          : 'Day ${i + 1}',
+                      l10n.get('day') + ' ${i + 1}',
                       style: theme.textTheme.bodyLarge,
                     ),
                   ),
@@ -744,9 +743,10 @@ class _CategoryFormState extends State<CategoryForm> {
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: Text(
-                    l10n.locale.languageCode == 'vi'
-                        ? 'Mục tiêu này kéo dài $totalMonths tháng'
-                        : 'This goal lasts for $totalMonths months',
+                    l10n.get(
+                      'goal_duration_months',
+                      params: {'count': totalMonths.toString()},
+                    ),
                     style: TextStyle(
                       color: AppColors.savings,
                       fontWeight: FontWeight.bold,

@@ -600,6 +600,9 @@ class SheepDateRangePicker {
             ).day;
             final leadingDays = firstDay.weekday - 1;
             final totalCells = leadingDays + daysInMonth;
+            final weekdayLabels = locale.startsWith('vi')
+                ? const ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+                : const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
             bool isSameDay(DateTime? a, DateTime b) =>
                 a != null &&
@@ -687,16 +690,10 @@ class SheepDateRangePicker {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Row(
-                      children: [
-                        _WeekdayLabel('T2'),
-                        _WeekdayLabel('T3'),
-                        _WeekdayLabel('T4'),
-                        _WeekdayLabel('T5'),
-                        _WeekdayLabel('T6'),
-                        _WeekdayLabel('T7'),
-                        _WeekdayLabel('CN'),
-                      ],
+                    Row(
+                      children: weekdayLabels
+                          .map((label) => _WeekdayLabel(label))
+                          .toList(),
                     ),
                     const SizedBox(height: 10),
                     GridView.builder(
@@ -766,7 +763,7 @@ class SheepDateRangePicker {
                             ),
                           );
                         },
-                        child: const Text('Lưu'),
+                        child: Text(L10n.of(context).save),
                       ),
                     ),
                   ],

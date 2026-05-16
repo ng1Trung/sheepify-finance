@@ -90,10 +90,7 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
     _offsetAnimation = Tween<Offset>(
       begin: const Offset(0, -1.5),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
   }
@@ -143,7 +140,11 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
                 ),
                 GestureDetector(
                   onTap: widget.onDismiss,
-                  child: const Icon(Icons.close, color: Colors.white70, size: 20),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
                 ),
               ],
             ),

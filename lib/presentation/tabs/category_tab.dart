@@ -482,38 +482,19 @@ class _CategoryTabState extends State<CategoryTab> {
           title: relatedTxsCount > 0
               ? l10n.get('delete_cat_confirm')
               : l10n.get('delete_cat_simple'),
-          richContent: Text.rich(
-            TextSpan(
-              text: relatedTxsCount > 0
-                  ? l10n.get('delete_cat_confirm_msg').split('{name}')[0]
-                  : l10n.get('delete_cat_simple_msg').split('{name}')[0],
-              children: [
-                TextSpan(
-                  text: '"${item.name}"',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+          richContent: Text(
+            relatedTxsCount > 0
+                ? l10n.get(
+                    'delete_cat_confirm_msg',
+                    params: {
+                      'name': item.name,
+                      'count': relatedTxsCount.toString(),
+                    },
+                  )
+                : l10n.get(
+                    'delete_cat_simple_msg',
+                    params: {'name': item.name},
                   ),
-                ),
-                if (relatedTxsCount > 0) ...[
-                  const TextSpan(text: ' hiện đang chứa '),
-                  TextSpan(
-                    text: l10n.get(
-                      'num_transactions',
-                      params: {'count': relatedTxsCount.toString()},
-                    ),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: theme.textTheme.bodyLarge?.color,
-                    ),
-                  ),
-                  TextSpan(
-                    text:
-                        '. ' + l10n.get('delete_cat_confirm_msg').split('}')[1],
-                  ),
-                ] else
-                  const TextSpan(text: '?'),
-              ],
-            ),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
           ),

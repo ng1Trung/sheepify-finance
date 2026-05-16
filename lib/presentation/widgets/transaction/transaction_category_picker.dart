@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/category_model.dart';
 import '../../../core/constants/constants.dart';
+import '../../../core/utils/l10n.dart';
 import '../common/sheep_toggles.dart';
 
 class TransactionCategoryPicker extends StatefulWidget {
@@ -39,6 +40,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = L10n.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
@@ -53,7 +55,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'CHỌN DANH MỤC',
+                l10n.get('choose_category'),
                 style: Theme.of(
                   context,
                 ).textTheme.labelSmall?.copyWith(letterSpacing: 1),
@@ -70,7 +72,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
           SheepTripleToggle(
             selectedIndex: _selectedIndex,
             onChanged: (index) => setState(() => _selectedIndex = index),
-            labels: const ["Chi tiêu", "Thu nhập", "Mục tiêu"],
+            labels: [l10n.expense, l10n.income, l10n.get('goal_label')],
           ),
 
           const SizedBox(height: 25),
@@ -84,13 +86,15 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
 
               if (filteredCats.isEmpty) {
                 String typeName = _selectedIndex == 0
-                    ? "chi tiêu"
-                    : (_selectedIndex == 1 ? "thu nhập" : "mục tiêu");
+                    ? l10n.get('expense_lower')
+                    : (_selectedIndex == 1
+                          ? l10n.get('income_lower')
+                          : l10n.get('goal_lower'));
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Text(
-                      'Chưa có danh mục $typeName nào',
+                      l10n.get('no_category_type', params: {'type': typeName}),
                       style: const TextStyle(color: Colors.grey),
                     ),
                   ),

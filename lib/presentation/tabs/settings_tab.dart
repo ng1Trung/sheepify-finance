@@ -33,7 +33,10 @@ class SettingsTab extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    _buildCardSectionTitle(context, 'TÀI CHÍNH'),
+                    _buildCardSectionTitle(
+                      context,
+                      l10n.get('finance_section'),
+                    ),
                     ListTile(
                       title: Text(
                         l10n.accumulateBalance,
@@ -66,10 +69,13 @@ class SettingsTab extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    _buildCardSectionTitle(context, 'BẢO MẬT & DỮ LIỆU'),
+                    _buildCardSectionTitle(
+                      context,
+                      l10n.get('security_data_section'),
+                    ),
                     ListTile(
                       title: Text(
-                        'Ẩn tất cả số tiền khi mở app',
+                        l10n.get('hide_amounts_on_launch'),
                         style: _settingsRowTitleStyle(context),
                       ),
                       trailing: SheepSwitch(
@@ -83,7 +89,7 @@ class SettingsTab extends StatelessWidget {
                     _buildDivider(),
                     ListTile(
                       title: Text(
-                        'Xoá toàn bộ dữ liệu',
+                        l10n.get('delete_all_data'),
                         style: _settingsRowTitleStyle(
                           context,
                         ).copyWith(color: AppColors.expense),
@@ -104,7 +110,7 @@ class SettingsTab extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    _buildCardSectionTitle(context, 'ỨNG DỤNG'),
+                    _buildCardSectionTitle(context, l10n.get('app_section')),
                     _buildSettingsRow(
                       context,
                       title: l10n.currency,
@@ -115,7 +121,7 @@ class SettingsTab extends StatelessWidget {
                     _buildSettingsRow(
                       context,
                       title: l10n.language,
-                      value: _languageLabel(settings.languageCode),
+                      value: _languageLabel(settings.languageCode, l10n),
                       onTap: () => _showLanguagePicker(context, settings),
                     ),
                   ],
@@ -127,18 +133,26 @@ class SettingsTab extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    _buildCardSectionTitle(context, 'TUỲ CHỈNH'),
+                    _buildCardSectionTitle(
+                      context,
+                      l10n.get('customization_section'),
+                    ),
                     _buildSettingsRow(
                       context,
-                      title: 'Chế độ',
-                      value: settings.isDarkMode ? 'Tối' : 'Sáng',
+                      title: l10n.get('mode'),
+                      value: settings.isDarkMode
+                          ? l10n.get('dark')
+                          : l10n.get('light'),
                       onTap: () => _showThemeModePicker(context, settings),
                     ),
                     _buildDivider(),
                     _buildSettingsRow(
                       context,
-                      title: 'Màu',
-                      value: _paletteDisplayName(settings.themePresetName),
+                      title: l10n.get('color'),
+                      value: _paletteDisplayName(
+                        settings.themePresetName,
+                        l10n,
+                      ),
                       onTap: () => _showPalettePicker(context, settings),
                     ),
                     _buildDivider(),
@@ -195,24 +209,24 @@ class SettingsTab extends StatelessWidget {
     );
   }
 
-  String _paletteDisplayName(String paletteName) {
+  String _paletteDisplayName(String paletteName, L10n l10n) {
     switch (paletteName) {
       case 'Midnight Black':
-        return 'Đen';
+        return l10n.get('palette_black');
       case 'Sheep Green':
-        return 'Xanh lá';
+        return l10n.get('palette_green');
       case 'Rose Petal':
-        return 'Hồng';
+        return l10n.get('palette_pink');
       case 'Sunset Glow':
-        return 'Cam';
+        return l10n.get('palette_orange');
       case 'Ruby Red':
-        return 'Đỏ';
+        return l10n.get('palette_red');
       case 'Golden Hour':
-        return 'Vàng';
+        return l10n.get('palette_yellow');
       case 'Deep Ocean':
-        return 'Xanh biển';
+        return l10n.get('palette_blue');
       case 'Lavender Night':
-        return 'Tím';
+        return l10n.get('palette_purple');
       default:
         return paletteName;
     }
@@ -229,8 +243,8 @@ class SettingsTab extends StatelessWidget {
     }
   }
 
-  String _languageLabel(String languageCode) {
-    return languageCode == 'en' ? 'Tiếng Anh' : 'Tiếng Việt';
+  String _languageLabel(String languageCode, L10n l10n) {
+    return languageCode == 'en' ? l10n.get('english') : l10n.get('vietnamese');
   }
 
   Widget _buildFontItem(
@@ -365,7 +379,7 @@ class SettingsTab extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            _paletteDisplayName(palette.name),
+            _paletteDisplayName(palette.name, L10n.of(context)),
             maxLines: 1,
             textAlign: TextAlign.center,
             style: SheepTextStyles.itemMeta(context),
@@ -381,8 +395,11 @@ class SettingsTab extends StatelessWidget {
   ) {
     return _showChoiceSheet(
       context,
-      title: 'Chế độ giao diện',
-      items: const [('light', 'Sáng'), ('dark', 'Tối')],
+      title: L10n.of(context).get('theme_mode'),
+      items: [
+        ('light', L10n.of(context).get('light')),
+        ('dark', L10n.of(context).get('dark')),
+      ],
       selectedValue: settings.isDarkMode ? 'dark' : 'light',
       onSelected: (value) {
         settings.isDarkMode = value == 'dark';
@@ -403,7 +420,10 @@ class SettingsTab extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Màu', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                L10n.of(context).get('color'),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 18),
               GridView.count(
                 shrinkWrap: true,
@@ -433,7 +453,7 @@ class SettingsTab extends StatelessWidget {
   Future<void> _showCurrencyPicker(BuildContext context, AppSettings settings) {
     return _showChoiceSheet(
       context,
-      title: 'Tiền tệ',
+      title: L10n.of(context).currency,
       items: const [
         ('VND', 'VND (đ)'),
         ('USD', 'USD (\$)'),
@@ -450,8 +470,11 @@ class SettingsTab extends StatelessWidget {
   Future<void> _showLanguagePicker(BuildContext context, AppSettings settings) {
     return _showChoiceSheet(
       context,
-      title: 'Ngôn ngữ',
-      items: const [('vi', 'Tiếng Việt'), ('en', 'Tiếng Anh')],
+      title: L10n.of(context).language,
+      items: [
+        ('vi', L10n.of(context).get('vietnamese')),
+        ('en', L10n.of(context).get('english')),
+      ],
       selectedValue: settings.languageCode,
       onSelected: (value) {
         settings.languageCode = value;
@@ -473,7 +496,10 @@ class SettingsTab extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Phông chữ', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                L10n.of(context).font,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 12),
               ...[
                 'Quicksand',
@@ -541,17 +567,19 @@ class SettingsTab extends StatelessWidget {
     await showDialog<bool>(
       context: context,
       builder: (_) => SheepConfirmDialog(
-        title: 'Xoá toàn bộ dữ liệu?',
-        content:
-            'Toàn bộ giao dịch và danh mục sẽ bị xoá vĩnh viễn. Hành động này không thể hoàn tác.',
-        confirmLabel: 'Xoá tất cả',
+        title: L10n.of(context).get('delete_all_data_title'),
+        content: L10n.of(context).get('delete_all_data_message'),
+        confirmLabel: L10n.of(context).get('delete_all'),
         confirmColor: AppColors.expense,
         icon: Icons.delete_forever_rounded,
         onConfirm: () async {
           await Hive.box<Transaction>(kMoneyBox).clear();
           await Hive.box<CategoryModel>(kCatBox).clear();
           if (context.mounted) {
-            SheepNotifications.showSuccess(context, 'Đã xoá toàn bộ dữ liệu');
+            SheepNotifications.showSuccess(
+              context,
+              L10n.of(context).get('all_data_deleted'),
+            );
           }
         },
       ),

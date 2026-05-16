@@ -4,6 +4,7 @@ import 'package:line_icons/line_icons.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_util.dart';
+import '../../../core/utils/l10n.dart';
 import '../../../data/models/category_model.dart';
 
 class TransactionImageArea extends StatelessWidget {
@@ -35,6 +36,7 @@ class TransactionImageArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     bool hasCategory = selectedCategory != null;
+    final l10n = L10n.of(context);
 
     return AspectRatio(
       aspectRatio: 0.82,
@@ -117,7 +119,7 @@ class TransactionImageArea extends StatelessWidget {
               right: 20,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: _buildCategoryPicker(),
+                child: _buildCategoryPicker(l10n),
               ),
             ),
 
@@ -126,7 +128,7 @@ class TransactionImageArea extends StatelessWidget {
               bottom: 20,
               left: 20,
               right: 20,
-              child: _buildActionBlock(),
+              child: _buildActionBlock(l10n),
             ),
 
             // Delete Image Button
@@ -156,7 +158,7 @@ class TransactionImageArea extends StatelessWidget {
     );
   }
 
-  Widget _buildActionBlock() {
+  Widget _buildActionBlock(L10n l10n) {
     final bool isZeroValue = amountController.text.isEmpty;
     final bool hasCategory = selectedCategory != null;
 
@@ -256,7 +258,7 @@ class TransactionImageArea extends StatelessWidget {
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
-                      hintText: 'Thêm ghi chú...',
+                      hintText: l10n.get('add_note'),
                       hintStyle: TextStyle(
                         color: Colors.white.withOpacity(0.2),
                       ),
@@ -279,7 +281,7 @@ class TransactionImageArea extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryPicker() {
+  Widget _buildCategoryPicker(L10n l10n) {
     bool hasCat = selectedCategory != null;
     return GestureDetector(
       onTap: onShowCategoryPicker,
@@ -296,7 +298,9 @@ class TransactionImageArea extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              hasCat ? selectedCategory!.name : 'Danh mục',
+              hasCat
+                  ? selectedCategory!.name
+                  : l10n.get('category_placeholder'),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,

@@ -43,7 +43,7 @@ class CurrencyUtil {
         ).format(amount);
       case 'EUR':
         return NumberFormat.simpleCurrency(
-          locale: 'fr_FR',
+          locale: 'de_DE',
           name: 'EUR',
         ).format(amount);
       default:

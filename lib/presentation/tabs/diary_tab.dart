@@ -469,7 +469,10 @@ class _DiaryTabState extends State<DiaryTab> {
                                                     child: Text(
                                                       DateFormat(
                                                         'EEEE, dd/MM/yyyy',
-                                                        'vi_VN',
+                                                        settings.languageCode ==
+                                                                'vi'
+                                                            ? 'vi_VN'
+                                                            : 'en_US',
                                                       ).format(
                                                         DateTime.parse(dKey),
                                                       ),

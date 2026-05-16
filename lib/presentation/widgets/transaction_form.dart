@@ -21,7 +21,6 @@ import 'transaction/transaction_category_picker.dart';
 
 import 'common/sheep_notifications.dart';
 import 'common/sheep_dialogs.dart';
-import '../../core/utils/l10n.dart';
 import '../../core/utils/category_util.dart';
 
 class TransactionForm extends StatefulWidget {
@@ -283,7 +282,7 @@ class _TransactionFormState extends State<TransactionForm> {
         Navigator.of(context).pop(_selectedDate);
       }
     } catch (e) {
-      SheepNotifications.showError(context, 'Lỗi: $e');
+      SheepNotifications.showError(context, '${l10n.get('error_prefix')}: $e');
     }
   }
 
@@ -407,7 +406,9 @@ class _TransactionFormState extends State<TransactionForm> {
       width: double.infinity,
       height: 56,
       child: SheepButton(
-        label: widget.transaction == null ? 'TẠO' : 'LƯU',
+        label: widget.transaction == null
+            ? L10n.of(context).get('create')
+            : L10n.of(context).save,
         onPressed: widget.transaction == null || _hasChanges ? _submit : null,
       ),
     );
