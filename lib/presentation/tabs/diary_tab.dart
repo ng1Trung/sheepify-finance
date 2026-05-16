@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
@@ -103,6 +105,14 @@ class _DiaryTabState extends State<DiaryTab> {
             }
 
             final sortedDayKeys = grouped.keys.toList()
+              ..sort((a, b) => b.compareTo(a));
+            final galleryTxs = displayTxs;
+            final groupedGalleryTxs = <String, List<Transaction>>{};
+            for (final tx in galleryTxs) {
+              final dayKey = DateFormat('yyyy-MM-dd').format(tx.date);
+              groupedGalleryTxs.putIfAbsent(dayKey, () => []).add(tx);
+            }
+            final sortedGalleryDayKeys = groupedGalleryTxs.keys.toList()
               ..sort((a, b) => b.compareTo(a));
 
             Widget buildViewModeSelector() {
@@ -349,17 +359,85 @@ class _DiaryTabState extends State<DiaryTab> {
                       ),
                       child: SheepCard(
                         padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            buildTypeFilter(),
-                            Expanded(
-                              child: SheepEmptyState(
-                                message: l10n.get('image_view_coming_soon'),
+                        child: galleryTxs.isEmpty
+                            ? Stack(
+                                children: [
+                                  SheepEmptyState(
+                                    message: isSingleDay
+                                        ? l10n.get('no_tx_today')
+                                        : l10n.get('no_tx_range'),
+                                  ),
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: buildTypeFilter(),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      physics: const BouncingScrollPhysics(),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (isSingleDay) ...[
+                                            Align(
+                                              alignment: Alignment.centerRight,
+                                              child: buildTypeFilter(),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            _buildImageGrid(
+                                              galleryTxs,
+                                              catBox,
+                                              settings,
+                                            ),
+                                          ] else
+                                            for (final dayKey
+                                                in sortedGalleryDayKeys) ...[
+                                              if (dayKey !=
+                                                  sortedGalleryDayKeys.first)
+                                                const SizedBox(height: 18),
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    DateFormat(
+                                                      'EEEE, dd/MM/yyyy',
+                                                      settings.languageCode ==
+                                                              'vi'
+                                                          ? 'vi_VN'
+                                                          : 'en_US',
+                                                    ).format(
+                                                      DateTime.parse(dayKey),
+                                                    ),
+                                                    style:
+                                                        SheepTextStyles.itemTitle(
+                                                          context,
+                                                        ),
+                                                  ),
+                                                  const Spacer(),
+                                                  if (dayKey ==
+                                                      sortedGalleryDayKeys
+                                                          .first)
+                                                    buildTypeFilter(),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 10),
+                                              _buildImageGrid(
+                                                groupedGalleryTxs[dayKey]!,
+                                                catBox,
+                                                settings,
+                                              ),
+                                            ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
@@ -683,6 +761,200 @@ class _DiaryTabState extends State<DiaryTab> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildImageGrid(
+    List<Transaction> transactions,
+    Box<CategoryModel> catBox,
+    AppSettings settings,
+  ) {
+    final sortedTxs = [...transactions]
+      ..sort((a, b) {
+        final dateComparison = b.date.compareTo(a.date);
+        if (dateComparison != 0) return dateComparison;
+        return b.key.toString().compareTo(a.key.toString());
+      });
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: sortedTxs.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 0.82,
+      ),
+      itemBuilder: (context, index) {
+        final tx = sortedTxs[index];
+        final cat = catBox.values.firstWhere(
+          (c) => c.id == tx.categoryId,
+          orElse: () => CategoryModel(
+            id: '',
+            name: '?',
+            iconCode: Icons.help.codePoint,
+            isExpense: tx.isExpense,
+            typeIndex: tx.isExpense ? 0 : 1,
+          ),
+        );
+        return _TransactionImageTile(
+          transaction: tx,
+          category: cat,
+          settings: settings,
+          onTap: () => showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            isDismissible: true,
+            enableDrag: true,
+            builder: (_) => TransactionForm(transaction: tx),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TransactionImageTile extends StatelessWidget {
+  final Transaction transaction;
+  final CategoryModel category;
+  final AppSettings settings;
+  final VoidCallback onTap;
+
+  const _TransactionImageTile({
+    required this.transaction,
+    required this.category,
+    required this.settings,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final amountPrefix = category.effectiveTypeIndex == 1 ? '+' : '-';
+    final amountColor = category.effectiveTypeIndex == 1
+        ? AppColors.income
+        : AppColors.expense;
+    final amountText = settings.hideAmounts
+        ? CurrencyUtil.formatMaskedByCurrency(settings.currencyCode)
+        : '$amountPrefix ${CurrencyUtil.formatByCurrency(transaction.amount, settings.currencyCode)}';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.getBorder(theme.brightness)),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (transaction.imagePath != null &&
+                    transaction.imagePath!.isNotEmpty)
+                  Image.file(
+                    File(transaction.imagePath!),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildPlaceholder(),
+                  )
+                else
+                  _buildPlaceholder(),
+                if (!settings.hideAmounts)
+                  Positioned(
+                    left: 8,
+                    right: 8,
+                    bottom: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.68),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          amountText,
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: amountColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      IconData(category.iconCode, fontFamily: 'MaterialIcons'),
+                      size: 14,
+                      color: category.colorValue != null
+                          ? Color(category.colorValue!)
+                          : Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    final categoryColor = category.colorValue != null
+        ? Color(category.colorValue!)
+        : null;
+    final gradientColors = categoryColor != null
+        ? [categoryColor, categoryColor.withOpacity(0.7)]
+        : switch (category.effectiveTypeIndex) {
+            0 => const [Color(0xFFC62828), Color(0xFF8E24AA)],
+            1 => const [Color(0xFF2E7D32), Color(0xFF00ACC1)],
+            _ => const [Color(0xFF1976D2), Color(0xFF00BCD4)],
+          };
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradientColors,
+        ),
+      ),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.18),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            IconData(category.iconCode, fontFamily: 'MaterialIcons'),
+            size: 28,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }

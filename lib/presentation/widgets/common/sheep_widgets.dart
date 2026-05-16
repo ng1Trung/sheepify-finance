@@ -858,7 +858,10 @@ class SheepDateRangePicker {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      end == null
+                      end == null ||
+                              (start!.year == end!.year &&
+                                  start!.month == end!.month &&
+                                  start!.day == end!.day)
                           ? DateFormat('dd MMMM yyyy', locale).format(start!)
                           : '${DateFormat('dd/MM/yyyy', locale).format(start!)} - ${DateFormat('dd/MM/yyyy', locale).format(end!)}',
                       style: theme.textTheme.titleLarge,

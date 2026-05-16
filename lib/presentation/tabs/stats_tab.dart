@@ -228,11 +228,12 @@ class _StatsTabState extends State<StatsTab> {
                 if (_touchedIndex != -1) ...[
                   Text(
                     stats[_touchedIndex].category.name,
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.8,
-                      color: Colors.grey,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.getTextSecondary(
+                        Theme.of(context).brightness,
+                      ),
                     ),
                     textAlign: TextAlign.center,
                     maxLines: 1,

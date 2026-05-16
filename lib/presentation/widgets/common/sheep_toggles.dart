@@ -98,6 +98,12 @@ class SheepTypeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final activeColor = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
+    final onActiveColor = AppColors.getOnAccent(theme.brightness, activeColor);
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalWidth = constraints.maxWidth;
@@ -124,12 +130,7 @@ class SheepTypeToggle extends StatelessWidget {
                 bottom: 0,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? Colors.white
-                        : AppColors.getAccentSurface(
-                            Theme.of(context).brightness,
-                            Theme.of(context).colorScheme.primary,
-                          ),
+                    color: activeColor,
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: AppColors.getSoftShadow(
                       Theme.of(context).brightness,
@@ -143,14 +144,14 @@ class SheepTypeToggle extends StatelessWidget {
                     context,
                     leftLabel ?? L10n.of(context).get('expense'),
                     isExpense,
-                    AppColors.primary,
+                    onActiveColor,
                     () => onChanged(true),
                   ),
                   _buildToggleItem(
                     context,
                     rightLabel ?? L10n.of(context).get('income'),
                     !isExpense,
-                    AppColors.primary,
+                    onActiveColor,
                     () => onChanged(false),
                   ),
                 ],
@@ -169,10 +170,6 @@ class SheepTypeToggle extends StatelessWidget {
     Color color,
     VoidCallback onTap,
   ) {
-    final activeColor = AppColors.getInteractiveAccent(
-      Theme.of(context).brightness,
-      Theme.of(context).colorScheme.primary,
-    );
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -184,7 +181,7 @@ class SheepTypeToggle extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.bold,
               color: isActive
-                  ? activeColor
+                  ? color
                   : Theme.of(context).textTheme.labelSmall?.color,
             ),
             child: Text(title),
@@ -211,6 +208,12 @@ class SheepTripleToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final activeColor = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
+    final onActiveColor = AppColors.getOnAccent(theme.brightness, activeColor);
     return LayoutBuilder(
       builder: (context, constraints) {
         final l10n = L10n.of(context);
@@ -266,10 +269,6 @@ class SheepTripleToggle extends StatelessWidget {
               Row(
                 children: List.generate(currentLabels.length, (index) {
                   final isActive = selectedIndex == index;
-                  final activeColor = AppColors.getInteractiveAccent(
-                    Theme.of(context).brightness,
-                    Theme.of(context).colorScheme.primary,
-                  );
 
                   return Expanded(
                     child: GestureDetector(
@@ -283,7 +282,7 @@ class SheepTripleToggle extends StatelessWidget {
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: isActive
-                                    ? activeColor
+                                    ? onActiveColor
                                     : Theme.of(
                                         context,
                                       ).textTheme.labelSmall?.color,
@@ -304,14 +303,13 @@ class SheepTripleToggle extends StatelessWidget {
 
   Widget _buildIndicator(BuildContext context) {
     final theme = Theme.of(context);
+    final activeColor = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
     return Container(
       decoration: BoxDecoration(
-        color: theme.brightness == Brightness.light
-            ? Colors.white
-            : AppColors.getAccentSurface(
-                theme.brightness,
-                theme.colorScheme.primary,
-              ),
+        color: activeColor,
         borderRadius: BorderRadius.circular(10),
         boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
       ),
