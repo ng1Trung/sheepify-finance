@@ -338,9 +338,9 @@ class _TransactionFormState extends State<TransactionForm> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildDragHandle(),
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
             _buildDatePill(),
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
             TransactionImageArea(
               imagePath: _imagePath,
               isExpense: _selectedTypeIndex == 0,
@@ -355,7 +355,7 @@ class _TransactionFormState extends State<TransactionForm> {
               onRemoveImage: () => setState(() => _imagePath = null),
               onShowCategoryPicker: _showCategoryPicker,
             ),
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
             _buildSaveButton(),
             const SizedBox(height: 10),
           ],

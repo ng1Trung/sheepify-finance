@@ -109,7 +109,7 @@ class _StatsTabState extends State<StatsTab> {
             }
 
             if (displayTotal == 0) {
-              return Expanded(
+              return SizedBox.expand(
                 child: buildStatsCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,

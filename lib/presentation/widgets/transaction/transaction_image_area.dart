@@ -94,18 +94,11 @@ class TransactionImageArea extends StatelessWidget {
                       ),
                       child: Center(
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 80),
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.18),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              selectedCategory?.iconData ?? LineIcons.image,
-                              size: 50,
-                              color: Colors.white,
-                            ),
+                          padding: const EdgeInsets.only(bottom: 64),
+                          child: Icon(
+                            selectedCategory?.iconData ?? LineIcons.image,
+                            size: 46,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -177,10 +170,10 @@ class TransactionImageArea extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -243,37 +236,23 @@ class TransactionImageArea extends StatelessWidget {
             ),
           ),
 
-          // NOTE INPUT SECTION
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: noteController,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      hintText: l10n.get('add_note'),
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.2),
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      filled: false,
-                      fillColor: Colors.transparent,
-                    ),
-                  ),
-                ),
-              ],
+          Container(height: 1, color: Colors.white.withOpacity(0.12)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: noteController,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              hintText: l10n.get('add_note'),
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.32)),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              filled: false,
+              fillColor: Colors.transparent,
             ),
           ),
         ],

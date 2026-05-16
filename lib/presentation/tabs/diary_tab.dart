@@ -45,12 +45,6 @@ class _DiaryTabState extends State<DiaryTab> {
           builder: (context, box, _) {
             final catBox = Hive.box<CategoryModel>(kCatBox);
 
-            // 1. Identify Goal categories to exclude from balance
-            final goalCatIds = catBox.values
-                .where((c) => c.effectiveTypeIndex == 2)
-                .map((c) => c.id)
-                .toSet();
-
             final isSingleDay =
                 widget.selectedRange.start.year ==
                     widget.selectedRange.end.year &&
@@ -86,10 +80,21 @@ class _DiaryTabState extends State<DiaryTab> {
             double totalIncome = 0;
             double totalExpense = 0;
             for (var tx in displayTxs) {
-              // Skip goals in summary
-              if (goalCatIds.contains(tx.categoryId)) continue;
+              final cat = catBox.values.firstWhere(
+                (c) => c.id == tx.categoryId,
+                orElse: () => CategoryModel(
+                  id: '',
+                  name: '?',
+                  iconCode: Icons.help.codePoint,
+                  isExpense: tx.isExpense,
+                  typeIndex: tx.isExpense ? 0 : 1,
+                ),
+              );
 
-              if (tx.isExpense) {
+              // Skip goals in summary
+              if (cat.effectiveTypeIndex == 2) continue;
+
+              if (cat.effectiveTypeIndex == 0) {
                 totalExpense += tx.amount;
               } else {
                 totalIncome += tx.amount;
@@ -255,37 +260,18 @@ class _DiaryTabState extends State<DiaryTab> {
                         ),
                       ),
                       const SizedBox(height: 5),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            CurrencyUtil.formatDisplayAmount(
-                              totalIncome - totalExpense,
-                              settings.currencyCode,
-                              isHidden: settings.hideAmounts,
+                      Text(
+                        CurrencyUtil.formatDisplayAmount(
+                          totalIncome - totalExpense,
+                          settings.currencyCode,
+                          isHidden: settings.hideAmounts,
+                        ),
+                        style: Theme.of(context).textTheme.displayLarge
+                            ?.copyWith(
+                              color: (totalIncome - totalExpense) >= 0
+                                  ? AppColors.income
+                                  : AppColors.expense,
                             ),
-                            style: Theme.of(context).textTheme.displayLarge
-                                ?.copyWith(
-                                  color: (totalIncome - totalExpense) >= 0
-                                      ? AppColors.income
-                                      : AppColors.expense,
-                                ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () {
-                              settings.hideAmounts = !settings.hideAmounts;
-                              settings.save();
-                            },
-                            icon: Icon(
-                              !settings.hideAmounts
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                              size: 20,
-                            ),
-                          ),
-                        ],
                       ),
                       const SizedBox(height: 20),
                       Row(
@@ -588,12 +574,12 @@ class _DiaryTabState extends State<DiaryTab> {
                                                         dayIdx ==
                                                         sortedDayKeys.length -
                                                             1;
-                                                    final isSavings = goalCatIds
-                                                        .contains(
-                                                          tx.categoryId,
-                                                        );
+                                                    final isSavings =
+                                                        cat.effectiveTypeIndex ==
+                                                        2;
                                                     final isExpense =
-                                                        tx.isExpense;
+                                                        cat.effectiveTypeIndex ==
+                                                        0;
 
                                                     return Dismissible(
                                                       key: ValueKey(tx.key),

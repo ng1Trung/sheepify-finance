@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
+import '../../data/models/settings_model.dart';
 import '../widgets/transaction_form.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
@@ -182,43 +183,40 @@ class _MainScreenState extends State<MainScreen> {
           final maxPillWidth =
               constraints.maxWidth - (isSingleDiaryDay ? 104 : 24);
 
-          return Transform.translate(
-            offset: const Offset(-28, 0),
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isSingleDiaryDay) ...[
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        Icons.arrow_back_ios_new,
-                        size: 14,
-                        color: AppColors.getTextPrimary(theme.brightness),
-                      ),
-                      onPressed: () => _changeTime(-1),
+          return Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isSingleDiaryDay) ...[
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      Icons.arrow_back_ios_new,
+                      size: 14,
+                      color: AppColors.getTextPrimary(theme.brightness),
                     ),
-                    const SizedBox(width: 4),
-                  ],
-                  SheepDatePill(
-                    label: dateText,
-                    onTap: _pickTime,
-                    maxWidth: maxPillWidth,
+                    onPressed: () => _changeTime(-1),
                   ),
-                  if (isSingleDiaryDay) ...[
-                    const SizedBox(width: 4),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        Icons.arrow_forward_ios,
-                        size: 14,
-                        color: AppColors.getTextPrimary(theme.brightness),
-                      ),
-                      onPressed: () => _changeTime(1),
-                    ),
-                  ],
+                  const SizedBox(width: 4),
                 ],
-              ),
+                SheepDatePill(
+                  label: dateText,
+                  onTap: _pickTime,
+                  maxWidth: maxPillWidth,
+                ),
+                if (isSingleDiaryDay) ...[
+                  const SizedBox(width: 4),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: AppColors.getTextPrimary(theme.brightness),
+                    ),
+                    onPressed: () => _changeTime(1),
+                  ),
+                ],
+              ],
             ),
           );
         },
@@ -255,6 +253,28 @@ class _MainScreenState extends State<MainScreen> {
         ),
         title: buildAppBarTitle(),
         actions: [
+          if (_currentIndex == 0)
+            ValueListenableBuilder(
+              valueListenable: Hive.box<AppSettings>(kSettingsBox).listenable(),
+              builder: (context, settingsBox, _) {
+                final settings = settingsBox.get('current') ?? AppSettings();
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    icon: Icon(
+                      settings.hideAmounts
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: AppColors.getTextPrimary(theme.brightness),
+                    ),
+                    onPressed: () {
+                      settings.hideAmounts = !settings.hideAmounts;
+                      settings.save();
+                    },
+                  ),
+                );
+              },
+            ),
           if (_currentIndex == 1)
             Padding(
               padding: const EdgeInsets.only(right: 16),
