@@ -23,13 +23,14 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       currencyCode: fields[3] as String? ?? 'VND',
       fontFamily: fields[4] as String? ?? 'Quicksand',
       isDarkMode: fields[5] as bool? ?? false,
+      hideAmounts: fields[6] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.accumulateBalance)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(4)
       ..write(obj.fontFamily)
       ..writeByte(5)
-      ..write(obj.isDarkMode);
+      ..write(obj.isDarkMode)
+      ..writeByte(6)
+      ..write(obj._hideAmounts);
   }
 
   @override

@@ -29,7 +29,6 @@ class _DiaryTabState extends State<DiaryTab> {
   int _selectedViewMode = 1; // 0: chart, 1: list, 2: image
   int _selectedChartTypeIndex = 0;
   int? _selectedListImageTypeIndex; // null means all
-
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -221,6 +220,100 @@ class _DiaryTabState extends State<DiaryTab> {
               );
             }
 
+            Widget buildSummaryCard() {
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: SheepSpacing.page,
+                  vertical: 8,
+                ),
+                child: SheepCard(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      Text(
+                        isSingleDay
+                            ? l10n.get('daily_balance')
+                            : l10n.get('range_balance'),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            CurrencyUtil.formatDisplayAmount(
+                              totalIncome - totalExpense,
+                              settings.currencyCode,
+                              isHidden: settings.hideAmounts,
+                            ),
+                            style: Theme.of(context).textTheme.displayLarge
+                                ?.copyWith(
+                                  color: (totalIncome - totalExpense) >= 0
+                                      ? AppColors.income
+                                      : AppColors.expense,
+                                ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              settings.hideAmounts = !settings.hideAmounts;
+                              settings.save();
+                            },
+                            icon: Icon(
+                              !settings.hideAmounts
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStatItem(
+                            l10n.income,
+                            totalIncome,
+                            AppColors.income,
+                            settings.languageCode,
+                            isHidden: settings.hideAmounts,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 20,
+                            color: theme.dividerColor,
+                          ),
+                          _buildStatItem(
+                            l10n.expense,
+                            totalExpense,
+                            AppColors.expense,
+                            settings.languageCode,
+                            isHidden: settings.hideAmounts,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 20,
+                            color: theme.dividerColor,
+                          ),
+                          _buildStatItem(
+                            l10n.balance,
+                            totalIncome - totalExpense,
+                            AppColors.getTextPrimary(theme.brightness),
+                            settings.languageCode,
+                            isHidden: settings.hideAmounts,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
             if (_selectedViewMode == 0) {
               return Column(
                 children: [
@@ -268,264 +361,176 @@ class _DiaryTabState extends State<DiaryTab> {
               );
             }
 
+            if (displayTxs.isEmpty) {
+              return Column(
+                children: [
+                  buildViewModeSelector(),
+                  buildSummaryCard(),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        SheepSpacing.page,
+                        12,
+                        SheepSpacing.page,
+                        24,
+                      ),
+                      child: SheepCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Stack(
+                          children: [
+                            SheepEmptyState(
+                              message: isSingleDay
+                                  ? l10n.get('no_tx_today')
+                                  : l10n.get('no_tx_range'),
+                            ),
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: buildTypeFilter(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
             return Column(
               children: [
                 buildViewModeSelector(),
                 Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, viewportConstraints) {
-                      return SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        child: Column(
-                          children: [
-                            // --- SUMMARY CARD ---
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: SheepSpacing.page,
-                                vertical: 8,
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: [
+                        // --- SUMMARY CARD ---
+                        buildSummaryCard(),
+                        Builder(
+                          builder: (context) {
+                            const topGap = 12.0;
+                            const bottomGap = 24.0;
+
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                SheepSpacing.page,
+                                topGap,
+                                SheepSpacing.page,
+                                bottomGap,
                               ),
                               child: SheepCard(
-                                padding: const EdgeInsets.all(24),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      isSingleDay
-                                          ? l10n.get('daily_balance')
-                                          : l10n.get('range_balance'),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: AppColors.getTextSecondary(
-                                              theme.brightness,
-                                            ),
-                                          ),
-                                    ),
-                                    const SizedBox(height: 5),
-                                    Text(
-                                      CurrencyUtil.formatByCurrency(
-                                        totalIncome - totalExpense,
-                                        settings.currencyCode,
-                                      ),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .displayLarge
-                                          ?.copyWith(
-                                            color:
-                                                (totalIncome - totalExpense) >=
-                                                    0
-                                                ? AppColors.income
-                                                : AppColors.expense,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceAround,
-                                      children: [
-                                        _buildStatItem(
-                                          l10n.income,
-                                          totalIncome,
-                                          AppColors.income,
-                                          settings.languageCode,
-                                        ),
-                                        Container(
-                                          width: 1,
-                                          height: 20,
-                                          color: theme.dividerColor,
-                                        ),
-                                        _buildStatItem(
-                                          l10n.expense,
-                                          totalExpense,
-                                          AppColors.expense,
-                                          settings.languageCode,
-                                        ),
-                                        Container(
-                                          width: 1,
-                                          height: 20,
-                                          color: theme.dividerColor,
-                                        ),
-                                        _buildStatItem(
-                                          l10n.balance,
-                                          totalIncome - totalExpense,
-                                          AppColors.getTextPrimary(
-                                            theme.brightness,
-                                          ),
-                                          settings.languageCode,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
                                 ),
-                              ),
-                            ),
-                            Builder(
-                              builder: (context) {
-                                const topGap = 12.0;
-                                const bottomGap = 24.0;
-                                final minContentHeight =
-                                    viewportConstraints.maxHeight -
-                                    204 -
-                                    topGap -
-                                    bottomGap;
-
-                                if (displayTxs.isEmpty) {
-                                  return Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      SheepSpacing.page,
-                                      topGap,
-                                      SheepSpacing.page,
-                                      bottomGap,
-                                    ),
-                                    child: SheepCard(
-                                      padding: const EdgeInsets.all(16),
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          minHeight: minContentHeight,
-                                        ),
-                                        child: Stack(
-                                          children: [
-                                            SheepEmptyState(
-                                              message: isSingleDay
-                                                  ? l10n.get('no_tx_today')
-                                                  : l10n.get('no_tx_range'),
-                                            ),
-                                            Positioned(
-                                              top: 0,
-                                              right: 0,
-                                              child: buildTypeFilter(),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }
-
-                                return Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    SheepSpacing.page,
-                                    topGap,
-                                    SheepSpacing.page,
-                                    bottomGap,
-                                  ),
-                                  child: SheepCard(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14,
-                                    ),
-                                    child: Stack(
+                                child: Stack(
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            for (
-                                              var dayIdx = 0;
-                                              dayIdx < sortedDayKeys.length;
-                                              dayIdx++
-                                            ) ...[
-                                              Builder(
-                                                builder: (context) {
-                                                  final dKey =
-                                                      sortedDayKeys[dayIdx];
-                                                  final dayTxs = grouped[dKey]!;
-                                                  dayTxs.sort((a, b) {
-                                                    int c = b.date.compareTo(
-                                                      a.date,
-                                                    );
-                                                    if (c == 0) {
-                                                      return b.key
-                                                          .toString()
-                                                          .compareTo(
-                                                            a.key.toString(),
-                                                          );
-                                                    }
-                                                    return c;
-                                                  });
+                                        for (
+                                          var dayIdx = 0;
+                                          dayIdx < sortedDayKeys.length;
+                                          dayIdx++
+                                        ) ...[
+                                          Builder(
+                                            builder: (context) {
+                                              final dKey =
+                                                  sortedDayKeys[dayIdx];
+                                              final dayTxs = grouped[dKey]!;
+                                              dayTxs.sort((a, b) {
+                                                int c = b.date.compareTo(
+                                                  a.date,
+                                                );
+                                                if (c == 0) {
+                                                  return b.key
+                                                      .toString()
+                                                      .compareTo(
+                                                        a.key.toString(),
+                                                      );
+                                                }
+                                                return c;
+                                              });
 
-                                                  return Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Padding(
-                                                        padding:
-                                                            const EdgeInsets.fromLTRB(
-                                                              0,
-                                                              8,
-                                                              0,
-                                                              10,
-                                                            ),
-                                                        child: Text(
-                                                          DateFormat(
-                                                            'EEEE, dd/MM/yyyy',
-                                                            'vi_VN',
-                                                          ).format(
-                                                            DateTime.parse(
-                                                              dKey,
-                                                            ),
+                                              return Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.fromLTRB(
+                                                          0,
+                                                          8,
+                                                          0,
+                                                          10,
+                                                        ),
+                                                    child: Text(
+                                                      DateFormat(
+                                                        'EEEE, dd/MM/yyyy',
+                                                        'vi_VN',
+                                                      ).format(
+                                                        DateTime.parse(dKey),
+                                                      ),
+                                                      style:
+                                                          SheepTextStyles.itemTitle(
+                                                            context,
                                                           ),
-                                                          style:
-                                                              SheepTextStyles.itemTitle(
-                                                                context,
+                                                    ),
+                                                  ),
+                                                  ...dayTxs.map((tx) {
+                                                    final cat = catBox.values
+                                                        .firstWhere(
+                                                          (c) =>
+                                                              c.id ==
+                                                              tx.categoryId,
+                                                          orElse: () =>
+                                                              CategoryModel(
+                                                                id: '',
+                                                                name: '?',
+                                                                iconCode: Icons
+                                                                    .help
+                                                                    .codePoint,
+                                                                isExpense: true,
                                                               ),
+                                                        );
+                                                    final isLastInDay =
+                                                        tx == dayTxs.last;
+                                                    final isLastDay =
+                                                        dayIdx ==
+                                                        sortedDayKeys.length -
+                                                            1;
+                                                    final isSavings = goalCatIds
+                                                        .contains(
+                                                          tx.categoryId,
+                                                        );
+                                                    final isExpense =
+                                                        tx.isExpense;
+
+                                                    return Dismissible(
+                                                      key: ValueKey(tx.key),
+                                                      direction:
+                                                          DismissDirection
+                                                              .endToStart,
+                                                      background: Container(
+                                                        alignment: Alignment
+                                                            .centerRight,
+                                                        padding:
+                                                            const EdgeInsets.only(
+                                                              right: 20,
+                                                            ),
+                                                        child: Icon(
+                                                          LineIcons.trash,
+                                                          color:
+                                                              AppColors.expense,
                                                         ),
                                                       ),
-                                                      ...dayTxs.map((tx) {
-                                                        final cat = catBox
-                                                            .values
-                                                            .firstWhere(
-                                                              (c) =>
-                                                                  c.id ==
-                                                                  tx.categoryId,
-                                                              orElse: () =>
-                                                                  CategoryModel(
-                                                                    id: '',
-                                                                    name: '?',
-                                                                    iconCode: Icons
-                                                                        .help
-                                                                        .codePoint,
-                                                                    isExpense:
-                                                                        true,
-                                                                  ),
-                                                            );
-                                                        final isLastInDay =
-                                                            tx == dayTxs.last;
-                                                        final isLastDay =
-                                                            dayIdx ==
-                                                            sortedDayKeys
-                                                                    .length -
-                                                                1;
-                                                        final isSavings =
-                                                            goalCatIds.contains(
-                                                              tx.categoryId,
-                                                            );
-                                                        final isExpense =
-                                                            tx.isExpense;
-
-                                                        return Dismissible(
-                                                          key: ValueKey(tx.key),
-                                                          direction:
-                                                              DismissDirection
-                                                                  .endToStart,
-                                                          background: Container(
-                                                            alignment: Alignment
-                                                                .centerRight,
-                                                            padding:
-                                                                const EdgeInsets.only(
-                                                                  right: 20,
-                                                                ),
-                                                            child: Icon(
-                                                              LineIcons.trash,
-                                                              color: AppColors
-                                                                  .expense,
-                                                            ),
-                                                          ),
-                                                          confirmDismiss: (direction) async {
-                                                            return await showDialog(
-                                                              context: context,
-                                                              builder: (ctx) => SheepConfirmDialog(
+                                                      confirmDismiss: (direction) async {
+                                                        return await showDialog(
+                                                          context: context,
+                                                          builder: (ctx) =>
+                                                              SheepConfirmDialog(
                                                                 title: l10n.get(
                                                                   'delete_confirm_title',
                                                                 ),
@@ -537,27 +542,28 @@ class _DiaryTabState extends State<DiaryTab> {
                                                                 onConfirm:
                                                                     () {},
                                                               ),
-                                                            );
-                                                          },
-                                                          onDismissed: (_) {
-                                                            tx.delete();
-                                                            SheepNotifications.showSuccess(
-                                                              context,
-                                                              l10n.get(
-                                                                'delete_success',
-                                                              ),
-                                                            );
-                                                          },
-                                                          child: SheepTransactionCard(
-                                                            margin: EdgeInsets.only(
-                                                              bottom:
-                                                                  !isLastInDay ||
-                                                                      !isLastDay
-                                                                  ? SheepSpacing
-                                                                        .itemGap
-                                                                  : 0,
-                                                            ),
-                                                            onTap: () => showModalBottomSheet(
+                                                        );
+                                                      },
+                                                      onDismissed: (_) {
+                                                        tx.delete();
+                                                        SheepNotifications.showSuccess(
+                                                          context,
+                                                          l10n.get(
+                                                            'delete_success',
+                                                          ),
+                                                        );
+                                                      },
+                                                      child: SheepTransactionCard(
+                                                        margin: EdgeInsets.only(
+                                                          bottom:
+                                                              !isLastInDay ||
+                                                                  !isLastDay
+                                                              ? SheepSpacing
+                                                                    .itemGap
+                                                              : 0,
+                                                        ),
+                                                        onTap: () =>
+                                                            showModalBottomSheet(
                                                               context: context,
                                                               isScrollControlled:
                                                                   true,
@@ -570,65 +576,64 @@ class _DiaryTabState extends State<DiaryTab> {
                                                                         tx,
                                                                   ),
                                                             ),
-                                                            icon: IconData(
-                                                              cat.iconCode,
-                                                              fontFamily:
-                                                                  'MaterialIcons',
-                                                            ),
-                                                            iconColor:
-                                                                cat.colorValue !=
-                                                                    null
-                                                                ? Color(
-                                                                    cat.colorValue!,
-                                                                  )
-                                                                : Colors.black,
-                                                            title: cat.name,
-                                                            dateText:
-                                                                tx
-                                                                    .note
-                                                                    .isNotEmpty
-                                                                ? tx.note
-                                                                : l10n.get(
-                                                                    'no_note',
-                                                                  ),
-                                                            amountText:
-                                                                '${isExpense ? '-' : '+'} ${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}',
-                                                            amountColor:
-                                                                isExpense
-                                                                ? AppColors
-                                                                      .expense
-                                                                : AppColors
-                                                                      .income,
-                                                            badgeText: isSavings
-                                                                ? l10n.savings
-                                                                : isExpense
-                                                                ? l10n.expense
-                                                                : l10n.income,
-                                                          ),
-                                                        );
-                                                      }),
-                                                    ],
-                                                  );
-                                                },
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                        Positioned(
-                                          top: 0,
-                                          right: 0,
-                                          child: buildTypeFilter(),
-                                        ),
+                                                        icon: IconData(
+                                                          cat.iconCode,
+                                                          fontFamily:
+                                                              'MaterialIcons',
+                                                        ),
+                                                        iconColor:
+                                                            cat.colorValue !=
+                                                                null
+                                                            ? Color(
+                                                                cat.colorValue!,
+                                                              )
+                                                            : Colors.black,
+                                                        title: cat.name,
+                                                        dateText:
+                                                            tx.note.isNotEmpty
+                                                            ? tx.note
+                                                            : l10n.get(
+                                                                'no_note',
+                                                              ),
+                                                        amountText:
+                                                            !settings
+                                                                .hideAmounts
+                                                            ? '${isExpense ? '-' : '+'} ${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}'
+                                                            : CurrencyUtil.formatMaskedByCurrency(
+                                                                settings
+                                                                    .currencyCode,
+                                                              ),
+                                                        amountColor: isExpense
+                                                            ? AppColors.expense
+                                                            : AppColors.income,
+                                                        badgeText: isSavings
+                                                            ? l10n.savings
+                                                            : isExpense
+                                                            ? l10n.expense
+                                                            : l10n.income,
+                                                      ),
+                                                    );
+                                                  }),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        ],
                                       ],
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: buildTypeFilter(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -643,8 +648,9 @@ class _DiaryTabState extends State<DiaryTab> {
     String label,
     double amount,
     Color color,
-    String locale,
-  ) {
+    String locale, {
+    bool isHidden = false,
+  }) {
     return Column(
       children: [
         Text(
@@ -653,7 +659,11 @@ class _DiaryTabState extends State<DiaryTab> {
         ),
         const SizedBox(height: 4),
         Text(
-          CurrencyUtil.formatCompact(amount, locale: locale),
+          CurrencyUtil.formatDisplayCompact(
+            amount,
+            isHidden: isHidden,
+            locale: locale,
+          ),
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: color,
             fontWeight: FontWeight.bold,

@@ -4,7 +4,11 @@ import 'package:flutter/services.dart';
 class CurrencyUtil {
   /// Default formatting for money with currency symbol
   /// e.g. 30.000 ₫ or $30.00
-  static String formatMoney(double amount, {String locale = 'vi_VN', String? symbol}) {
+  static String formatMoney(
+    double amount, {
+    String locale = 'vi_VN',
+    String? symbol,
+  }) {
     return NumberFormat.currency(
       locale: locale,
       symbol: symbol ?? (locale == 'vi_VN' ? '₫' : null),
@@ -33,21 +37,64 @@ class CurrencyUtil {
       case 'VND':
         return formatVND(amount);
       case 'USD':
-        return NumberFormat.simpleCurrency(locale: 'en_US', name: 'USD').format(amount);
+        return NumberFormat.simpleCurrency(
+          locale: 'en_US',
+          name: 'USD',
+        ).format(amount);
       case 'EUR':
-        return NumberFormat.simpleCurrency(locale: 'fr_FR', name: 'EUR').format(amount);
+        return NumberFormat.simpleCurrency(
+          locale: 'fr_FR',
+          name: 'EUR',
+        ).format(amount);
       default:
-        return NumberFormat.simpleCurrency(name: currencyCode.toUpperCase()).format(amount);
+        return NumberFormat.simpleCurrency(
+          name: currencyCode.toUpperCase(),
+        ).format(amount);
     }
   }
 
   static String getCurrencySymbol(String currencyCode) {
     switch (currencyCode.toUpperCase()) {
-      case 'VND': return 'đ';
-      case 'USD': return '\$';
-      case 'EUR': return '€';
-      default: return currencyCode;
+      case 'VND':
+        return 'đ';
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      default:
+        return currencyCode;
     }
+  }
+
+  static String formatMaskedByCurrency(String currencyCode) {
+    switch (currencyCode.toUpperCase()) {
+      case 'VND':
+        return '******** đ';
+      case 'USD':
+        return '\$********';
+      case 'EUR':
+        return '******** €';
+      default:
+        return '******** $currencyCode';
+    }
+  }
+
+  static String formatDisplayAmount(
+    double amount,
+    String currencyCode, {
+    required bool isHidden,
+  }) {
+    return isHidden
+        ? formatMaskedByCurrency(currencyCode)
+        : formatByCurrency(amount, currencyCode);
+  }
+
+  static String formatDisplayCompact(
+    double amount, {
+    required bool isHidden,
+    String locale = 'vi_VN',
+  }) {
+    return isHidden ? '****' : formatCompact(amount, locale: locale);
   }
 
   /// Compact formatting for amounts (e.g., 8.000.000 -> 8M or 8Tr)
@@ -55,15 +102,19 @@ class CurrencyUtil {
     bool isNegative = amount < 0;
     double absAmount = amount.abs();
     bool isVi = locale.startsWith('vi');
-    
+
     String result;
     if (absAmount >= 1000000) {
       double value = absAmount / 1000000;
       String suffix = isVi ? 'Tr' : 'M';
-      result = value % 1 == 0 ? '${value.toInt()}$suffix' : '${value.toStringAsFixed(1)}$suffix';
+      result = value % 1 == 0
+          ? '${value.toInt()}$suffix'
+          : '${value.toStringAsFixed(1)}$suffix';
     } else if (absAmount >= 1000) {
       double value = absAmount / 1000;
-      result = value % 1 == 0 ? '${value.toInt()}K' : '${value.toStringAsFixed(1)}K';
+      result = value % 1 == 0
+          ? '${value.toInt()}K'
+          : '${value.toStringAsFixed(1)}K';
     } else {
       result = absAmount.toInt().toString();
     }
@@ -76,11 +127,14 @@ class CurrencyUtil {
 /// e.g., 30000 becomes 30,000 in the UI but remains numeric in logic
 class CurrencyInputFormatter extends TextInputFormatter {
   final String locale;
-  
+
   CurrencyInputFormatter({this.locale = 'vi_VN'});
 
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     if (newValue.text.isEmpty) {
       return newValue.copyWith(text: '');
     }
@@ -90,7 +144,7 @@ class CurrencyInputFormatter extends TextInputFormatter {
     if (cleanText.isEmpty) return newValue.copyWith(text: '');
 
     double value = double.parse(cleanText);
-    
+
     // Format the numeric value
     final formatter = NumberFormat.decimalPattern(locale);
     String newText = formatter.format(value);

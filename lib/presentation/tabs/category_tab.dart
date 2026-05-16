@@ -5,6 +5,7 @@ import 'package:line_icons/line_icons.dart';
 import '../../core/constants/constants.dart';
 import '../../core/utils/currency_util.dart';
 import '../../data/models/category_model.dart';
+import '../../data/models/settings_model.dart';
 import '../../data/models/transaction.dart';
 import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
@@ -80,6 +81,7 @@ class _CategoryTabState extends State<CategoryTab> {
       animation: Listenable.merge([
         Hive.box<CategoryModel>(kCatBox).listenable(),
         Hive.box<Transaction>(kMoneyBox).listenable(),
+        Hive.box<AppSettings>(kSettingsBox).listenable(),
       ]),
       builder: (context, _) {
         final l10n = L10n.of(context);
@@ -264,21 +266,24 @@ class _CategoryTabState extends State<CategoryTab> {
 
   Widget _buildEmptyState(BuildContext context, int typeIndex) {
     final l10n = L10n.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(LineIcons.tags, size: 60, color: Colors.grey[300]),
-          const SizedBox(height: 10),
-          Text(
-            typeIndex == 0
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        SheepSpacing.page,
+        0,
+        SheepSpacing.page,
+        24,
+      ),
+      child: SizedBox.expand(
+        child: SheepCard(
+          padding: const EdgeInsets.all(16),
+          child: SheepEmptyState(
+            message: typeIndex == 0
                 ? l10n.get('no_cat_expense')
                 : (typeIndex == 1
                       ? l10n.get('no_cat_income')
                       : l10n.get('no_cat_savings')),
-            style: Theme.of(context).textTheme.labelSmall,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -312,8 +317,18 @@ class _CategoryTabState extends State<CategoryTab> {
     double? target = isSavings ? cat.targetAmount : cat.budget;
     final remaining = (target ?? 0) - spent;
 
-    final spentStr = CurrencyUtil.formatCompact(spent);
-    final targetStr = target != null ? CurrencyUtil.formatCompact(target) : '';
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final spentStr = CurrencyUtil.formatDisplayCompact(
+      spent,
+      isHidden: settings.hideAmounts,
+    );
+    final targetStr = target != null
+        ? CurrencyUtil.formatDisplayCompact(
+            target,
+            isHidden: settings.hideAmounts,
+          )
+        : '';
     final infoLabel = (target != null && target > 0)
         ? '$spentStr / $targetStr'
         : spentStr;

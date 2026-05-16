@@ -137,6 +137,7 @@ class _StatsTabState extends State<StatsTab> {
                           sortedStats,
                           displayTotal,
                           settings.currencyCode,
+                          settings.hideAmounts,
                         ),
                         const SizedBox(height: 32),
                         const Divider(height: 1, color: Color(0xFFF8F8F8)),
@@ -146,6 +147,7 @@ class _StatsTabState extends State<StatsTab> {
                             stat,
                             displayTotal,
                             settings.currencyCode,
+                            settings.hideAmounts,
                           ),
                         ),
                       ],
@@ -160,7 +162,12 @@ class _StatsTabState extends State<StatsTab> {
     );
   }
 
-  Widget _buildPieChart(List<_StatEntry> stats, double total, String currency) {
+  Widget _buildPieChart(
+    List<_StatEntry> stats,
+    double total,
+    String currency,
+    bool hideAmounts,
+  ) {
     return SizedBox(
       height: 220,
       child: Stack(
@@ -229,9 +236,10 @@ class _StatsTabState extends State<StatsTab> {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    CurrencyUtil.formatByCurrency(
+                    CurrencyUtil.formatDisplayAmount(
                       _touchedIndex != -1 ? stats[_touchedIndex].amount : total,
                       currency,
+                      isHidden: hideAmounts,
                     ),
                     style: const TextStyle(
                       fontSize: 20,
@@ -248,7 +256,12 @@ class _StatsTabState extends State<StatsTab> {
     );
   }
 
-  Widget _buildStatRow(_StatEntry stat, double total, String currency) {
+  Widget _buildStatRow(
+    _StatEntry stat,
+    double total,
+    String currency,
+    bool hideAmounts,
+  ) {
     final percent = (stat.amount / total * 100).toStringAsFixed(1);
     final catColor = stat.category.colorValue != null
         ? Color(stat.category.colorValue!)
@@ -284,7 +297,11 @@ class _StatsTabState extends State<StatsTab> {
             ),
           ),
           Text(
-            CurrencyUtil.formatByCurrency(stat.amount, currency),
+            CurrencyUtil.formatDisplayAmount(
+              stat.amount,
+              currency,
+              isHidden: hideAmounts,
+            ),
             style: const TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 16,

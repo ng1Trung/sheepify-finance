@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:line_icons/line_icons.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/constants.dart';
 import '../../../core/utils/currency_util.dart';
 import '../../../data/models/category_model.dart';
+import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
 import '../common/sheep_widgets.dart';
 import '../../../core/utils/l10n.dart';
@@ -82,6 +85,8 @@ class TransactionHistorySheet extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, Color catColor, double total) {
     final l10n = L10n.of(context);
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -140,7 +145,11 @@ class TransactionHistorySheet extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  CurrencyUtil.formatMoney(total),
+                  CurrencyUtil.formatDisplayAmount(
+                    total,
+                    settings.currencyCode,
+                    isHidden: settings.hideAmounts,
+                  ),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -165,6 +174,8 @@ class TransactionHistorySheet extends StatelessWidget {
     Color catColor,
   ) {
     final l10n = L10n.of(context);
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     if (transactions.isEmpty) {
       return Center(
         child: Column(
@@ -193,8 +204,9 @@ class TransactionHistorySheet extends StatelessWidget {
           iconColor: catColor,
           title: category.name,
           dateText: tx.note.isNotEmpty ? tx.note : l10n.get('no_note'),
-          amountText:
-              '${isExpense ? '-' : '+'}${CurrencyUtil.formatMoney(tx.amount)}',
+          amountText: settings.hideAmounts
+              ? CurrencyUtil.formatMaskedByCurrency(settings.currencyCode)
+              : '${isExpense ? '-' : '+'}${CurrencyUtil.formatMoney(tx.amount)}',
           amountColor: isExpense ? AppColors.expense : AppColors.income,
           badgeText: isExpense ? l10n.expense : l10n.income,
         );
@@ -209,6 +221,8 @@ class TransactionHistorySheet extends StatelessWidget {
   ) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     final now = DateTime.now();
     final totalInMonth = transactions
         .where((tx) => tx.date.month == now.month && tx.date.year == now.year)
@@ -237,7 +251,13 @@ class TransactionHistorySheet extends StatelessWidget {
         final daily = remaining / daysLeft;
         infoText = l10n.get(
           'need_more',
-          params: {'amount': CurrencyUtil.formatMoney(daily)},
+          params: {
+            'amount': CurrencyUtil.formatDisplayAmount(
+              daily,
+              settings.currencyCode,
+              isHidden: settings.hideAmounts,
+            ),
+          },
         );
         planningText =
             '${l10n.get('target_date')}: ${l10n.get('day')} $reminderDay ${l10n.get('month')} ${now.month} (${l10n.get('days_left', params: {'count': daysLeft.toString()})})';
@@ -256,9 +276,9 @@ class TransactionHistorySheet extends StatelessWidget {
         progress: progress,
         info: infoText,
         footerLeft:
-            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatMoney(totalInMonth)}',
+            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatDisplayAmount(totalInMonth, settings.currencyCode, isHidden: settings.hideAmounts)}',
         footerRight:
-            '${l10n.get('monthly_goal_label')}: ${CurrencyUtil.formatMoney(target)}',
+            '${l10n.get('monthly_goal_label')}: ${CurrencyUtil.formatDisplayAmount(target, settings.currencyCode, isHidden: settings.hideAmounts)}',
       );
     } else if (goalType == 2 || goalType == 3) {
       // --- LOẠI: MỤC TIÊU DÀI HẠN / NGẮN HẠN ---
@@ -294,9 +314,9 @@ class TransactionHistorySheet extends StatelessWidget {
         progress: progress,
         info: infoText,
         footerLeft:
-            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatMoney(totalAllTime)}',
+            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatDisplayAmount(totalAllTime, settings.currencyCode, isHidden: settings.hideAmounts)}',
         footerRight:
-            '${l10n.get('target_amount')}: ${CurrencyUtil.formatMoney(target)}',
+            '${l10n.get('target_amount')}: ${CurrencyUtil.formatDisplayAmount(target, settings.currencyCode, isHidden: settings.hideAmounts)}',
       );
     }
 

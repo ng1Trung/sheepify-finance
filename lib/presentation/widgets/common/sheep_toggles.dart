@@ -2,6 +2,81 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/l10n.dart';
 
+class SheepSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final double width;
+  final double height;
+
+  const SheepSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.width = 42,
+    this.height = 24,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = Theme.of(context).colorScheme.primary;
+    final isEnabled = onChanged != null;
+    final outlineColor = activeColor;
+    final thumbColor = activeColor;
+    const borderWidth = 2.0;
+    const inset = 3.0;
+    final thumbSize = height - (inset * 2) - (borderWidth * 2);
+    final thumbLeft = value
+        ? width - thumbSize - inset - borderWidth
+        : inset + borderWidth;
+
+    return Semantics(
+      toggled: value,
+      enabled: isEnabled,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: isEnabled ? () => onChanged!(!value) : null,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 160),
+          opacity: isEnabled ? 1 : 0.45,
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: Stack(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(height / 2),
+                    border: Border.all(color: outlineColor, width: borderWidth),
+                  ),
+                ),
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  left: thumbLeft,
+                  top: inset + borderWidth,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    width: thumbSize,
+                    height: thumbSize,
+                    decoration: BoxDecoration(
+                      color: thumbColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class SheepTypeToggle extends StatelessWidget {
   final bool isExpense;
   final Function(bool) onChanged;
