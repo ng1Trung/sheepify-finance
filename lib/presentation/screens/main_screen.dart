@@ -22,7 +22,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0; // Bắt đầu từ Trang chủ
+  int _currentIndex = 1; // Bắt đầu từ Nhật ký
 
   // TIME AND VIEW MODE MANAGEMENT
   DateTime _selectedDate = DateTime.now();
@@ -41,6 +41,11 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _seedParentCategories();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _showAddTransactionForm();
+      }
+    });
   }
 
   void _seedParentCategories() {
@@ -95,6 +100,16 @@ class _MainScreenState extends State<MainScreen> {
         );
       } else {
         _selectedDate = _selectedDate.add(Duration(days: offset));
+      }
+    });
+  }
+
+  void _selectTab(int index) {
+    setState(() {
+      _currentIndex = index;
+      _selectedDate = DateTime.now();
+      if (index == 1) {
+        _diaryRange = _dayRange(DateTime.now());
       }
     });
   }
@@ -157,6 +172,11 @@ class _MainScreenState extends State<MainScreen> {
 
       String dateText;
       final locale = Localizations.localeOf(context).toString();
+      final isSingleDiaryDay =
+          _currentIndex != 1 ||
+          (_diaryRange.start.year == _diaryRange.end.year &&
+              _diaryRange.start.month == _diaryRange.end.month &&
+              _diaryRange.start.day == _diaryRange.end.day);
       if (_currentIndex == 1) {
         final start = DateFormat(
           'dd/MM/yyyy',
@@ -168,75 +188,85 @@ class _MainScreenState extends State<MainScreen> {
         dateText = DateFormat('dd/MM/yyyy', locale).format(_selectedDate);
       }
 
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // NAVIGATOR < DATE/MONTH >
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.arrow_back_ios_new,
-                  size: 14,
-                  color: AppColors.getTextPrimary(theme.brightness),
-                ),
-                onPressed: () => _changeTime(-1),
-              ),
-              InkWell(
-                onTap: _pickTime,
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.brightness == Brightness.light
-                        ? Colors.white
-                        : AppColors.getSurface(theme.brightness),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final maxPillWidth =
+              constraints.maxWidth - (isSingleDiaryDay ? 104 : 24);
+
+          return Transform.translate(
+            offset: const Offset(-28, 0),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isSingleDiaryDay) ...[
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      icon: Icon(
+                        Icons.arrow_back_ios_new,
                         size: 14,
                         color: AppColors.getTextPrimary(theme.brightness),
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        dateText,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.getTextPrimary(theme.brightness),
+                      onPressed: () => _changeTime(-1),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxPillWidth),
+                    child: IntrinsicWidth(
+                      child: InkWell(
+                        onTap: _pickTime,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.brightness == Brightness.light
+                                ? Colors.white
+                                : AppColors.getSurface(theme.brightness),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            dateText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.getTextPrimary(theme.brightness),
+                            ),
+                          ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  if (isSingleDiaryDay) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      icon: Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: AppColors.getTextPrimary(theme.brightness),
+                      ),
+                      onPressed: () => _changeTime(1),
+                    ),
+                  ],
+                ],
               ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.arrow_forward_ios,
-                  size: 14,
-                  color: AppColors.getTextPrimary(theme.brightness),
-                ),
-                onPressed: () => _changeTime(1),
-              ),
-            ],
-          ),
-        ],
+            ),
+          );
+        },
       );
     }
 
@@ -259,6 +289,7 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.getBackground(theme.brightness),
+      drawer: _buildSideMenu(context),
       appBar: _currentIndex == 0
           ? null
           : AppBar(
@@ -268,6 +299,15 @@ class _MainScreenState extends State<MainScreen> {
               toolbarHeight: (_currentIndex == 2 || _currentIndex == 3)
                   ? 60
                   : 68,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  tooltip: MaterialLocalizations.of(
+                    context,
+                  ).openAppDrawerTooltip,
+                  icon: const Icon(Icons.menu_rounded),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
+              ),
               title: buildAppBarTitle(),
               actions: [
                 if (_currentIndex == 2)
@@ -284,46 +324,133 @@ class _MainScreenState extends State<MainScreen> {
                   ),
               ],
             ),
-      body: buildBody(),
-      bottomNavigationBar: BottomAppBar(
-        color: AppColors.getSurface(theme.brightness),
-        elevation: 0,
-        padding: EdgeInsets.zero,
-        child: Container(
-          height: 92,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          decoration: BoxDecoration(
-            color: AppColors.getSurface(theme.brightness),
-            border: Border(
-              top: BorderSide(color: Colors.black.withOpacity(0.08), width: 1),
+      body: Stack(
+        children: [
+          buildBody(),
+          if (_currentIndex == 0)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 16,
+              child: Builder(
+                builder: (context) => Material(
+                  color: AppColors.getSurface(theme.brightness),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).openAppDrawerTooltip,
+                    icon: const Icon(Icons.menu_rounded),
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                  ),
+                ),
+              ),
             ),
-          ),
-          child: Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.center, // Căn giữa tuyệt đối theo trục dọc
-            children: [
-              // --- LEFT: TAB ICONS ---
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+        ],
+      ),
+      floatingActionButton: _currentIndex == 1
+          ? FloatingActionButton(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              onPressed: _showAddTransactionForm,
+              child: const Icon(Icons.add_rounded, size: 28),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  Widget _buildSideMenu(BuildContext context) {
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+
+    return Drawer(
+      backgroundColor: AppColors.getSurface(theme.brightness),
+      shape: const RoundedRectangleBorder(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: Colors.black,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 18, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildIconNavItem(0, Icons.home_rounded),
-                    const SizedBox(width: 18),
-                    _buildIconNavItem(1, Icons.receipt_long_rounded),
-                    const SizedBox(width: 18),
-                    _buildIconNavItem(2, Icons.style_rounded),
-                    const SizedBox(width: 18),
-                    _buildIconNavItem(3, Icons.settings_rounded),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.get('app_title'),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: MaterialLocalizations.of(
+                            context,
+                          ).closeButtonTooltip,
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white,
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 28),
+                    Text(
+                      _getGreeting(l10n),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white70,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Jason',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ],
                 ),
               ),
-
-              // --- RIGHT: ADD BUTTON ---
-              _buildRightAddButton(),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 10),
+          _buildDrawerItem(
+            context,
+            index: 0,
+            icon: Icons.home_rounded,
+            label: l10n.home,
+          ),
+          _buildDrawerItem(
+            context,
+            index: 1,
+            icon: Icons.receipt_long_rounded,
+            label: l10n.diary,
+          ),
+          _buildDrawerItem(
+            context,
+            index: 2,
+            icon: Icons.style_rounded,
+            label: l10n.categories,
+          ),
+          _buildDrawerItem(
+            context,
+            index: 3,
+            icon: Icons.settings_rounded,
+            label: l10n.settings,
+          ),
+        ],
       ),
     );
   }
@@ -361,43 +488,42 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildIconNavItem(int index, IconData icon) {
+  Widget _buildDrawerItem(
+    BuildContext context, {
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
+    final theme = Theme.of(context);
     final isSelected = _currentIndex == index;
-    final color = isSelected ? Colors.black : Colors.grey[400];
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-          _selectedDate = DateTime.now();
-          if (index == 1) {
-            _diaryRange = _dayRange(DateTime.now());
-          }
-        });
-      },
-      child: Icon(icon, color: color, size: 26),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(label),
+        selected: isSelected,
+        selectedColor: AppColors.getTextPrimary(theme.brightness),
+        selectedTileColor: theme.primaryColor.withOpacity(0.08),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        onTap: () {
+          Navigator.of(context).pop();
+          _selectTab(index);
+        },
+      ),
     );
   }
 
-  Widget _buildRightAddButton() {
-    return GestureDetector(
-      onTap: _showAddTransactionForm,
-      child: Container(
-        width: 52, // Tăng từ 48 lên 52
-        height: 52,
-        decoration: BoxDecoration(
-          color: Colors.black,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.10),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
-      ),
-    );
+  String _getGreeting(L10n l10n) {
+    final hour = DateTime.now().hour;
+    final isVietnamese = l10n.locale.languageCode == 'vi';
+
+    if (hour < 12) {
+      return isVietnamese ? 'Chào buổi sáng,' : 'Good morning,';
+    }
+    if (hour < 18) {
+      return isVietnamese ? 'Chào buổi chiều,' : 'Good afternoon,';
+    }
+    return isVietnamese ? 'Chào buổi tối,' : 'Good evening,';
   }
 }

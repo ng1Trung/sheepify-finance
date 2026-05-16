@@ -105,7 +105,7 @@ class SettingsTab extends StatelessWidget {
                   children: [
                     _buildModeItem(
                       context,
-                      'Light',
+                      'Sáng',
                       Icons.wb_sunny_rounded,
                       !settings.isDarkMode,
                       () {
@@ -115,7 +115,7 @@ class SettingsTab extends StatelessWidget {
                     ),
                     _buildModeItem(
                       context,
-                      'Dark',
+                      'Tối',
                       Icons.nightlight_round,
                       settings.isDarkMode,
                       () {
@@ -186,7 +186,7 @@ class SettingsTab extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              palette.name.split(' ').last,
+                              _paletteDisplayName(palette.name),
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: isSelected
@@ -233,7 +233,7 @@ class SettingsTab extends StatelessWidget {
                             ),
                             DropdownMenuItem(
                               value: 'en',
-                              child: Text('English'),
+                              child: Text('Tiếng Anh'),
                             ),
                           ],
                           onChanged: (val) {
@@ -329,6 +329,29 @@ class SettingsTab extends StatelessWidget {
         fontWeight: FontWeight.bold,
       ),
     );
+  }
+
+  String _paletteDisplayName(String paletteName) {
+    switch (paletteName) {
+      case 'Midnight Black':
+        return 'Đen';
+      case 'Sheep Green':
+        return 'Xanh lá';
+      case 'Rose Petal':
+        return 'Hồng';
+      case 'Sunset Glow':
+        return 'Cam';
+      case 'Ruby Red':
+        return 'Đỏ';
+      case 'Golden Hour':
+        return 'Vàng';
+      case 'Deep Ocean':
+        return 'Xanh biển';
+      case 'Lavender Night':
+        return 'Tím';
+      default:
+        return paletteName;
+    }
   }
 
   Widget _buildFontItem(

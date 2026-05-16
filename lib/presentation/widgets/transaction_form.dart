@@ -43,6 +43,12 @@ class _TransactionFormState extends State<TransactionForm> {
 
   String? _selectedCategoryId;
   String? _imagePath;
+  late final double? _initialAmount;
+  late final String? _initialNote;
+  late final DateTime? _initialDate;
+  late final int? _initialTypeIndex;
+  late final String? _initialCategoryId;
+  late final String? _initialImagePath;
 
   final _box = Hive.box<Transaction>(kMoneyBox);
   final _catBox = Hive.box<CategoryModel>(kCatBox);
@@ -59,26 +65,56 @@ class _TransactionFormState extends State<TransactionForm> {
       _selectedTypeIndex = tx.isExpense ? 0 : 1; // Default fallback
       _selectedCategoryId = tx.categoryId;
       _imagePath = tx.imagePath;
-      
+
       // Load current settings for currency
-      final settings = Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
-      _amountController.text = CurrencyUtil.formatNumber(tx.amount, locale: settings.languageCode == 'vi' ? 'vi_VN' : 'en_US');
-      
+      final settings =
+          Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+      _amountController.text = CurrencyUtil.formatNumber(
+        tx.amount,
+        locale: settings.languageCode == 'vi' ? 'vi_VN' : 'en_US',
+      );
+
       // If we can find the category, get the exact type
       try {
         final cat = _catBox.values.firstWhere((c) => c.id == tx.categoryId);
         _selectedTypeIndex = cat.effectiveTypeIndex;
       } catch (_) {}
+
+      _initialAmount = tx.amount;
+      _initialNote = tx.note;
+      _initialDate = tx.date;
+      _initialTypeIndex = _selectedTypeIndex;
+      _initialCategoryId = tx.categoryId;
+      _initialImagePath = tx.imagePath;
     } else {
       // Default state for new transaction
       _selectedDate = widget.initialDate ?? DateTime.now();
       _selectedTypeIndex = 0; // Default Expense
       _imagePath = null;
       _amountController.text = ''; // Start empty to show hint '0'
+      _initialAmount = null;
+      _initialNote = null;
+      _initialDate = null;
+      _initialTypeIndex = null;
+      _initialCategoryId = null;
+      _initialImagePath = null;
     }
 
     // Refresh state on each character typed to update visual feedback
     _amountController.addListener(() => setState(() {}));
+    _noteController.addListener(() => setState(() {}));
+  }
+
+  bool get _hasChanges {
+    if (widget.transaction == null) return true;
+
+    return CurrencyParsing.parseAmount(_amountController.text) !=
+            _initialAmount ||
+        _noteController.text != _initialNote ||
+        _selectedDate != _initialDate ||
+        _selectedTypeIndex != _initialTypeIndex ||
+        _selectedCategoryId != _initialCategoryId ||
+        _imagePath != _initialImagePath;
   }
 
   // Select transaction date
@@ -129,8 +165,11 @@ class _TransactionFormState extends State<TransactionForm> {
       final pickedFile = await picker.pickImage(source: source);
       if (pickedFile != null) {
         final appDir = await getApplicationDocumentsDirectory();
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(pickedFile.path)}';
-        final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
+        final fileName =
+            '${DateTime.now().millisecondsSinceEpoch}_${path.basename(pickedFile.path)}';
+        final savedImage = await File(
+          pickedFile.path,
+        ).copy('${appDir.path}/$fileName');
         setState(() => _imagePath = savedImage.path);
       }
     }
@@ -140,7 +179,10 @@ class _TransactionFormState extends State<TransactionForm> {
     return Container(
       width: 40,
       height: 4,
-      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(10),
+      ),
     );
   }
 
@@ -149,7 +191,9 @@ class _TransactionFormState extends State<TransactionForm> {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
       ),
     );
   }
@@ -195,10 +239,13 @@ class _TransactionFormState extends State<TransactionForm> {
 
       // Check if we hit budget or reached goal
       try {
-        final cat = _catBox.values.firstWhere((c) => c.id == _selectedCategoryId);
+        final cat = _catBox.values.firstWhere(
+          (c) => c.id == _selectedCategoryId,
+        );
         final spent = CategoryUtil.calculateCategorySpent(cat);
 
-        if (cat.effectiveTypeIndex == 0) { // Expense
+        if (cat.effectiveTypeIndex == 0) {
+          // Expense
           if (cat.budget != null && cat.budget! > 0 && spent > cat.budget!) {
             await showDialog(
               context: context,
@@ -211,8 +258,11 @@ class _TransactionFormState extends State<TransactionForm> {
               ),
             );
           }
-        } else if (cat.effectiveTypeIndex == 2) { // Savings
-          if (cat.targetAmount != null && cat.targetAmount! > 0 && spent >= cat.targetAmount!) {
+        } else if (cat.effectiveTypeIndex == 2) {
+          // Savings
+          if (cat.targetAmount != null &&
+              cat.targetAmount! > 0 &&
+              spent >= cat.targetAmount!) {
             await showDialog(
               context: context,
               builder: (_) => SheepGoalDialog(
@@ -239,7 +289,9 @@ class _TransactionFormState extends State<TransactionForm> {
 
   // Open the custom category picker dialog
   void _showCategoryPicker() {
-    final cats = _catBox.values.where((c) => c.effectiveTypeIndex == _selectedTypeIndex).toList();
+    final cats = _catBox.values
+        .where((c) => c.effectiveTypeIndex == _selectedTypeIndex)
+        .toList();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -264,7 +316,9 @@ class _TransactionFormState extends State<TransactionForm> {
     CategoryModel? selectedCategory;
     if (_selectedCategoryId != null) {
       try {
-        selectedCategory = _catBox.values.firstWhere((c) => c.id == _selectedCategoryId);
+        selectedCategory = _catBox.values.firstWhere(
+          (c) => c.id == _selectedCategoryId,
+        );
       } catch (_) {}
     }
 
@@ -274,7 +328,12 @@ class _TransactionFormState extends State<TransactionForm> {
         color: AppColors.getSurface(theme.brightness),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
       ),
-      padding: EdgeInsets.only(top: 20, left: 20, right: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
+      padding: EdgeInsets.only(
+        top: 20,
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -288,18 +347,13 @@ class _TransactionFormState extends State<TransactionForm> {
               isExpense: _selectedTypeIndex == 0,
               selectedIndex: _selectedTypeIndex, // PASSING NEW PROP
               selectedCategory: selectedCategory,
-              categoryColor: selectedCategory?.colorValue != null ? Color(selectedCategory!.colorValue!) : null,
+              categoryColor: selectedCategory?.colorValue != null
+                  ? Color(selectedCategory!.colorValue!)
+                  : null,
               amountController: _amountController,
               noteController: _noteController,
               onPickImage: _pickImage,
               onRemoveImage: () => setState(() => _imagePath = null),
-              onToggleType: (index) {
-                HapticFeedback.lightImpact();
-                setState(() {
-                  _selectedTypeIndex = index;
-                  _selectedCategoryId = null;
-                });
-              },
               onShowCategoryPicker: _showCategoryPicker,
             ),
             const SizedBox(height: 25),
@@ -321,7 +375,10 @@ class _TransactionFormState extends State<TransactionForm> {
         decoration: BoxDecoration(
           color: AppColors.primary.withOpacity(0.05),
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: AppColors.primary.withOpacity(0.1), width: 0.5),
+          border: Border.all(
+            color: AppColors.primary.withOpacity(0.1),
+            width: 0.5,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -329,7 +386,10 @@ class _TransactionFormState extends State<TransactionForm> {
             const Icon(LineIcons.calendar, size: 14, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
-              DateFormat('dd MMMM, yyyy', Localizations.localeOf(context).toString()).format(_selectedDate),
+              DateFormat(
+                'dd MMMM, yyyy',
+                Localizations.localeOf(context).toString(),
+              ).format(_selectedDate),
               style: TextStyle(
                 color: Theme.of(context).primaryColor,
                 fontSize: 12,
@@ -343,13 +403,12 @@ class _TransactionFormState extends State<TransactionForm> {
   }
 
   Widget _buildSaveButton() {
-    final l10n = L10n.of(context);
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: SheepButton(
-        label: widget.transaction == null ? l10n.save : l10n.updateLabel,
-        onPressed: _submit,
+        label: widget.transaction == null ? 'TẠO' : 'LƯU',
+        onPressed: widget.transaction == null || _hasChanges ? _submit : null,
       ),
     );
   }

@@ -575,6 +575,13 @@ class _DiaryTabState extends State<DiaryTab> {
                                                               fontFamily:
                                                                   'MaterialIcons',
                                                             ),
+                                                            iconColor:
+                                                                cat.colorValue !=
+                                                                    null
+                                                                ? Color(
+                                                                    cat.colorValue!,
+                                                                  )
+                                                                : Colors.black,
                                                             title: cat.name,
                                                             dateText:
                                                                 tx

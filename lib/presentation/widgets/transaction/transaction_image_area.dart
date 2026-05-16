@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:line_icons/line_icons.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_util.dart';
@@ -17,7 +16,6 @@ class TransactionImageArea extends StatelessWidget {
   final TextEditingController noteController;
   final VoidCallback onPickImage;
   final VoidCallback onRemoveImage;
-  final Function(int) onToggleType; // CHANGED to accept index
   final VoidCallback onShowCategoryPicker;
 
   const TransactionImageArea({
@@ -31,7 +29,6 @@ class TransactionImageArea extends StatelessWidget {
     required this.noteController,
     required this.onPickImage,
     required this.onRemoveImage,
-    required this.onToggleType,
     required this.onShowCategoryPicker,
   });
 
@@ -68,17 +65,29 @@ class TransactionImageArea extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: !hasCategory
-                                ? [const Color(0xFFBDBDBD), const Color(0xFF757575)]
+                              ? [
+                                  const Color(0xFFBDBDBD),
+                                  const Color(0xFF757575),
+                                ]
                               : (categoryColor != null
-                                  ? [
-                                      categoryColor!,
-                                      categoryColor!.withOpacity(0.7),
-                                    ]
-                                  : (selectedIndex == 0
-                                      ? [const Color(0xFFC62828), const Color(0xFF8E24AA)]
-                                      : (selectedIndex == 1 
-                                          ? [const Color(0xFF2E7D32), const Color(0xFF00ACC1)]
-                                          : [const Color(0xFF1976D2), const Color(0xFF00BCD4)]))),
+                                    ? [
+                                        categoryColor!,
+                                        categoryColor!.withOpacity(0.7),
+                                      ]
+                                    : (selectedIndex == 0
+                                          ? [
+                                              const Color(0xFFC62828),
+                                              const Color(0xFF8E24AA),
+                                            ]
+                                          : (selectedIndex == 1
+                                                ? [
+                                                    const Color(0xFF2E7D32),
+                                                    const Color(0xFF00ACC1),
+                                                  ]
+                                                : [
+                                                    const Color(0xFF1976D2),
+                                                    const Color(0xFF00BCD4),
+                                                  ]))),
                         ),
                       ),
                       child: Center(
@@ -101,17 +110,14 @@ class TransactionImageArea extends StatelessWidget {
                     ),
             ),
 
-            // Header UI (Category and Type toggle)
+            // Header UI
             Positioned(
               top: 20,
               left: 20,
               right: 20,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildCategoryPicker(),
-                  if (hasCategory) _buildTypeToggle(),
-                ],
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _buildCategoryPicker(),
               ),
             ),
 
@@ -126,17 +132,21 @@ class TransactionImageArea extends StatelessWidget {
             // Delete Image Button
             if (imagePath != null)
               Positioned(
-                top: 15,
-                right: 15,
+                top: 20,
+                right: 20,
                 child: GestureDetector(
                   onTap: onRemoveImage,
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(8),
                     decoration: const BoxDecoration(
                       color: Colors.black45,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close, size: 16, color: Colors.white),
+                    child: const Icon(
+                      Icons.close,
+                      size: 20,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -149,7 +159,7 @@ class TransactionImageArea extends StatelessWidget {
   Widget _buildActionBlock() {
     final bool isZeroValue = amountController.text.isEmpty;
     final bool hasCategory = selectedCategory != null;
-    
+
     // COLOR LOGIC: Strictly white until a category is selected to avoid misleading red/green colors
     Color contentColor;
     if (!hasCategory) {
@@ -157,9 +167,11 @@ class TransactionImageArea extends StatelessWidget {
     } else {
       contentColor = isZeroValue
           ? Colors.white24
-          : (selectedIndex == 0 
-              ? const Color(0xFFFF8A80) 
-              : (selectedIndex == 1 ? const Color(0xFFB9F6CA) : const Color(0xFFBBDEFB)));
+          : (selectedIndex == 0
+                ? const Color(0xFFFF8A80)
+                : (selectedIndex == 1
+                      ? const Color(0xFFB9F6CA)
+                      : const Color(0xFFBBDEFB)));
     }
 
     return Container(
@@ -179,15 +191,17 @@ class TransactionImageArea extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(
-                  selectedIndex == 0 ? '-' : (selectedIndex == 1 ? '+' : '±'),
-                  style: TextStyle(
-                    color: contentColor,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
+                if (hasCategory) ...[
+                  Text(
+                    selectedIndex == 1 ? '+' : '-',
+                    style: TextStyle(
+                      color: contentColor,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
+                  const SizedBox(width: 16),
+                ],
                 IntrinsicWidth(
                   child: TextField(
                     controller: amountController,
@@ -236,23 +250,20 @@ class TransactionImageArea extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
-                  LineIcons.edit,
-                  size: 16,
-                  color: Colors.white.withOpacity(0.4),
-                ),
-                const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
                     controller: noteController,
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     textAlign: TextAlign.center,
                     decoration: InputDecoration(
-                      hintText: 'Add details...',
+                      hintText: 'Thêm ghi chú...',
                       hintStyle: TextStyle(
                         color: Colors.white.withOpacity(0.2),
                       ),
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
                       filled: false,
@@ -260,40 +271,10 @@ class TransactionImageArea extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 26),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTypeToggle() {
-    String label;
-    Color color;
-    switch (selectedIndex) {
-      case 0: label = 'Chi tiêu'; color = AppColors.expense; break;
-      case 1: label = 'Thu nhập'; color = AppColors.income; break;
-      default: label = 'Mục tiêu'; color = AppColors.savings; break;
-    }
-
-    return GestureDetector(
-      onTap: () => onToggleType((selectedIndex + 1) % 3),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
       ),
     );
   }
@@ -305,15 +286,17 @@ class TransactionImageArea extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: (categoryColor ?? (hasCat ? AppColors.primary : Colors.grey[400]!))
-              .withOpacity(0.9),
+          color:
+              (categoryColor ??
+                      (hasCat ? AppColors.primary : Colors.grey[400]!))
+                  .withOpacity(0.9),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              hasCat ? selectedCategory!.name : 'Category',
+              hasCat ? selectedCategory!.name : 'Danh mục',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,

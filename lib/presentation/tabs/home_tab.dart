@@ -110,30 +110,36 @@ class _HomeTabState extends State<HomeTab> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            Row(
                               children: [
-                                Text(
-                                  _getGreeting(),
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.getTextSecondary(
-                                      theme.brightness,
+                                const SizedBox(width: 54),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _getGreeting(),
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: AppColors.getTextSecondary(
+                                              theme.brightness,
+                                            ),
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Jason',
-                                  style: theme.textTheme.displayMedium
-                                      ?.copyWith(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w900,
-                                        color: AppColors.getTextPrimary(
-                                          theme.brightness,
-                                        ),
-                                      ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Jason',
+                                      style: theme.textTheme.displayMedium
+                                          ?.copyWith(
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.getTextPrimary(
+                                              theme.brightness,
+                                            ),
+                                          ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

@@ -137,7 +137,6 @@ class _StatsTabState extends State<StatsTab> {
                           sortedStats,
                           displayTotal,
                           settings.currencyCode,
-                          l10n,
                         ),
                         const SizedBox(height: 32),
                         const Divider(height: 1, color: Color(0xFFF8F8F8)),
@@ -161,12 +160,7 @@ class _StatsTabState extends State<StatsTab> {
     );
   }
 
-  Widget _buildPieChart(
-    List<_StatEntry> stats,
-    double total,
-    String currency,
-    L10n l10n,
-  ) {
+  Widget _buildPieChart(List<_StatEntry> stats, double total, String currency) {
     return SizedBox(
       height: 220,
       child: Stack(
@@ -217,21 +211,21 @@ class _StatsTabState extends State<StatsTab> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  _touchedIndex != -1
-                      ? stats[_touchedIndex].category.name
-                      : l10n.get('all_total'),
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: 0.8,
-                    color: Colors.grey,
+                if (_touchedIndex != -1) ...[
+                  Text(
+                    stats[_touchedIndex].category.name,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 0.8,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
+                  const SizedBox(height: 2),
+                ],
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(

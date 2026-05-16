@@ -163,7 +163,7 @@ class SheepEmptyState extends StatelessWidget {
 
 class SheepButton extends StatelessWidget {
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final bool isFullWidth;
   final Color? backgroundColor;
   final Color? foregroundColor;
