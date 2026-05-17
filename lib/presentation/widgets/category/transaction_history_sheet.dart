@@ -24,7 +24,6 @@ class TransactionHistorySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = L10n.of(context);
     final Color catColor = category.colorValue != null
         ? Color(category.colorValue!)
         : AppColors.primary;
@@ -33,10 +32,6 @@ class TransactionHistorySheet extends StatelessWidget {
       0.0,
       (sum, tx) => sum + tx.amount,
     );
-    final DateTime now = DateTime.now();
-    final double totalInMonth = transactions
-        .where((tx) => tx.date.month == now.month && tx.date.year == now.year)
-        .fold(0.0, (sum, tx) => sum + tx.amount);
     final bool isSavings = category.effectiveTypeIndex == 2;
 
     return DraggableScrollableSheet(
@@ -47,22 +42,24 @@ class TransactionHistorySheet extends StatelessWidget {
       builder: (_, scrollController) => Container(
         decoration: BoxDecoration(
           color: AppColors.getSurface(Theme.of(context).brightness),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
         ),
         child: Column(
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: SheepSpacing.md),
             _buildDragHandle(),
-            const SizedBox(height: 15),
+            const SizedBox(height: SheepSpacing.lg),
 
             _buildHeader(context, catColor, totalAccumulated),
 
             if (isSavings && category.targetAmount != null) ...[
-              const SizedBox(height: 15),
+              const SizedBox(height: SheepSpacing.lg),
               _buildGoalDashboard(context, catColor, totalAccumulated),
             ],
 
-            const SizedBox(height: 15),
+            const SizedBox(height: SheepSpacing.lg),
             Expanded(
               child: _buildTransactionList(context, scrollController, catColor),
             ),
@@ -78,7 +75,7 @@ class TransactionHistorySheet extends StatelessWidget {
       height: 4,
       decoration: BoxDecoration(
         color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(SheepRadius.sm),
       ),
     );
   }
@@ -88,24 +85,27 @@ class TransactionHistorySheet extends StatelessWidget {
     final settings =
         Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: SheepSpacing.xl),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: SheepSpacing.lg,
+          vertical: SheepSpacing.md,
+        ),
         decoration: BoxDecoration(
           color: AppColors.getBackground(Theme.of(context).brightness),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(SheepRadius.sheet),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(SheepSpacing.sm),
               decoration: BoxDecoration(
                 color: catColor.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(category.iconData, color: catColor, size: 20),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: SheepSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,9 +122,9 @@ class TransactionHistorySheet extends StatelessWidget {
                       'num_transactions',
                       params: {'count': transactions.length.toString()},
                     ),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(fontSize: 10),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: SheepTypeScale.micro,
+                    ),
                   ),
                 ],
               ),
@@ -138,7 +138,7 @@ class TransactionHistorySheet extends StatelessWidget {
                       ? l10n.get('total_target')
                       : l10n.get('total_spent_cat'),
                   style: TextStyle(
-                    fontSize: 8,
+                    fontSize: SheepTypeScale.micro,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
                     color: Theme.of(context).hintColor,
@@ -151,7 +151,7 @@ class TransactionHistorySheet extends StatelessWidget {
                     isHidden: settings.hideAmounts,
                   ),
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: SheepTypeScale.bodyLarge,
                     fontWeight: FontWeight.bold,
                     color: category.effectiveTypeIndex == 2
                         ? AppColors.savings
@@ -182,7 +182,7 @@ class TransactionHistorySheet extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(LineIcons.history, size: 50, color: Colors.grey[200]),
-            const SizedBox(height: 10),
+            const SizedBox(height: SheepSpacing.sm),
             Text(
               l10n.get('no_transactions'),
               style: TextStyle(color: Colors.grey[400]),
@@ -194,7 +194,10 @@ class TransactionHistorySheet extends StatelessWidget {
 
     return ListView.builder(
       controller: controller,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: SheepSpacing.sm,
+        vertical: SheepSpacing.sm,
+      ),
       itemCount: transactions.length,
       itemBuilder: (_, i) {
         final tx = transactions[i];
@@ -219,7 +222,6 @@ class TransactionHistorySheet extends StatelessWidget {
     Color catColor,
     double totalAllTime,
   ) {
-    final theme = Theme.of(context);
     final l10n = L10n.of(context);
     final settings =
         Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
@@ -332,11 +334,10 @@ class TransactionHistorySheet extends StatelessWidget {
     required String footerLeft,
     required String footerRight,
   }) {
-    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: SheepSpacing.xl),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(SheepSpacing.lg),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -346,7 +347,7 @@ class TransactionHistorySheet extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(SheepRadius.sheet),
           border: Border.all(color: AppColors.savings.withOpacity(0.1)),
         ),
         child: Column(
@@ -367,7 +368,7 @@ class TransactionHistorySheet extends StatelessWidget {
                 Text(
                   '${(progress * 100).toInt()}%',
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: SheepTypeScale.body,
                     fontWeight: FontWeight.bold,
                     color: AppColors.savings,
                   ),
@@ -381,9 +382,9 @@ class TransactionHistorySheet extends StatelessWidget {
                 context,
               ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: SheepSpacing.md),
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(SheepRadius.sm),
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 8,
@@ -394,7 +395,7 @@ class TransactionHistorySheet extends StatelessWidget {
               ),
             ),
             if (info.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: SheepSpacing.md),
               Row(
                 children: [
                   const Icon(
@@ -414,7 +415,7 @@ class TransactionHistorySheet extends StatelessWidget {
                 ],
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: SheepSpacing.md),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

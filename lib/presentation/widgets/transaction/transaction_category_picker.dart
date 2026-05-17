@@ -5,6 +5,7 @@ import '../../../data/models/category_model.dart';
 import '../../../core/constants/constants.dart';
 import '../../../core/utils/l10n.dart';
 import '../common/sheep_toggles.dart';
+import '../common/sheep_widgets.dart';
 
 class TransactionCategoryPicker extends StatefulWidget {
   final List<CategoryModel> categories;
@@ -42,10 +43,15 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      padding: const EdgeInsets.symmetric(
+        vertical: SheepSpacing.xl,
+        horizontal: SheepSpacing.lg,
+      ),
       decoration: BoxDecoration(
         color: AppColors.getSurface(theme.brightness),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(SheepRadius.sheet),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -66,7 +72,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
               ),
             ],
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: SheepSpacing.lg),
 
           // Triple toggle inside picker to allow switching all 3 types
           SheepTripleToggle(
@@ -75,7 +81,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
             labels: [l10n.expense, l10n.income, l10n.get('goal_label')],
           ),
 
-          const SizedBox(height: 25),
+          const SizedBox(height: SheepSpacing.xl),
 
           ValueListenableBuilder(
             valueListenable: Hive.box<CategoryModel>(kCatBox).listenable(),
@@ -126,7 +132,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                             : (c.colorValue != null
                                   ? Color(c.colorValue!).withOpacity(0.12)
                                   : theme.cardColor),
-                        borderRadius: BorderRadius.circular(15),
+                        borderRadius: BorderRadius.circular(SheepRadius.lg),
                         border: Border.all(
                           color: isSelected
                               ? (c.colorValue != null
@@ -141,7 +147,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                       child: Text(
                         c.name,
                         style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: 12,
+                          fontSize: SheepTypeScale.meta,
                           color: isSelected
                               ? Colors.white
                               : (c.colorValue != null
@@ -158,7 +164,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
               );
             },
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: SheepSpacing.xxl),
         ],
       ),
     );

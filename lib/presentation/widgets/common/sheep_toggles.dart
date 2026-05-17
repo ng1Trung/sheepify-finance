@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/l10n.dart';
+import 'sheep_widgets.dart';
 
 class SheepSwitch extends StatelessWidget {
   final bool value;
@@ -114,7 +115,7 @@ class SheepTypeToggle extends StatelessWidget {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: AppColors.getSubtleSurface(Theme.of(context).brightness),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(SheepRadius.lg),
             border: Border.all(
               color: AppColors.getBorder(Theme.of(context).brightness),
             ),
@@ -131,7 +132,7 @@ class SheepTypeToggle extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color: activeColor,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(SheepRadius.sm),
                     boxShadow: AppColors.getSoftShadow(
                       Theme.of(context).brightness,
                     ),
@@ -178,7 +179,7 @@ class SheepTypeToggle extends StatelessWidget {
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 200),
             style: Theme.of(context).textTheme.labelSmall!.copyWith(
-              fontSize: 13,
+              fontSize: SheepTypeScale.label,
               fontWeight: FontWeight.bold,
               color: isActive
                   ? color
@@ -228,7 +229,7 @@ class SheepTripleToggle extends StatelessWidget {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: AppColors.getSubtleSurface(Theme.of(context).brightness),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(SheepRadius.lg),
             border: Border.all(
               color: AppColors.getBorder(Theme.of(context).brightness),
             ),
@@ -279,7 +280,7 @@ class SheepTripleToggle extends StatelessWidget {
                           duration: const Duration(milliseconds: 200),
                           style: Theme.of(context).textTheme.labelSmall!
                               .copyWith(
-                                fontSize: 12,
+                                fontSize: SheepTypeScale.meta,
                                 fontWeight: FontWeight.bold,
                                 color: isActive
                                     ? onActiveColor
@@ -310,7 +311,7 @@ class SheepTripleToggle extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: activeColor,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(SheepRadius.sm),
         boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
       ),
     );

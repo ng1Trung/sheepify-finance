@@ -1,11 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:line_icons/line_icons.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_util.dart';
 import '../../../core/utils/l10n.dart';
+import '../../../core/utils/transaction_image_store.dart';
 import '../../../data/models/category_model.dart';
+import '../common/sheep_widgets.dart';
 
 class TransactionImageArea extends StatelessWidget {
   final String? imagePath;
@@ -35,7 +36,9 @@ class TransactionImageArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool hasCategory = selectedCategory != null;
+    final hasCategory = selectedCategory != null;
+    final imageFile = TransactionImageStore.resolve(imagePath);
+    final hasReadableImage = imageFile?.existsSync() ?? false;
     final l10n = L10n.of(context);
 
     return AspectRatio(
@@ -44,7 +47,7 @@ class TransactionImageArea extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: AppColors.getBackground(Theme.of(context).brightness),
-          borderRadius: BorderRadius.circular(35),
+          borderRadius: BorderRadius.circular(SheepRadius.sheet),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.12),
@@ -59,57 +62,21 @@ class TransactionImageArea extends StatelessWidget {
             // BACKGROUND (IMAGE OR GRADIENT)
             GestureDetector(
               onTap: onPickImage,
-              child: imagePath != null
-                  ? Image.file(File(imagePath!), fit: BoxFit.cover)
-                  : Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: !hasCategory
-                              ? [
-                                  const Color(0xFFBDBDBD),
-                                  const Color(0xFF757575),
-                                ]
-                              : (categoryColor != null
-                                    ? [
-                                        categoryColor!,
-                                        categoryColor!.withOpacity(0.7),
-                                      ]
-                                    : (selectedIndex == 0
-                                          ? [
-                                              const Color(0xFFC62828),
-                                              const Color(0xFF8E24AA),
-                                            ]
-                                          : (selectedIndex == 1
-                                                ? [
-                                                    const Color(0xFF2E7D32),
-                                                    const Color(0xFF00ACC1),
-                                                  ]
-                                                : [
-                                                    const Color(0xFF1976D2),
-                                                    const Color(0xFF00BCD4),
-                                                  ]))),
-                        ),
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 64),
-                          child: Icon(
-                            selectedCategory?.iconData ?? LineIcons.image,
-                            size: 46,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
+              child: hasReadableImage
+                  ? Image.file(
+                      imageFile!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildPlaceholder(hasCategory),
+                    )
+                  : _buildPlaceholder(hasCategory),
             ),
 
             // Header UI
             Positioned(
-              top: 20,
-              left: 20,
-              right: 20,
+              top: SheepSpacing.xl,
+              left: SheepSpacing.xl,
+              right: SheepSpacing.xl,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: _buildCategoryPicker(l10n),
@@ -118,17 +85,17 @@ class TransactionImageArea extends StatelessWidget {
 
             // Action Block (Amount input and Note field)
             Positioned(
-              bottom: 20,
-              left: 20,
-              right: 20,
+              bottom: SheepSpacing.xl,
+              left: SheepSpacing.xl,
+              right: SheepSpacing.xl,
               child: _buildActionBlock(l10n),
             ),
 
             // Delete Image Button
-            if (imagePath != null)
+            if (hasReadableImage)
               Positioned(
-                top: 20,
-                right: 20,
+                top: SheepSpacing.xl,
+                right: SheepSpacing.xl,
                 child: GestureDetector(
                   onTap: onRemoveImage,
                   child: Container(
@@ -146,6 +113,42 @@ class TransactionImageArea extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder(bool hasCategory) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: !hasCategory
+              ? [const Color(0xFFBDBDBD), const Color(0xFF757575)]
+              : (categoryColor != null
+                    ? [categoryColor!, categoryColor!.withOpacity(0.7)]
+                    : (selectedIndex == 0
+                          ? [const Color(0xFFC62828), const Color(0xFF8E24AA)]
+                          : (selectedIndex == 1
+                                ? [
+                                    const Color(0xFF2E7D32),
+                                    const Color(0xFF00ACC1),
+                                  ]
+                                : [
+                                    const Color(0xFF1976D2),
+                                    const Color(0xFF00BCD4),
+                                  ]))),
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 64),
+          child: Icon(
+            selectedCategory?.iconData ?? LineIcons.image,
+            size: 46,
+            color: Colors.white,
+          ),
         ),
       ),
     );
@@ -173,7 +176,7 @@ class TransactionImageArea extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(SheepRadius.sheet),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

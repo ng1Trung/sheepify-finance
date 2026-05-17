@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
-import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:intl/intl.dart';
@@ -22,6 +19,7 @@ import 'transaction/transaction_category_picker.dart';
 import 'common/sheep_notifications.dart';
 import 'common/sheep_dialogs.dart';
 import '../../core/utils/category_util.dart';
+import '../../core/utils/transaction_image_store.dart';
 
 class TransactionForm extends StatefulWidget {
   final Transaction? transaction;
@@ -163,13 +161,12 @@ class _TransactionFormState extends State<TransactionForm> {
     if (source != null) {
       final pickedFile = await picker.pickImage(source: source);
       if (pickedFile != null) {
-        final appDir = await getApplicationDocumentsDirectory();
-        final fileName =
-            '${DateTime.now().millisecondsSinceEpoch}_${path.basename(pickedFile.path)}';
-        final savedImage = await File(
+        final storedImageRef = await TransactionImageStore.saveFromSourcePath(
           pickedFile.path,
-        ).copy('${appDir.path}/$fileName');
-        setState(() => _imagePath = savedImage.path);
+        );
+        if (mounted) {
+          setState(() => _imagePath = storedImageRef);
+        }
       }
     }
   }
@@ -180,7 +177,7 @@ class _TransactionFormState extends State<TransactionForm> {
       height: 4,
       decoration: BoxDecoration(
         color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(SheepRadius.sm),
       ),
     );
   }
@@ -325,22 +322,24 @@ class _TransactionFormState extends State<TransactionForm> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.getSurface(theme.brightness),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(SheepRadius.sheet),
+        ),
       ),
       padding: EdgeInsets.only(
-        top: 20,
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        top: SheepSpacing.xl,
+        left: SheepSpacing.xl,
+        right: SheepSpacing.xl,
+        bottom: MediaQuery.of(context).viewInsets.bottom + SheepSpacing.xl,
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildDragHandle(),
-            const SizedBox(height: 20),
+            const SizedBox(height: SheepSpacing.xl),
             _buildDatePill(),
-            const SizedBox(height: 20),
+            const SizedBox(height: SheepSpacing.xl),
             TransactionImageArea(
               imagePath: _imagePath,
               isExpense: _selectedTypeIndex == 0,
@@ -355,9 +354,9 @@ class _TransactionFormState extends State<TransactionForm> {
               onRemoveImage: () => setState(() => _imagePath = null),
               onShowCategoryPicker: _showCategoryPicker,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: SheepSpacing.xl),
             _buildSaveButton(),
-            const SizedBox(height: 10),
+            const SizedBox(height: SheepSpacing.sm),
           ],
         ),
       ),

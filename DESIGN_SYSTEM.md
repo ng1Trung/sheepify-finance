@@ -19,13 +19,15 @@ We prioritize a clean, professional look with high legibility and reduced eye st
 ---
 
 ## 🔡 Typography
-We use **Quicksand** as our primary font for its rounded, friendly yet professional character.
+We support four clean UI fonts: **Inter**, **Be Vietnam Pro**, **Quicksand**, and **Montserrat**. The default UI rhythm uses the same type scale regardless of the selected font.
 
 | Style | Font Weight | Size | Letter Spacing |
 | :--- | :--- | :--- | :--- |
 | **Headline** | Bold | 24px | 0 |
 | **Title (Card)** | SemiBold | 18px | 0 |
+| **Body Large** | Medium | 16px | 0.5 |
 | **Body** | Medium | 14px | 0.5 |
+| **Meta** | Medium | 12px | 0 |
 
 ---
 
@@ -33,12 +35,17 @@ We use **Quicksand** as our primary font for its rounded, friendly yet professio
 The design system follows a **4px/8px grid** for consistency.
 
 ### Spacing
-- **Page Padding**: `16px` or `24px`.
+- **Page Padding**: `24px`.
+- **Scale**: `4 / 8 / 12 / 16 / 24 / 32px`.
 - **Inter-component (Small)**: `8px` (between elements within a section).
 - **Inter-component (Large)**: `24px` (between major sections).
 
 ### Corner Radius
-- **Card Border Radius**: `16px` (Modern, rounded aesthetic).
+- **Small**: `10px`.
+- **Control**: `12px`.
+- **Item**: `14px`.
+- **Card**: `16px`.
+- **Sheet**: `24px`.
 
 ---
 

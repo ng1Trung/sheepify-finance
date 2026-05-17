@@ -24,13 +24,16 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       fontFamily: fields[4] as String? ?? 'Quicksand',
       isDarkMode: fields[5] as bool? ?? false,
       hideAmounts: fields[6] as bool? ?? false,
+      themeMode:
+          fields[7] as String? ??
+          ((fields[5] as bool? ?? false) ? 'dark' : 'light'),
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.accumulateBalance)
       ..writeByte(1)
@@ -44,7 +47,9 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(5)
       ..write(obj.isDarkMode)
       ..writeByte(6)
-      ..write(obj._hideAmounts);
+      ..write(obj._hideAmounts)
+      ..writeByte(7)
+      ..write(obj._themeMode);
   }
 
   @override

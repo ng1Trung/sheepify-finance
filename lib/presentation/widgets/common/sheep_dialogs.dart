@@ -3,6 +3,7 @@ import 'package:line_icons/line_icons.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/l10n.dart';
+import 'sheep_widgets.dart';
 
 class SheepConfirmDialog extends StatelessWidget {
   final String title;
@@ -31,14 +32,16 @@ class SheepConfirmDialog extends StatelessWidget {
     final brightness = Theme.of(context).brightness;
     final l10n = L10n.of(context);
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(SheepRadius.sheet),
+      ),
       elevation: 0,
       backgroundColor: Colors.transparent,
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(SheepSpacing.xl),
         decoration: BoxDecoration(
           color: AppColors.getSurface(brightness),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(SheepRadius.sheet),
           boxShadow: AppColors.getSoftShadow(brightness),
         ),
         child: Column(
@@ -64,7 +67,7 @@ class SheepConfirmDialog extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: SheepTypeScale.title,
                 fontWeight: FontWeight.bold,
                 color: AppColors.getTextPrimary(brightness),
               ),
@@ -77,7 +80,7 @@ class SheepConfirmDialog extends StatelessWidget {
                   content ?? '',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: SheepTypeScale.body,
                     color: AppColors.getTextSecondary(brightness),
                     height: 1.5,
                   ),
@@ -93,7 +96,7 @@ class SheepConfirmDialog extends StatelessWidget {
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(SheepRadius.lg),
                       ),
                     ),
                     child: Text(
@@ -118,7 +121,7 @@ class SheepConfirmDialog extends StatelessWidget {
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(SheepRadius.lg),
                       ),
                     ),
                     child: Text(
@@ -157,13 +160,15 @@ class SheepGoalDialog extends StatelessWidget {
     final brightness = Theme.of(context).brightness;
     final l10n = L10n.of(context);
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(SheepRadius.sheet),
+      ),
       backgroundColor: Colors.transparent,
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(SheepSpacing.xl),
         decoration: BoxDecoration(
           color: AppColors.getSurface(brightness),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(SheepRadius.sheet),
           boxShadow: AppColors.getSoftShadow(brightness),
         ),
         child: Column(
@@ -187,7 +192,7 @@ class SheepGoalDialog extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 20,
+                fontSize: SheepTypeScale.amount,
                 fontWeight: FontWeight.bold,
                 color: AppColors.getTextPrimary(brightness),
               ),
@@ -197,7 +202,7 @@ class SheepGoalDialog extends StatelessWidget {
               message,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: SheepTypeScale.item,
                 color: AppColors.getTextSecondary(brightness),
                 height: 1.5,
               ),
@@ -213,14 +218,14 @@ class SheepGoalDialog extends StatelessWidget {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(SheepRadius.xl),
                   ),
                 ),
                 child: Text(
                   buttonLabel.isEmpty ? l10n.get('awesome') : buttonLabel,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: SheepTypeScale.bodyLarge,
                   ),
                 ),
               ),

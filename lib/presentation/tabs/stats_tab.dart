@@ -46,122 +46,130 @@ class _StatsTabState extends State<StatsTab> {
         return ValueListenableBuilder(
           valueListenable: Hive.box<Transaction>(kMoneyBox).listenable(),
           builder: (context, box, _) {
-            final catBox = Hive.box<CategoryModel>(kCatBox);
-            final allTransactions = box.values.cast<Transaction>().toList();
+            return ValueListenableBuilder(
+              valueListenable: Hive.box<CategoryModel>(kCatBox).listenable(),
+              builder: (context, catBox, _) {
+                final allTransactions = box.values.cast<Transaction>().toList();
 
-            final filteredTransactions = allTransactions.where(
-              (tx) =>
-                  tx.date.isAfter(
-                    widget.selectedRange.start.subtract(
-                      const Duration(seconds: 1),
+                final filteredTransactions = allTransactions.where(
+                  (tx) =>
+                      tx.date.isAfter(
+                        widget.selectedRange.start.subtract(
+                          const Duration(seconds: 1),
+                        ),
+                      ) &&
+                      tx.date.isBefore(
+                        widget.selectedRange.end.add(
+                          const Duration(seconds: 1),
+                        ),
+                      ),
+                );
+
+                Map<String, _StatEntry> statsMap = {};
+                for (var tx in filteredTransactions) {
+                  final cat = catBox.values.firstWhere(
+                    (c) => c.id == tx.categoryId,
+                    orElse: () => CategoryModel(
+                      id: 'unknown',
+                      name: l10n.get('other'),
+                      iconCode: 58263,
+                      isExpense: tx.isExpense,
+                      typeIndex: tx.isExpense ? 0 : 1,
                     ),
-                  ) &&
-                  tx.date.isBefore(
-                    widget.selectedRange.end.add(const Duration(seconds: 1)),
-                  ),
-            );
+                  );
 
-            Map<String, _StatEntry> statsMap = {};
-            for (var tx in filteredTransactions) {
-              final cat = catBox.values.firstWhere(
-                (c) => c.id == tx.categoryId,
-                orElse: () => CategoryModel(
-                  id: 'unknown',
-                  name: l10n.get('other'),
-                  iconCode: 58263,
-                  isExpense: tx.isExpense,
-                  typeIndex: tx.isExpense ? 0 : 1,
-                ),
-              );
-
-              if (cat.effectiveTypeIndex == widget.selectedTypeIndex) {
-                if (statsMap.containsKey(cat.id)) {
-                  statsMap[cat.id]!.amount += tx.amount;
-                } else {
-                  statsMap[cat.id] = _StatEntry(cat, tx.amount);
+                  if (cat.effectiveTypeIndex == widget.selectedTypeIndex) {
+                    if (statsMap.containsKey(cat.id)) {
+                      statsMap[cat.id]!.amount += tx.amount;
+                    } else {
+                      statsMap[cat.id] = _StatEntry(cat, tx.amount);
+                    }
+                  }
                 }
-              }
-            }
 
-            double displayTotal = statsMap.values.fold(
-              0,
-              (sum, item) => sum + item.amount,
-            );
-            var sortedStats = statsMap.values.toList()
-              ..sort((a, b) => b.amount.compareTo(a.amount));
+                double displayTotal = statsMap.values.fold(
+                  0,
+                  (sum, item) => sum + item.amount,
+                );
+                var sortedStats = statsMap.values.toList()
+                  ..sort((a, b) => b.amount.compareTo(a.amount));
 
-            Widget buildStatsCard({required Widget child}) {
-              final brightness = Theme.of(context).brightness;
-              return Container(
-                margin: SheepSpacing.pageHorizontal,
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 24,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.getSurface(brightness),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.getBorder(brightness)),
-                ),
-                child: child,
-              );
-            }
+                Widget buildStatsCard({required Widget child}) {
+                  final brightness = Theme.of(context).brightness;
+                  return Container(
+                    margin: SheepSpacing.pageHorizontal,
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 24,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.getSurface(brightness),
+                      borderRadius: BorderRadius.circular(SheepRadius.xl),
+                      border: Border.all(
+                        color: AppColors.getBorder(brightness),
+                      ),
+                    ),
+                    child: child,
+                  );
+                }
 
-            if (displayTotal == 0) {
-              return SizedBox.expand(
-                child: buildStatsCard(
+                if (displayTotal == 0) {
+                  return SizedBox.expand(
+                    child: buildStatsCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          widget.typeFilter,
+                          Expanded(child: _buildEmptyState(l10n)),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 24),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      widget.typeFilter,
-                      Expanded(child: _buildEmptyState(l10n)),
+                      buildStatsCard(
+                        child: Column(
+                          children: [
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: widget.typeFilter,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildPieChart(
+                              sortedStats,
+                              displayTotal,
+                              settings.currencyCode,
+                              settings.hideAmounts,
+                            ),
+                            const SizedBox(height: 32),
+                            Divider(
+                              height: 1,
+                              color: AppColors.getBorder(
+                                Theme.of(context).brightness,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ...sortedStats.map(
+                              (stat) => _buildStatRow(
+                                stat,
+                                displayTotal,
+                                settings.currencyCode,
+                                settings.hideAmounts,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              );
-            }
-
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                children: [
-                  buildStatsCard(
-                    child: Column(
-                      children: [
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: widget.typeFilter,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildPieChart(
-                          sortedStats,
-                          displayTotal,
-                          settings.currencyCode,
-                          settings.hideAmounts,
-                        ),
-                        const SizedBox(height: 32),
-                        Divider(
-                          height: 1,
-                          color: AppColors.getBorder(
-                            Theme.of(context).brightness,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ...sortedStats.map(
-                          (stat) => _buildStatRow(
-                            stat,
-                            displayTotal,
-                            settings.currencyCode,
-                            settings.hideAmounts,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             );
           },
         );
@@ -279,22 +287,22 @@ class _StatsTabState extends State<StatsTab> {
         : AppColors.getTextPrimary(brightness);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(vertical: SheepSpacing.lg),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: catColor.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(SheepRadius.md),
             ),
             child: Icon(
               IconData(stat.category.iconCode, fontFamily: 'MaterialIcons'),
-              size: 20,
+              size: SheepTypeScale.amount,
               color: catColor,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: SheepSpacing.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,7 +323,7 @@ class _StatsTabState extends State<StatsTab> {
             ),
             style: TextStyle(
               fontWeight: FontWeight.w700,
-              fontSize: 16,
+              fontSize: SheepTypeScale.bodyLarge,
               color: AppColors.getTextPrimary(brightness),
             ),
           ),

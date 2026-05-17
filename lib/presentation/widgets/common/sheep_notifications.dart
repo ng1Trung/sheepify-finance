@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'sheep_widgets.dart';
 import '../../../core/theme/app_colors.dart';
 
 class SheepNotifications {
@@ -104,18 +105,21 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 10,
-      left: 16,
-      right: 16,
+      top: MediaQuery.of(context).padding.top + SheepSpacing.sm,
+      left: SheepSpacing.lg,
+      right: SheepSpacing.lg,
       child: SlideTransition(
         position: _offsetAnimation,
         child: Material(
           color: Colors.transparent,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: SheepSpacing.lg,
+              vertical: SheepSpacing.md,
+            ),
             decoration: BoxDecoration(
               color: widget.backgroundColor.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(SheepRadius.xl),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
@@ -127,14 +131,14 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
             child: Row(
               children: [
                 Icon(widget.icon, color: Colors.white, size: 24),
-                const SizedBox(width: 12),
+                const SizedBox(width: SheepSpacing.md),
                 Expanded(
                   child: Text(
                     widget.message,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: SheepTypeScale.body,
                     ),
                   ),
                 ),

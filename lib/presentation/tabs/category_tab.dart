@@ -163,10 +163,10 @@ class _CategoryTabState extends State<CategoryTab> {
                 child: InkWell(
                   onTap: () =>
                       _showTransactionHistory(context, cat, allTransactions),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(SheepRadius.lg),
                   child: Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(SheepRadius.lg),
                       border: isOverBudget
                           ? Border.all(
                               color: AppColors.expense.withOpacity(0.5),

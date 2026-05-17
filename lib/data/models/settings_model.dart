@@ -25,9 +25,16 @@ class AppSettings extends HiveObject {
   @HiveField(6)
   bool? _hideAmounts;
 
+  @HiveField(7)
+  String? _themeMode;
+
   bool get hideAmounts => _hideAmounts ?? false;
 
   set hideAmounts(bool value) => _hideAmounts = value;
+
+  String get themeMode => _themeMode ?? (isDarkMode ? 'dark' : 'light');
+
+  set themeMode(String value) => _themeMode = value;
 
   AppSettings({
     this.accumulateBalance = true,
@@ -36,6 +43,8 @@ class AppSettings extends HiveObject {
     this.currencyCode = 'VND',
     this.fontFamily = 'Inter',
     this.isDarkMode = false,
+    String themeMode = 'system',
     bool hideAmounts = false,
-  }) : _hideAmounts = hideAmounts;
+  }) : _themeMode = themeMode,
+       _hideAmounts = hideAmounts;
 }

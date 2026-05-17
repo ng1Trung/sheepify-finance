@@ -5,21 +5,46 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/l10n.dart';
 
 class SheepSpacing {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 24;
+  static const double xxl = 32;
   static const double page = 24;
   static const double sectionGap = 24;
   static const double itemGap = 12;
-  static const double cardRadius = 16;
-  static const double controlRadius = 12;
   static const EdgeInsets pageHorizontal = EdgeInsets.symmetric(
     horizontal: page,
   );
+}
+
+class SheepRadius {
+  static const double sm = 10;
+  static const double md = 12;
+  static const double lg = 14;
+  static const double xl = 16;
+  static const double sheet = 24;
+  static const double pill = 999;
+}
+
+class SheepTypeScale {
+  static const double micro = 11;
+  static const double meta = 12;
+  static const double label = 13;
+  static const double body = 14;
+  static const double item = 15;
+  static const double bodyLarge = 16;
+  static const double title = 18;
+  static const double amount = 20;
+  static const double headline = 24;
 }
 
 class SheepTextStyles {
   static TextStyle sectionTitle(BuildContext context) {
     return Theme.of(context).textTheme.bodyMedium!.copyWith(
       color: AppColors.getTextSecondary(Theme.of(context).brightness),
-      fontSize: 15,
+      fontSize: SheepTypeScale.item,
       fontWeight: FontWeight.w700,
       letterSpacing: 0,
     );
@@ -28,7 +53,7 @@ class SheepTextStyles {
   static TextStyle itemTitle(BuildContext context) {
     return Theme.of(context).textTheme.bodyMedium!.copyWith(
       color: AppColors.getTextPrimary(Theme.of(context).brightness),
-      fontSize: 15,
+      fontSize: SheepTypeScale.item,
       fontWeight: FontWeight.w700,
       letterSpacing: 0,
     );
@@ -37,7 +62,7 @@ class SheepTextStyles {
   static TextStyle itemMeta(BuildContext context) {
     return Theme.of(context).textTheme.labelSmall!.copyWith(
       color: AppColors.getTextSecondary(Theme.of(context).brightness),
-      fontSize: 12,
+      fontSize: SheepTypeScale.meta,
       fontWeight: FontWeight.w500,
       letterSpacing: 0,
     );
@@ -46,7 +71,7 @@ class SheepTextStyles {
   static TextStyle emptyMessage(BuildContext context) {
     return Theme.of(context).textTheme.bodyMedium!.copyWith(
       color: AppColors.getTextSecondary(Theme.of(context).brightness),
-      fontSize: 15,
+      fontSize: SheepTypeScale.item,
       fontWeight: FontWeight.w500,
       height: 1.45,
       letterSpacing: 0,
@@ -80,9 +105,7 @@ class SheepCard extends StatelessWidget {
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color ?? AppColors.getSurface(brightness),
-        borderRadius: BorderRadius.circular(
-          borderRadius ?? SheepSpacing.cardRadius,
-        ),
+        borderRadius: BorderRadius.circular(borderRadius ?? SheepRadius.xl),
         border: border ?? Border.all(color: AppColors.getBorder(brightness)),
         boxShadow: AppColors.getSoftShadow(brightness),
       ),
@@ -238,7 +261,7 @@ class SheepListTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: SheepSpacing.itemGap),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(SheepSpacing.cardRadius),
+        borderRadius: BorderRadius.circular(SheepRadius.xl),
         child: Row(
           children: [
             if (leading != null) ...[leading!, const SizedBox(width: 15)],
@@ -297,11 +320,11 @@ class SheepTransactionCard extends StatelessWidget {
       margin: margin ?? const EdgeInsets.only(bottom: SheepSpacing.itemGap),
       decoration: BoxDecoration(
         color: AppColors.getSurface(brightness),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(SheepRadius.lg),
         border: Border.all(color: borderColor),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(SheepRadius.lg),
         onTap: onTap,
         child: Column(
           children: [
@@ -316,7 +339,7 @@ class SheepTransactionCard extends StatelessWidget {
                       color:
                           iconBackground ??
                           AppColors.getSubtleSurface(brightness),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(SheepRadius.lg),
                     ),
                     child: Icon(
                       icon,
@@ -331,9 +354,10 @@ class SheepTransactionCard extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: SheepTextStyles.itemTitle(
-                            context,
-                          ).copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+                          style: SheepTextStyles.itemTitle(context).copyWith(
+                            fontSize: SheepTypeScale.title,
+                            fontWeight: FontWeight.w600,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -342,7 +366,7 @@ class SheepTransactionCard extends StatelessWidget {
                           dateText,
                           style: SheepTextStyles.itemMeta(
                             context,
-                          ).copyWith(fontSize: 15),
+                          ).copyWith(fontSize: SheepTypeScale.item),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -368,7 +392,7 @@ class SheepTransactionCard extends StatelessWidget {
                   Text(
                     amountText,
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: SheepTypeScale.amount,
                       fontWeight: FontWeight.w600,
                       color: amountColor,
                       letterSpacing: 0,
@@ -382,7 +406,7 @@ class SheepTransactionCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.getSurface(brightness),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(SheepRadius.pill),
                       border: Border.all(color: borderColor),
                     ),
                     child: Text(
@@ -391,7 +415,7 @@ class SheepTransactionCard extends StatelessWidget {
                         color: AppColors.getTextPrimary(
                           Theme.of(context).brightness,
                         ),
-                        fontSize: 14,
+                        fontSize: SheepTypeScale.body,
                       ),
                     ),
                   ),
@@ -423,14 +447,14 @@ class SheepDatePill extends StatelessWidget {
     final pill = IntrinsicWidth(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(SheepRadius.xl),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: theme.brightness == Brightness.light
                 ? Colors.white
                 : AppColors.getSurface(theme.brightness),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(SheepRadius.xl),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),
@@ -524,7 +548,7 @@ class SheepDatePicker {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: SheepSpacing.xl),
                     Expanded(
                       child: GridView.builder(
                         physics: const NeverScrollableScrollPhysics(),
@@ -532,8 +556,8 @@ class SheepDatePicker {
                             const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 3,
                               childAspectRatio: 2,
-                              mainAxisSpacing: 10,
-                              crossAxisSpacing: 10,
+                              mainAxisSpacing: SheepSpacing.sm,
+                              crossAxisSpacing: SheepSpacing.sm,
                             ),
                         itemCount: 12,
                         itemBuilder: (context, index) {
@@ -544,13 +568,15 @@ class SheepDatePicker {
                               final newDate = DateTime(tempDate.year, month);
                               Navigator.pop(context, newDate);
                             },
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(SheepRadius.md),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? theme.primaryColor
                                     : theme.primaryColor.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(
+                                  SheepRadius.md,
+                                ),
                               ),
                               alignment: Alignment.center,
                               child: Text(
@@ -633,13 +659,13 @@ class SheepDatePicker {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: SheepSpacing.sm),
                   Row(
                     children: weekdayLabels
                         .map((label) => _WeekdayLabel(label))
                         .toList(),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: SheepSpacing.sm),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -659,7 +685,7 @@ class SheepDatePicker {
                       final selected = isSameDay(tempDate, date);
                       final selectable = isSelectable(date);
                       return InkWell(
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(SheepRadius.pill),
                         onTap: selectable
                             ? () => setModalState(() {
                                 tempDate = date;
@@ -702,7 +728,7 @@ class SheepDatePicker {
                       );
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: SheepSpacing.lg),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -715,11 +741,16 @@ class SheepDatePicker {
             }
 
             return Container(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              padding: const EdgeInsets.fromLTRB(
+                SheepSpacing.xl,
+                SheepSpacing.xl,
+                SheepSpacing.xl,
+                SheepSpacing.lg,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.getSurface(theme.brightness),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
+                  top: Radius.circular(SheepRadius.sheet),
                 ),
                 border: Border.all(
                   color: AppColors.getBorder(theme.brightness),
@@ -735,10 +766,10 @@ class SheepDatePicker {
                       height: 4,
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(SheepRadius.sm),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: SheepSpacing.xl),
                     Text(
                       DateFormat(
                         mode == SheepDateMode.month
@@ -748,7 +779,11 @@ class SheepDatePicker {
                       ).format(tempDate),
                       style: theme.textTheme.titleLarge,
                     ),
-                    SizedBox(height: mode == SheepDateMode.month ? 10 : 18),
+                    SizedBox(
+                      height: mode == SheepDateMode.month
+                          ? SheepSpacing.sm
+                          : SheepSpacing.lg,
+                    ),
                     pickerView,
                   ],
                 ),
@@ -833,11 +868,16 @@ class SheepDateRangePicker {
             }
 
             return Container(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              padding: const EdgeInsets.fromLTRB(
+                SheepSpacing.xl,
+                SheepSpacing.xl,
+                SheepSpacing.xl,
+                SheepSpacing.lg,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.getSurface(theme.brightness),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
+                  top: Radius.circular(SheepRadius.sheet),
                 ),
                 border: Border.all(
                   color: AppColors.getBorder(theme.brightness),
@@ -853,10 +893,10 @@ class SheepDateRangePicker {
                       height: 4,
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(SheepRadius.sm),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: SheepSpacing.xl),
                     Text(
                       end == null ||
                               (start!.year == end!.year &&
@@ -866,7 +906,7 @@ class SheepDateRangePicker {
                           : '${DateFormat('dd/MM/yyyy', locale).format(start!)} - ${DateFormat('dd/MM/yyyy', locale).format(end!)}',
                       style: theme.textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: SheepSpacing.lg),
                     Row(
                       children: [
                         Text(
@@ -894,13 +934,13 @@ class SheepDateRangePicker {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: SheepSpacing.sm),
                     Row(
                       children: weekdayLabels
                           .map((label) => _WeekdayLabel(label))
                           .toList(),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: SheepSpacing.sm),
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),

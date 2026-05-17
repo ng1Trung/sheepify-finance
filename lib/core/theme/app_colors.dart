@@ -15,14 +15,14 @@ class ColorPalette {
 class AppColors {
   // Palette definitions
   static const List<ColorPalette> palettes = [
-    ColorPalette(name: 'Midnight Black', primary: Color(0xFF1A1A1A)),
     ColorPalette(name: 'Sheep Green', primary: Color(0xFF20C997)),
     ColorPalette(name: 'Rose Petal', primary: Color(0xFFFF85A1)),
     ColorPalette(name: 'Sunset Glow', primary: Color(0xFFFF9E7D)),
-    ColorPalette(name: 'Ruby Red', primary: Color(0xFFEE6055)),
-    ColorPalette(name: 'Golden Hour', primary: Color(0xFFFFD97D)),
+    ColorPalette(name: 'Golden Hour', primary: Color(0xFFFFD166)),
     ColorPalette(name: 'Deep Ocean', primary: Color(0xFF4EA8DE)),
     ColorPalette(name: 'Lavender Night', primary: Color(0xFFB79CED)),
+    ColorPalette(name: 'Ruby Red', primary: Color(0xFFEE6055)),
+    ColorPalette(name: 'Midnight Black', primary: Color(0xFF1A1A1A)),
   ];
 
   static ColorPalette getPalette(String name) {

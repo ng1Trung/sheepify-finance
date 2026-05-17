@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
+import '../../presentation/widgets/common/sheep_widgets.dart';
 
 class AppTheme {
   static ThemeData getTheme(
@@ -28,26 +29,12 @@ class AppTheme {
           return GoogleFonts.interTextTheme(baseText);
         case 'Montserrat':
           return GoogleFonts.montserratTextTheme(baseText);
-        case 'Roboto':
-          return GoogleFonts.robotoTextTheme(baseText);
         case 'Be Vietnam Pro':
           return GoogleFonts.beVietnamProTextTheme(baseText);
-        case 'Comfortaa':
-          return GoogleFonts.comfortaaTextTheme(baseText);
-        case 'Lexend':
-          return GoogleFonts.lexendTextTheme(baseText);
-        case 'Bungee':
-          return GoogleFonts.bungeeTextTheme(baseText);
-        case 'Righteous':
-          return GoogleFonts.righteousTextTheme(baseText);
-        case 'Pacifico':
-          return GoogleFonts.pacificoTextTheme(baseText);
-        case 'Special Elite':
-          return GoogleFonts.specialEliteTextTheme(baseText);
-        case 'Outfit':
-          return GoogleFonts.outfitTextTheme(baseText);
+        case 'Quicksand':
+          return GoogleFonts.quicksandTextTheme(baseText);
         default:
-          return GoogleFonts.outfitTextTheme(baseText);
+          return GoogleFonts.interTextTheme(baseText);
       }
     }
 
@@ -75,36 +62,36 @@ class AppTheme {
         displayLarge: baseTextTheme.displayLarge?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.bold,
-          fontSize: 24,
+          fontSize: SheepTypeScale.headline,
           letterSpacing: 0,
         ),
         headlineMedium: baseTextTheme.headlineMedium?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.bold,
-          fontSize: 24,
+          fontSize: SheepTypeScale.headline,
           letterSpacing: 0,
         ),
         titleLarge: baseTextTheme.titleLarge?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.w600, // SemiBold
-          fontSize: 18,
+          fontSize: SheepTypeScale.title,
           letterSpacing: 0,
         ),
         bodyLarge: baseTextTheme.bodyLarge?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.w500, // Medium
-          fontSize: 16,
+          fontSize: SheepTypeScale.bodyLarge,
           letterSpacing: 0.5,
         ),
         bodyMedium: baseTextTheme.bodyMedium?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.w500, // Medium
-          fontSize: 14,
+          fontSize: SheepTypeScale.body,
           letterSpacing: 0.5,
         ),
         labelSmall: baseTextTheme.labelSmall?.copyWith(
           color: textSecondary,
-          fontSize: 12,
+          fontSize: SheepTypeScale.meta,
         ),
       ),
       appBarTheme: AppBarTheme(
@@ -114,7 +101,7 @@ class AppTheme {
         titleTextStyle: baseTextTheme.titleLarge?.copyWith(
           color: textPrimary,
           fontWeight: FontWeight.bold,
-          fontSize: 18,
+          fontSize: SheepTypeScale.title,
         ),
         iconTheme: IconThemeData(color: textPrimary),
       ),
@@ -127,11 +114,11 @@ class AppTheme {
           elevation: 0,
           minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(SheepRadius.md),
           ),
           textStyle: baseTextTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: SheepTypeScale.bodyLarge,
           ),
         ),
       ),
@@ -141,7 +128,9 @@ class AppTheme {
             ? Colors.black
             : Colors.white,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SheepRadius.lg),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -151,15 +140,15 @@ class AppTheme {
           vertical: 16,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(SheepRadius.md),
           borderSide: BorderSide(color: outlineColor),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(SheepRadius.md),
           borderSide: BorderSide(color: outlineColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(SheepRadius.md),
           borderSide: BorderSide(color: interactiveAccent, width: 1.5),
         ),
         labelStyle: baseTextTheme.bodyMedium?.copyWith(color: textSecondary),
@@ -170,7 +159,7 @@ class AppTheme {
         selectedColor: interactiveAccent,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(SheepRadius.md),
           side: BorderSide(color: outlineColor),
         ),
         labelStyle: baseTextTheme.bodyMedium?.copyWith(

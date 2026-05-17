@@ -265,7 +265,10 @@ class _MainScreenState extends State<MainScreen> {
                       settings.hideAmounts
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
-                      color: AppColors.getTextPrimary(theme.brightness),
+                      color: AppColors.getInteractiveAccent(
+                        theme.brightness,
+                        theme.colorScheme.primary,
+                      ),
                     ),
                     onPressed: () {
                       settings.hideAmounts = !settings.hideAmounts;
@@ -306,6 +309,18 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildSideMenu(BuildContext context) {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final headerBase = AppColors.getPalette(settings.themePresetName).primary;
+    final headerShade = Color.lerp(
+      headerBase,
+      Colors.black,
+      theme.brightness == Brightness.dark ? 0.52 : 0.28,
+    )!;
+    final headerForeground = AppColors.getOnAccent(
+      theme.brightness,
+      headerBase,
+    );
 
     return Drawer(
       backgroundColor: AppColors.getSurface(theme.brightness),
@@ -314,7 +329,13 @@ class _MainScreenState extends State<MainScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            color: Colors.black,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [headerBase, headerShade],
+              ),
+            ),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -329,7 +350,7 @@ class _MainScreenState extends State<MainScreen> {
                           child: Text(
                             l10n.get('app_title'),
                             style: theme.textTheme.titleLarge?.copyWith(
-                              color: Colors.white,
+                              color: headerForeground,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -338,10 +359,8 @@ class _MainScreenState extends State<MainScreen> {
                           tooltip: MaterialLocalizations.of(
                             context,
                           ).closeButtonTooltip,
-                          icon: const Icon(
-                            Icons.close_rounded,
-                            color: Colors.white,
-                          ),
+                          icon: const Icon(Icons.close_rounded),
+                          color: headerForeground,
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ],
@@ -350,7 +369,7 @@ class _MainScreenState extends State<MainScreen> {
                     Text(
                       _getGreeting(l10n),
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
+                        color: headerForeground.withOpacity(0.78),
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -359,7 +378,7 @@ class _MainScreenState extends State<MainScreen> {
                     Text(
                       'Jason',
                       style: theme.textTheme.headlineMedium?.copyWith(
-                        color: Colors.white,
+                        color: headerForeground,
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                       ),
@@ -447,7 +466,9 @@ class _MainScreenState extends State<MainScreen> {
         selected: isSelected,
         selectedColor: accent,
         selectedTileColor: AppColors.getAccentSurface(theme.brightness, accent),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SheepRadius.md),
+        ),
         onTap: () {
           Navigator.of(context).pop();
           _selectTab(index);

@@ -140,9 +140,7 @@ class SettingsTab extends StatelessWidget {
                     _buildSettingsRow(
                       context,
                       title: l10n.get('mode'),
-                      value: settings.isDarkMode
-                          ? l10n.get('dark')
-                          : l10n.get('light'),
+                      value: _themeModeLabel(settings.themeMode, l10n),
                       onTap: () => _showThemeModePicker(context, settings),
                     ),
                     _buildDivider(),
@@ -250,6 +248,17 @@ class SettingsTab extends StatelessWidget {
     return languageCode == 'en' ? l10n.get('english') : l10n.get('vietnamese');
   }
 
+  String _themeModeLabel(String themeMode, L10n l10n) {
+    switch (themeMode) {
+      case 'light':
+        return l10n.get('light');
+      case 'dark':
+        return l10n.get('dark');
+      default:
+        return l10n.get('system');
+    }
+  }
+
   Widget _buildFontItem(
     BuildContext context,
     String font,
@@ -268,32 +277,14 @@ class SettingsTab extends StatelessWidget {
       case 'Montserrat':
         fontStyle = GoogleFonts.montserrat();
         break;
-      case 'Roboto':
-        fontStyle = GoogleFonts.roboto();
-        break;
       case 'Be Vietnam Pro':
         fontStyle = GoogleFonts.beVietnamPro();
         break;
-      case 'Comfortaa':
-        fontStyle = GoogleFonts.comfortaa();
-        break;
-      case 'Lexend':
-        fontStyle = GoogleFonts.lexend();
-        break;
-      case 'Bungee':
-        fontStyle = GoogleFonts.bungee();
-        break;
-      case 'Righteous':
-        fontStyle = GoogleFonts.righteous();
-        break;
-      case 'Pacifico':
-        fontStyle = GoogleFonts.pacifico();
-        break;
-      case 'Special Elite':
-        fontStyle = GoogleFonts.specialElite();
+      case 'Quicksand':
+        fontStyle = GoogleFonts.quicksand();
         break;
       default:
-        fontStyle = GoogleFonts.quicksand();
+        fontStyle = GoogleFonts.inter();
         break;
     }
 
@@ -405,11 +396,13 @@ class SettingsTab extends StatelessWidget {
       context,
       title: L10n.of(context).get('theme_mode'),
       items: [
+        ('system', L10n.of(context).get('system')),
         ('light', L10n.of(context).get('light')),
         ('dark', L10n.of(context).get('dark')),
       ],
-      selectedValue: settings.isDarkMode ? 'dark' : 'light',
+      selectedValue: settings.themeMode,
       onSelected: (value) {
+        settings.themeMode = value;
         settings.isDarkMode = value == 'dark';
         settings.save();
       },
@@ -509,19 +502,7 @@ class SettingsTab extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
-              ...[
-                'Quicksand',
-                'Inter',
-                'Montserrat',
-                'Roboto',
-                'Be Vietnam Pro',
-                'Comfortaa',
-                'Lexend',
-                'Bungee',
-                'Righteous',
-                'Pacifico',
-                'Special Elite',
-              ].map(
+              ...['Inter', 'Be Vietnam Pro', 'Quicksand', 'Montserrat'].map(
                 (font) =>
                     _buildFontItem(context, font, settings, closeOnTap: true),
               ),

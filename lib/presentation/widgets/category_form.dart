@@ -40,30 +40,18 @@ class _CategoryFormState extends State<CategoryForm> {
 
   final List<Color> _vibrantColors = [
     Colors.black, // Màu đen hệ thống làm mặc định
-    const Color(0xFFFF6B6B), // Coral Red
-    const Color(0xFF4ECDC4), // Medium Turquoise
-    const Color(0xFF45B7D1), // Sky Blue
-    const Color(0xFF96CEB4), // Muted Green
-    const Color(0xFFFFD93D), // Sun Yellow
-    const Color(0xFFD4A5A5), // Dusty Rose
-    const Color(0xFF9B59B6), // Amethyst
-    const Color(0xFF2ECC71), // Emerald
-    const Color(0xFF3498DB), // Peter River Blue
-    const Color(0xFFE67E22), // Carrot
-    const Color(0xFF1ABC9C), // Turquoise
-    const Color(0xFFF39C12), // Orange
-    const Color(0xFFEE5253), // Armor
-    const Color(0xFF0FB9B1), // Turquoise 2
-    const Color(0xFFFA8231), // Orange 2
-    const Color(0xFF8854D0), // Gloomy Purple
-    const Color(0xFF45AAF2), // High Blue
-    const Color(0xFFEB3B5A), // Desire
-    const Color(0xFF26DE81), // Algae Green
-    const Color(0xFFF7B731), // Orange Yellow
+    const Color(0xFFEE6055), // Coral red
+    const Color(0xFFFF9E7D), // Soft orange
+    const Color(0xFFFFD166), // Warm yellow
+    const Color(0xFFA7C957), // Lime
+    const Color(0xFF2ECC71), // Green
     const Color(0xFF20C997), // Mint
-    const Color(0xFFA55EEA), // Lavender
-    const Color(0xFF778CA3), // Blue Grey
-    const Color(0xFFFD9644), // Orange 3
+    const Color(0xFF4ECDC4), // Teal
+    const Color(0xFF4EA8DE), // Blue
+    const Color(0xFF6C63FF), // Indigo
+    const Color(0xFF9B59B6), // Purple
+    const Color(0xFFFF85A1), // Pink
+    const Color(0xFF778CA3), // Blue grey
   ];
 
   final List<IconData> _iconList = [
@@ -235,7 +223,9 @@ class _CategoryFormState extends State<CategoryForm> {
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
         color: AppColors.getSurface(theme.brightness),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(SheepRadius.sheet),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -245,7 +235,9 @@ class _CategoryFormState extends State<CategoryForm> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(SheepRadius.sheet),
+        ),
         child: Column(
           children: [
             _buildStickyHeader(),
@@ -256,7 +248,7 @@ class _CategoryFormState extends State<CategoryForm> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildHeaderPreview(l10n),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: SheepSpacing.xxl),
 
                     _buildSectionTitle(l10n.get('basic_info')),
                     const SizedBox(height: 12),
@@ -265,7 +257,7 @@ class _CategoryFormState extends State<CategoryForm> {
                       onChanged: (val) =>
                           setState(() => _selectedTypeIndex = val),
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: SheepSpacing.lg),
                     _buildTextField(
                       controller: _nameController,
                       hint: l10n.get('category_name'),
@@ -292,7 +284,7 @@ class _CategoryFormState extends State<CategoryForm> {
                         isNumber: true,
                         suffix: 'đ',
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: SheepSpacing.xl),
                       _buildSectionTitle(l10n.get('goal_type')),
                       const SizedBox(height: 12),
                       _buildGoalTypeToggle(l10n),
@@ -303,16 +295,16 @@ class _CategoryFormState extends State<CategoryForm> {
                         _buildGoalDatePicker(l10n),
                     ],
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: SheepSpacing.xxl),
                     _buildSectionTitle(l10n.get('colors')),
                     const SizedBox(height: 12),
                     _buildColorPicker(),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: SheepSpacing.xxl),
                     _buildSectionTitle(l10n.get('icons')),
                     const SizedBox(height: 12),
                     _buildIconPicker(),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: SheepSpacing.xxl),
                   ],
                 ),
               ),
@@ -326,7 +318,7 @@ class _CategoryFormState extends State<CategoryForm> {
 
   Widget _buildStickyHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: SheepSpacing.xl),
       color: AppColors.getSurface(Theme.of(context).brightness),
       child: Center(child: _buildDragHandle()),
     );
@@ -341,10 +333,10 @@ class _CategoryFormState extends State<CategoryForm> {
     );
     return Container(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 15,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        left: SheepSpacing.xl,
+        right: SheepSpacing.xl,
+        top: SheepSpacing.lg,
+        bottom: MediaQuery.of(context).viewInsets.bottom + SheepSpacing.xl,
       ),
       decoration: BoxDecoration(
         color: AppColors.getSurface(Theme.of(context).brightness),
@@ -359,10 +351,10 @@ class _CategoryFormState extends State<CategoryForm> {
       child: GestureDetector(
         onTap: _submit,
         child: Container(
-          height: 55,
+          height: 56,
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [accent, accent.withOpacity(0.8)]),
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(SheepRadius.pill),
             boxShadow: [
               BoxShadow(
                 color: accent.withOpacity(0.3),
@@ -380,7 +372,7 @@ class _CategoryFormState extends State<CategoryForm> {
                 color: onAccent,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
-                fontSize: 15,
+                fontSize: SheepTypeScale.item,
               ),
             ),
           ),
@@ -395,7 +387,7 @@ class _CategoryFormState extends State<CategoryForm> {
       height: 4,
       decoration: BoxDecoration(
         color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(SheepRadius.sm),
       ),
     );
   }
@@ -461,15 +453,15 @@ class _CategoryFormState extends State<CategoryForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(l10n.get('reminder_day'), style: theme.textTheme.labelSmall),
-        const SizedBox(height: 10),
+        const SizedBox(height: SheepSpacing.sm),
         InkWell(
           onTap: () => _showDayPicker(l10n),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(SheepRadius.xl),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: AppColors.getAccentSurface(theme.brightness, accent),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(SheepRadius.xl),
               border: Border.all(color: accent.withOpacity(0.4)),
             ),
             child: Row(
@@ -506,21 +498,23 @@ class _CategoryFormState extends State<CategoryForm> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(SheepSpacing.xl),
         decoration: BoxDecoration(
           color: AppColors.getSurface(theme.brightness),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildDragHandle(),
-            const SizedBox(height: 20),
+            const SizedBox(height: SheepSpacing.xl),
             Text(
               l10n.get('reminder_day').toUpperCase(),
               style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: SheepSpacing.xxl),
             SizedBox(
               height: 200,
               child: CupertinoPicker(
@@ -533,19 +527,19 @@ class _CategoryFormState extends State<CategoryForm> {
                   31,
                   (i) => Center(
                     child: Text(
-                      l10n.get('day') + ' ${i + 1}',
+                      '${l10n.get('day')} ${i + 1}',
                       style: theme.textTheme.bodyLarge,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: SheepSpacing.xxl),
             SheepButton(
               label: l10n.confirm,
               onPressed: () => Navigator.pop(ctx),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: SheepSpacing.sm),
           ],
         ),
       ),
@@ -568,15 +562,15 @@ class _CategoryFormState extends State<CategoryForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(l10n.get('target_date'), style: theme.textTheme.labelSmall),
-        const SizedBox(height: 10),
+        const SizedBox(height: SheepSpacing.sm),
         InkWell(
           onTap: () => _showMonthYearPicker(l10n),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(SheepRadius.xl),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: AppColors.getAccentSurface(theme.brightness, accent),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(SheepRadius.xl),
               border: Border.all(color: accent.withOpacity(0.4)),
             ),
             child: Row(
@@ -632,25 +626,25 @@ class _CategoryFormState extends State<CategoryForm> {
           if (totalMonths < 0) totalMonths = 0;
 
           return Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(SheepSpacing.xl),
             decoration: BoxDecoration(
               color: AppColors.getSurface(theme.brightness),
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(30),
+                top: Radius.circular(SheepRadius.sheet),
               ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildDragHandle(),
-                const SizedBox(height: 20),
+                const SizedBox(height: SheepSpacing.xl),
                 Text(
                   l10n.get('target_date').toUpperCase(),
                   style: theme.textTheme.labelSmall?.copyWith(
                     letterSpacing: 1.5,
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: SheepSpacing.xxl),
                 SizedBox(
                   height: 200,
                   child: Row(
@@ -733,7 +727,7 @@ class _CategoryFormState extends State<CategoryForm> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: SheepSpacing.xl),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -741,7 +735,7 @@ class _CategoryFormState extends State<CategoryForm> {
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.savings.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(SheepRadius.lg),
                   ),
                   child: Text(
                     l10n.get(
@@ -751,16 +745,16 @@ class _CategoryFormState extends State<CategoryForm> {
                     style: TextStyle(
                       color: AppColors.savings,
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: SheepTypeScale.label,
                     ),
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: SheepSpacing.xxl),
                 SheepButton(
                   label: l10n.confirm,
                   onPressed: () => Navigator.pop(ctx),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: SheepSpacing.sm),
               ],
             ),
           );
@@ -793,7 +787,7 @@ class _CategoryFormState extends State<CategoryForm> {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.getSurface(theme.brightness).withOpacity(0.5),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(SheepRadius.xl),
         border: Border.all(
           color: theme.dividerColor.withOpacity(0.1),
           width: 1.2,
@@ -804,7 +798,9 @@ class _CategoryFormState extends State<CategoryForm> {
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         onChanged: (_) => setState(() {}),
         inputFormatters: isNumber ? [CurrencyInputFormatter()] : null,
-        style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15),
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontSize: SheepTypeScale.item,
+        ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: theme.textTheme.bodyMedium?.copyWith(
