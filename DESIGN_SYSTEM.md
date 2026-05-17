@@ -5,7 +5,7 @@ This document defines the core design principles and UI conventions for the Shee
 ---
 
 ## 🌈 Color Palette
-We prioritize a clean, professional look with high legibility and reduced eye strain.
+We prioritize a clean, calm interface with high legibility, controlled personalization, and reduced eye strain.
 
 | Token | Value | Description |
 | :--- | :--- | :--- |
@@ -15,6 +15,11 @@ We prioritize a clean, professional look with high legibility and reduced eye st
 | **Secondary Text**| `#616161` | Dark Gray for supporting info. |
 | **Income (Thu)** | `#20C997` | Professional Green. |
 | **Expense (Chi)** | `#EE6055` | Professional Red. |
+
+### Accent Usage
+- App palettes provide a single primary accent used for active controls, drawer branding, and a subtle header tint.
+- Category colors come from a curated, non-redundant set so nearby options remain visually distinct.
+- Finance semantics stay stable: income remains green and expense remains red regardless of the selected app palette.
 
 ---
 
@@ -53,8 +58,12 @@ The design system follows a **4px/8px grid** for consistency.
 
 ### Buttons
 - **Height**: `48px` (Standard) or `56px` (Large/Call to Action).
-- **Colors**: Primary buttons use **Absolute Black (`#000000`)** with white text.
+- **Colors**: Primary buttons use the selected interactive accent with contrast-aware foreground text.
 - **Corner Radius**: 16px (to match cards) or fully rounded.
+
+### Header Treatment
+- The top app header may use a very light vertical tint derived from the active app palette.
+- The tint should fade back into the page background before the first content section so it does not compete with the screen body.
 
 ---
 

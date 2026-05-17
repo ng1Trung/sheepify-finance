@@ -8,7 +8,8 @@ The Category module implements a simplified flat architecture for financial clas
 Handles the creation and editing of categories.
 - **Icon Selector**: Choose from a curated set of LineIcons.
 - **Budgeting**: Allows setting a monthly spending limit per category.
-- **Type Toggle**: Define if a category is for Expense or Income.
+- **Type Toggle**: Define if a category is for Expense, Income, or Savings.
+- **Curated Colors**: Uses a compact, non-redundant category palette so options remain easy to distinguish.
 
 ### 2. `CategoryList`
 Display components for the Category Tab:

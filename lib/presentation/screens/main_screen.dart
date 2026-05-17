@@ -134,6 +134,18 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final headerBase = AppColors.getPalette(settings.themePresetName).primary;
+    final headerShade = Color.lerp(
+      headerBase,
+      theme.brightness == Brightness.dark ? Colors.black : Colors.white,
+      theme.brightness == Brightness.dark ? 0.36 : 0.32,
+    );
+    final headerForeground = AppColors.getOnAccent(
+      theme.brightness,
+      headerBase,
+    );
 
     // PREMIUM APPBAR NAVIGATOR
     Widget buildAppBarTitle() {
@@ -142,7 +154,7 @@ class _MainScreenState extends State<MainScreen> {
           l10n.categories,
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: theme.primaryColor,
+            color: headerForeground,
           ),
         );
       }
@@ -151,7 +163,7 @@ class _MainScreenState extends State<MainScreen> {
           l10n.settings,
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: theme.primaryColor,
+            color: headerForeground,
           ),
         );
       }
@@ -193,7 +205,10 @@ class _MainScreenState extends State<MainScreen> {
                     icon: Icon(
                       Icons.arrow_back_ios_new,
                       size: 14,
-                      color: AppColors.getTextPrimary(theme.brightness),
+                      color: AppColors.getInteractiveAccent(
+                        theme.brightness,
+                        headerForeground,
+                      ),
                     ),
                     onPressed: () => _changeTime(-1),
                   ),
@@ -211,7 +226,10 @@ class _MainScreenState extends State<MainScreen> {
                     icon: Icon(
                       Icons.arrow_forward_ios,
                       size: 14,
-                      color: AppColors.getTextPrimary(theme.brightness),
+                      color: AppColors.getInteractiveAccent(
+                        theme.brightness,
+                        headerForeground,
+                      ),
                     ),
                     onPressed: () => _changeTime(1),
                   ),
@@ -242,12 +260,36 @@ class _MainScreenState extends State<MainScreen> {
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: headerBase,
+        foregroundColor: headerForeground,
+        iconTheme: IconThemeData(
+          color: AppColors.getInteractiveAccent(
+            theme.brightness,
+            headerForeground,
+          ),
+        ),
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        flexibleSpace: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [headerBase, headerShade!],
+            ),
+          ),
+        ),
         toolbarHeight: (_currentIndex == 1 || _currentIndex == 2) ? 60 : 68,
         leading: Builder(
           builder: (context) => IconButton(
             tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
-            icon: const Icon(Icons.menu_rounded),
+            icon: Icon(
+              Icons.menu_rounded,
+              color: AppColors.getInteractiveAccent(
+                theme.brightness,
+                headerForeground,
+              ),
+            ),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
@@ -267,7 +309,7 @@ class _MainScreenState extends State<MainScreen> {
                           : Icons.visibility_outlined,
                       color: AppColors.getInteractiveAccent(
                         theme.brightness,
-                        theme.colorScheme.primary,
+                        headerForeground,
                       ),
                     ),
                     onPressed: () {
@@ -286,7 +328,7 @@ class _MainScreenState extends State<MainScreen> {
                   Icons.add_circle_outline_rounded,
                   color: AppColors.getInteractiveAccent(
                     theme.brightness,
-                    theme.colorScheme.primary,
+                    headerForeground,
                   ),
                   size: 28,
                 ),

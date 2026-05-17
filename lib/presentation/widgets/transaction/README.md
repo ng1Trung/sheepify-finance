@@ -8,7 +8,7 @@ This module handles the core visual experience of creating and editing financial
 The main entry point for transaction creation. It manages:
 - **State Synchronization**: Updates amounts, notes, and categories in real-time.
 - **Date/Time Picking**: Interactive pill to select specific transaction timestamps.
-- **Data Persistence**: Integration with Hive DB for local storage.
+- **Data Persistence**: Integration with Hive plus `TransactionImageStore`; imported or captured images are copied into app-managed storage and transactions store portable relative references.
 
 ### 2. `TransactionImageArea` (Refactored)
 The primary visual block of the form, designed for maximum aesthetic impact:
@@ -28,7 +28,7 @@ A bottom-sheet based selector featuring:
 ## 🎨 Design Principles
 - **Minimalism**: Borders and heavy outlines are removed in favor of depth and translucent layers.
 - **Context-Aware**: The UI only reveals Income/Expense toggles after a category is chosen.
-- **Typography First**: Large, bold amounts using the `Outfit` font for clear readability.
+- **Typography First**: Large, legible amounts that follow the selected app font while keeping a shared type scale.
 
 ---
 *Sheepify Transaction UI - Refined for elegance.*

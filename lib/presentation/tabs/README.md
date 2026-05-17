@@ -5,7 +5,9 @@ This directory contains the main application screens (pages), organized as tabs 
 ## 1. Diary Tab (`diary_tab.dart`)
 - **Role**: Daily spending log.
 - **Features**:
-    - Displays transactions in chronological order.
+    - Displays transactions in chronological order with list and gallery views.
+    - Overview totals follow the selected date range only; list/gallery filters are independent and do not alter summary totals.
+    - Gallery placeholders distinguish transactions without images from real attachments.
     - **Goal Isolation**: Goal-related deposits are identified with a badge and excluded from balance/summary totals to ensure disposable income accuracy.
     - Allows direct deletion/editing of transactions.
 
@@ -20,7 +22,7 @@ This directory contains the main application screens (pages), organized as tabs 
 ## 3. Stats Tab (`stats_tab.dart`)
 - **Role**: Financial data analysis.
 - **Features**:
-    - Pie charts representing spending distribution.
+    - Pie charts representing spending distribution using live category colors.
     - Wallet balance calculations (Accumulated or monthly).
     - Ranked category list from highest to lowest spending.
 
@@ -28,4 +30,5 @@ This directory contains the main application screens (pages), organized as tabs 
 - **Role**: Application configuration.
 - **Features**:
     - Manage display preferences (e.g., Accumulated Balance mode).
+    - Configure app palette, supported font family, and light/dark/system theme mode.
     - Version information and support details.
