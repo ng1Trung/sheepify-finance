@@ -12,7 +12,6 @@ import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
 import '../widgets/transaction_form.dart';
 import '../../core/theme/app_colors.dart';
-import 'stats_tab.dart';
 import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_dialogs.dart';
@@ -27,8 +26,7 @@ class DiaryTab extends StatefulWidget {
 }
 
 class _DiaryTabState extends State<DiaryTab> {
-  int _selectedViewMode = 1; // 0: chart, 1: list, 2: image
-  int _selectedChartTypeIndex = 0;
+  int _selectedViewMode = 1; // 1: list, 2: image
   int? _selectedListTypeIndex; // null means all
   int? _selectedGalleryTypeIndex; // null means all
   @override
@@ -85,32 +83,7 @@ class _DiaryTabState extends State<DiaryTab> {
             final displayTxs = filterTransactions(_selectedListTypeIndex);
             final galleryTxs = filterTransactions(_selectedGalleryTypeIndex);
 
-            // 4. Summary Statistics (Exclude goals)
-            double totalIncome = 0;
-            double totalExpense = 0;
-            for (var tx in rangeTxs) {
-              final cat = catBox.values.firstWhere(
-                (c) => c.id == tx.categoryId,
-                orElse: () => CategoryModel(
-                  id: '',
-                  name: '?',
-                  iconCode: Icons.help.codePoint,
-                  isExpense: tx.isExpense,
-                  typeIndex: tx.isExpense ? 0 : 1,
-                ),
-              );
-
-              // Skip goals in summary
-              if (cat.effectiveTypeIndex == 2) continue;
-
-              if (cat.effectiveTypeIndex == 0) {
-                totalExpense += tx.amount;
-              } else {
-                totalIncome += tx.amount;
-              }
-            }
-
-            // 5. Group by date
+            // 4. Group by date
             Map<String, List<Transaction>> grouped = {};
             for (var tx in displayTxs) {
               final dayKey = DateFormat('yyyy-MM-dd').format(tx.date);
@@ -136,15 +109,12 @@ class _DiaryTabState extends State<DiaryTab> {
                   SheepSpacing.page,
                   12,
                 ),
-                child: SheepTripleToggle(
-                  selectedIndex: _selectedViewMode,
-                  labels: [
-                    l10n.get('chart_view'),
-                    l10n.get('list_view'),
-                    l10n.get('image_view'),
-                  ],
-                  onChanged: (index) =>
-                      setState(() => _selectedViewMode = index),
+                child: SheepTypeToggle(
+                  isExpense: _selectedViewMode == 1,
+                  leftLabel: l10n.get('list_view'),
+                  rightLabel: l10n.get('image_view'),
+                  onChanged: (isList) =>
+                      setState(() => _selectedViewMode = isList ? 1 : 2),
                 ),
               );
             }
@@ -155,9 +125,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 l10n.get('income'),
                 l10n.get('savings'),
               ];
-              final selectedTypeIndex = _selectedViewMode == 0
-                  ? _selectedChartTypeIndex
-                  : _selectedViewMode == 1
+              final selectedTypeIndex = _selectedViewMode == 1
                   ? _selectedListTypeIndex
                   : _selectedGalleryTypeIndex;
               final isCompactAllState =
@@ -178,9 +146,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 child: PopupMenuButton<int>(
                   initialValue: selectedTypeIndex,
                   onSelected: (index) => setState(() {
-                    if (_selectedViewMode == 0) {
-                      _selectedChartTypeIndex = index;
-                    } else if (_selectedViewMode == 1) {
+                    if (_selectedViewMode == 1) {
                       _selectedListTypeIndex = _selectedListTypeIndex == index
                           ? null
                           : index;
@@ -259,72 +225,6 @@ class _DiaryTabState extends State<DiaryTab> {
               );
             }
 
-            Widget buildSummaryCard() {
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: SheepSpacing.page,
-                  vertical: 8,
-                ),
-                child: SheepCard(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      Text(
-                        isSingleDay
-                            ? l10n.get('daily_balance')
-                            : l10n.get('range_balance'),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.getTextSecondary(theme.brightness),
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        CurrencyUtil.formatDisplayAmount(
-                          totalIncome - totalExpense,
-                          settings.currencyCode,
-                          isHidden: settings.hideAmounts,
-                        ),
-                        style: Theme.of(context).textTheme.displayLarge
-                            ?.copyWith(
-                              color: (totalIncome - totalExpense) >= 0
-                                  ? AppColors.income
-                                  : AppColors.expense,
-                            ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatItem(
-                              l10n.income,
-                              totalIncome,
-                              AppColors.income,
-                              settings.currencyCode,
-                              isHidden: settings.hideAmounts,
-                            ),
-                          ),
-                          Container(
-                            width: 1,
-                            height: 20,
-                            color: theme.dividerColor,
-                          ),
-                          Expanded(
-                            child: _buildStatItem(
-                              l10n.expense,
-                              totalExpense,
-                              AppColors.expense,
-                              settings.currencyCode,
-                              isHidden: settings.hideAmounts,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
             Widget buildContentHeader(int count) {
               return Row(
                 children: [
@@ -336,21 +236,6 @@ class _DiaryTabState extends State<DiaryTab> {
                   ),
                   const Spacer(),
                   buildTypeFilter(compactWhenAll: true),
-                ],
-              );
-            }
-
-            if (_selectedViewMode == 0) {
-              return Column(
-                children: [
-                  buildViewModeSelector(),
-                  Expanded(
-                    child: StatsTab(
-                      selectedRange: widget.selectedRange,
-                      selectedTypeIndex: _selectedChartTypeIndex,
-                      typeFilter: buildTypeFilter(),
-                    ),
-                  ),
                 ],
               );
             }
@@ -450,7 +335,6 @@ class _DiaryTabState extends State<DiaryTab> {
               return Column(
                 children: [
                   buildViewModeSelector(),
-                  buildSummaryCard(),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
@@ -489,8 +373,6 @@ class _DiaryTabState extends State<DiaryTab> {
                     physics: const BouncingScrollPhysics(),
                     child: Column(
                       children: [
-                        // --- SUMMARY CARD ---
-                        buildSummaryCard(),
                         Builder(
                           builder: (context) {
                             const topGap = 12.0;
@@ -700,40 +582,6 @@ class _DiaryTabState extends State<DiaryTab> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildStatItem(
-    String label,
-    double amount,
-    Color color,
-    String currencyCode, {
-    bool isHidden = false,
-  }) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
-        ),
-        const SizedBox(height: 4),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            CurrencyUtil.formatDisplayAmount(
-              amount,
-              currencyCode,
-              isHidden: isHidden,
-            ),
-            maxLines: 1,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
     );
   }
 

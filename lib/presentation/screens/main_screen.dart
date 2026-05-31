@@ -8,6 +8,7 @@ import '../../data/models/settings_model.dart';
 import '../widgets/transaction_form.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
+import '../tabs/stats_tab.dart';
 import '../tabs/settings_tab.dart';
 import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
@@ -41,54 +42,96 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _seedParentCategories();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _showAddTransactionForm();
-      }
-    });
   }
 
   void _seedParentCategories() {
+    final defaultCategories = [
+      CategoryModel(
+        id: 'cat_bill',
+        name: 'Hoá đơn',
+        iconCode: Icons.receipt.codePoint,
+        isExpense: true,
+        typeIndex: 0,
+        colorValue: AppColors.expense.toARGB32(),
+      ),
+      CategoryModel(
+        id: 'cat_eat',
+        name: 'Ăn uống',
+        iconCode: Icons.restaurant.codePoint,
+        isExpense: true,
+        typeIndex: 0,
+        colorValue: AppColors.expense.toARGB32(),
+      ),
+      CategoryModel(
+        id: 'cat_shop',
+        name: 'Mua sắm',
+        iconCode: Icons.shopping_cart.codePoint,
+        isExpense: true,
+        typeIndex: 0,
+        colorValue: AppColors.expense.toARGB32(),
+      ),
+      CategoryModel(
+        id: 'cat_salary',
+        name: 'Lương',
+        iconCode: Icons.attach_money.codePoint,
+        isExpense: false,
+        typeIndex: 1,
+        colorValue: AppColors.income.toARGB32(),
+      ),
+      CategoryModel(
+        id: 'cat_bonus',
+        name: 'Thưởng',
+        iconCode: Icons.card_giftcard.codePoint,
+        isExpense: false,
+        typeIndex: 1,
+        colorValue: AppColors.income.toARGB32(),
+      ),
+      CategoryModel(
+        id: 'cat_savings',
+        name: 'Tiết kiệm',
+        iconCode: Icons.savings.codePoint,
+        isExpense: false,
+        typeIndex: 2,
+        colorValue: AppColors.savings.toARGB32(),
+      ),
+    ];
+
     if (_catBox.isEmpty) {
-      final parents = [
-        CategoryModel(
-          id: 'cat_bill',
-          name: 'Hoá đơn',
-          iconCode: Icons.receipt.codePoint,
-          isExpense: true,
-        ),
-        CategoryModel(
-          id: 'cat_eat',
-          name: 'Ăn uống',
-          iconCode: Icons.restaurant.codePoint,
-          isExpense: true,
-        ),
-        CategoryModel(
-          id: 'cat_shop',
-          name: 'Mua sắm',
-          iconCode: Icons.shopping_cart.codePoint,
-          isExpense: true,
-        ),
-        CategoryModel(
-          id: 'cat_salary',
-          name: 'Lương',
-          iconCode: Icons.attach_money.codePoint,
-          isExpense: false,
-        ),
-        CategoryModel(
-          id: 'cat_bonus',
-          name: 'Thưởng',
-          iconCode: Icons.card_giftcard.codePoint,
-          isExpense: false,
-        ),
-      ];
-      _catBox.addAll(parents);
+      _catBox.addAll(defaultCategories);
+      return;
+    }
+
+    final defaultsById = {for (final cat in defaultCategories) cat.id: cat};
+    final existingDefaults = _catBox.values
+        .where((cat) => defaultsById.containsKey(cat.id))
+        .toList();
+    final needsLegacyMigration = existingDefaults.any((cat) {
+      final defaultCategory = defaultsById[cat.id]!;
+      return cat.id != 'cat_savings' &&
+          (cat.isExpense != defaultCategory.isExpense ||
+              cat.typeIndex != defaultCategory.typeIndex ||
+              cat.colorValue == null);
+    });
+
+    for (final cat in existingDefaults) {
+      final defaultCategory = defaultsById[cat.id]!;
+      cat.isExpense = defaultCategory.isExpense;
+      cat.typeIndex = defaultCategory.typeIndex;
+      cat.colorValue ??= defaultCategory.colorValue;
+      cat.save();
+    }
+
+    final hasSavingsDefault = existingDefaults.any(
+      (cat) => cat.id == 'cat_savings',
+    );
+    if (needsLegacyMigration && !hasSavingsDefault) {
+      _catBox.add(defaultsById['cat_savings']!);
     }
   }
 
   void _changeTime(int offset) {
     setState(() {
-      if (_currentIndex == 0) {
+      if (_usesDateRange) {
         final start = _diaryRange.start.add(Duration(days: offset));
         final end = _diaryRange.end.add(Duration(days: offset));
         _diaryRange = DateTimeRange(start: start, end: end);
@@ -109,7 +152,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _pickTime() async {
-    if (_currentIndex == 0) {
+    if (_usesDateRange) {
       final picked = await SheepDateRangePicker.show(
         context: context,
         initialRange: _diaryRange,
@@ -130,6 +173,8 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  bool get _usesDateRange => _currentIndex == 0 || _currentIndex == 2;
+
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -142,14 +187,22 @@ class _MainScreenState extends State<MainScreen> {
       theme.brightness == Brightness.dark ? Colors.black : Colors.white,
       theme.brightness == Brightness.dark ? 0.36 : 0.32,
     );
-    final headerForeground = AppColors.getOnAccent(
-      theme.brightness,
-      headerBase,
-    );
+    final headerForeground = headerBase.computeLuminance() > 0.45
+        ? Colors.black
+        : Colors.white;
 
     // PREMIUM APPBAR NAVIGATOR
     Widget buildAppBarTitle() {
       if (_currentIndex == 1) {
+        return Text(
+          l10n.savings,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: headerForeground,
+          ),
+        );
+      }
+      if (_currentIndex == 3) {
         return Text(
           l10n.categories,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -158,7 +211,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
         );
       }
-      if (_currentIndex == 2) {
+      if (_currentIndex == 4) {
         return Text(
           l10n.settings,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -168,76 +221,57 @@ class _MainScreenState extends State<MainScreen> {
         );
       }
 
-      if (_currentIndex == 1 || _currentIndex == 2) {
+      if (!_usesDateRange) {
         return const SizedBox.shrink();
       }
 
       String dateText;
       final locale = Localizations.localeOf(context).toString();
       final isSingleDiaryDay =
-          _currentIndex != 0 ||
           (_diaryRange.start.year == _diaryRange.end.year &&
-              _diaryRange.start.month == _diaryRange.end.month &&
-              _diaryRange.start.day == _diaryRange.end.day);
-      if (_currentIndex == 0) {
-        final start = DateFormat(
-          'dd/MM/yyyy',
-          locale,
-        ).format(_diaryRange.start);
-        final end = DateFormat('dd/MM/yyyy', locale).format(_diaryRange.end);
-        dateText = start == end ? start : '$start - $end';
-      } else {
-        dateText = DateFormat('dd/MM/yyyy', locale).format(_selectedDate);
-      }
+          _diaryRange.start.month == _diaryRange.end.month &&
+          _diaryRange.start.day == _diaryRange.end.day);
+      final start = DateFormat('dd/MM/yyyy', locale).format(_diaryRange.start);
+      final end = DateFormat('dd/MM/yyyy', locale).format(_diaryRange.end);
+      dateText = start == end ? start : '$start - $end';
 
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final maxPillWidth =
-              constraints.maxWidth - (isSingleDiaryDay ? 104 : 24);
-
-          return Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isSingleDiaryDay) ...[
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(
-                      Icons.arrow_back_ios_new,
-                      size: 14,
-                      color: AppColors.getInteractiveAccent(
-                        theme.brightness,
-                        headerForeground,
-                      ),
-                    ),
-                    onPressed: () => _changeTime(-1),
+      return Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSingleDiaryDay) ...[
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.arrow_back_ios_new,
+                  size: 14,
+                  color: AppColors.getInteractiveAccent(
+                    theme.brightness,
+                    headerForeground,
                   ),
-                  const SizedBox(width: 4),
-                ],
-                SheepDatePill(
-                  label: dateText,
-                  onTap: _pickTime,
-                  maxWidth: maxPillWidth,
                 ),
-                if (isSingleDiaryDay) ...[
-                  const SizedBox(width: 4),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: AppColors.getInteractiveAccent(
-                        theme.brightness,
-                        headerForeground,
-                      ),
-                    ),
-                    onPressed: () => _changeTime(1),
+                onPressed: () => _changeTime(-1),
+              ),
+              const SizedBox(width: 4),
+            ],
+            SheepDatePill(label: dateText, onTap: _pickTime),
+            if (isSingleDiaryDay) ...[
+              const SizedBox(width: 4),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: AppColors.getInteractiveAccent(
+                    theme.brightness,
+                    headerForeground,
                   ),
-                ],
-              ],
-            ),
-          );
-        },
+                ),
+                onPressed: () => _changeTime(1),
+              ),
+            ],
+          ],
+        ),
       );
     }
 
@@ -246,8 +280,12 @@ class _MainScreenState extends State<MainScreen> {
         case 0:
           return DiaryTab(selectedRange: _diaryRange);
         case 1:
-          return const CategoryTab();
+          return const CategoryTab(initialTypeIndex: 2, showTypeToggle: false);
         case 2:
+          return StatsTab(selectedRange: _diaryRange);
+        case 3:
+          return const CategoryTab();
+        case 4:
           return const SettingsTab();
         default:
           return const SizedBox();
@@ -279,7 +317,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         ),
-        toolbarHeight: (_currentIndex == 1 || _currentIndex == 2) ? 60 : 68,
+        toolbarHeight: _usesDateRange ? 68 : 60,
         leading: Builder(
           builder: (context) => IconButton(
             tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
@@ -295,7 +333,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         title: buildAppBarTitle(),
         actions: [
-          if (_currentIndex == 0)
+          if (_currentIndex == 0 || _currentIndex == 2)
             ValueListenableBuilder(
               valueListenable: Hive.box<AppSettings>(kSettingsBox).listenable(),
               builder: (context, settingsBox, _) {
@@ -320,7 +358,7 @@ class _MainScreenState extends State<MainScreen> {
                 );
               },
             ),
-          if (_currentIndex == 1)
+          if (_currentIndex == 1 || _currentIndex == 3)
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: IconButton(
@@ -359,10 +397,9 @@ class _MainScreenState extends State<MainScreen> {
       Colors.black,
       theme.brightness == Brightness.dark ? 0.52 : 0.28,
     )!;
-    final headerForeground = AppColors.getOnAccent(
-      theme.brightness,
-      headerBase,
-    );
+    final headerForeground = headerBase.computeLuminance() > 0.45
+        ? Colors.black
+        : Colors.white;
 
     return Drawer(
       backgroundColor: AppColors.getSurface(theme.brightness),
@@ -440,12 +477,24 @@ class _MainScreenState extends State<MainScreen> {
           _buildDrawerItem(
             context,
             index: 1,
+            icon: Icons.savings_outlined,
+            label: l10n.savings,
+          ),
+          _buildDrawerItem(
+            context,
+            index: 2,
+            icon: Icons.donut_large_rounded,
+            label: l10n.stats,
+          ),
+          _buildDrawerItem(
+            context,
+            index: 3,
             icon: Icons.style_rounded,
             label: l10n.categories,
           ),
           _buildDrawerItem(
             context,
-            index: 2,
+            index: 4,
             icon: Icons.settings_rounded,
             label: l10n.settings,
           ),

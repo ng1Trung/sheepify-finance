@@ -432,19 +432,13 @@ class SheepTransactionCard extends StatelessWidget {
 class SheepDatePill extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
-  final double? maxWidth;
 
-  const SheepDatePill({
-    super.key,
-    required this.label,
-    required this.onTap,
-    this.maxWidth,
-  });
+  const SheepDatePill({super.key, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final pill = IntrinsicWidth(
+    return IntrinsicWidth(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(SheepRadius.xl),
@@ -466,7 +460,6 @@ class SheepDatePill extends StatelessWidget {
           child: Text(
             label,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyLarge?.copyWith(
               fontSize: 15,
@@ -476,13 +469,6 @@ class SheepDatePill extends StatelessWidget {
           ),
         ),
       ),
-    );
-
-    if (maxWidth == null) return pill;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth!),
-      child: pill,
     );
   }
 }

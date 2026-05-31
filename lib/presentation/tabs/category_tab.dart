@@ -17,19 +17,27 @@ import '../widgets/category/transaction_history_sheet.dart';
 import '../../core/utils/l10n.dart';
 
 class CategoryTab extends StatefulWidget {
-  const CategoryTab({super.key});
+  final int initialTypeIndex;
+  final bool showTypeToggle;
+
+  const CategoryTab({
+    super.key,
+    this.initialTypeIndex = 0,
+    this.showTypeToggle = true,
+  });
 
   @override
   State<CategoryTab> createState() => _CategoryTabState();
 }
 
 class _CategoryTabState extends State<CategoryTab> {
-  int _selectedTypeIndex = 0; // 0: expense, 1: income, 2: savings
+  late int _selectedTypeIndex; // 0: expense, 1: income, 2: savings
   late PageController _pageController;
 
   @override
   void initState() {
     super.initState();
+    _selectedTypeIndex = widget.initialTypeIndex;
     _pageController = PageController(initialPage: _selectedTypeIndex);
   }
 
@@ -43,34 +51,36 @@ class _CategoryTabState extends State<CategoryTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // --- 1. MODE TOGGLE ---
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: SheepTripleToggle(
-            selectedIndex: _selectedTypeIndex,
-            controller: _pageController,
-            onChanged: (val) {
-              _pageController.animateToPage(
-                val,
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeInOutCubic,
-              );
-            },
+        if (widget.showTypeToggle)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: SheepTripleToggle(
+              selectedIndex: _selectedTypeIndex,
+              controller: _pageController,
+              onChanged: (val) {
+                _pageController.animateToPage(
+                  val,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOutCubic,
+                );
+              },
+            ),
           ),
-        ),
 
         Expanded(
-          child: PageView(
-            controller: _pageController,
-            onPageChanged: (val) {
-              setState(() => _selectedTypeIndex = val);
-            },
-            children: [
-              _buildCategoryList(0), // Expense
-              _buildCategoryList(1), // Income
-              _buildCategoryList(2), // Savings
-            ],
-          ),
+          child: widget.showTypeToggle
+              ? PageView(
+                  controller: _pageController,
+                  onPageChanged: (val) {
+                    setState(() => _selectedTypeIndex = val);
+                  },
+                  children: [
+                    _buildCategoryList(0), // Expense
+                    _buildCategoryList(1), // Income
+                    _buildCategoryList(2), // Savings
+                  ],
+                )
+              : _buildCategoryList(_selectedTypeIndex),
         ),
       ],
     );
