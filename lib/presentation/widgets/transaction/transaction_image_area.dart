@@ -144,11 +144,13 @@ class TransactionImageArea extends StatelessWidget {
       child: Center(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 64),
-          child: Icon(
-            selectedCategory?.iconData ?? LineIcons.image,
-            size: 46,
-            color: Colors.white,
-          ),
+          child: hasCategory
+              ? SheepCategoryIcon(
+                  icon: selectedCategory!.iconData,
+                  color: Colors.white,
+                  size: 64,
+                )
+              : const Icon(LineIcons.image, size: 46, color: Colors.white),
         ),
       ),
     );

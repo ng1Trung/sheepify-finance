@@ -114,6 +114,33 @@ class SheepCard extends StatelessWidget {
   }
 }
 
+class SheepCategoryIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final double size;
+
+  const SheepCategoryIcon({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.size = 40,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(SheepRadius.md),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Icon(icon, color: color, size: size * 0.5),
+    );
+  }
+}
+
 class SheepSectionTitle extends StatelessWidget {
   final String title;
   final EdgeInsetsGeometry padding;

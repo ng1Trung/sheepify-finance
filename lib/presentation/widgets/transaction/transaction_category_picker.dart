@@ -152,19 +152,35 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                           width: 1,
                         ),
                       ),
-                      child: Text(
-                        c.name,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: SheepTypeScale.meta,
-                          color: isSelected
-                              ? selectedTextColor
-                              : (categoryColor != null
-                                    ? categoryColor
-                                    : theme.textTheme.bodyLarge?.color),
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SheepCategoryIcon(
+                            icon: c.iconData,
+                            color: isSelected
+                                ? selectedTextColor
+                                : selectedColor,
+                            size: 28,
+                          ),
+                          const SizedBox(width: SheepSpacing.sm),
+                          Flexible(
+                            child: Text(
+                              c.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontSize: SheepTypeScale.meta,
+                                color: isSelected
+                                    ? selectedTextColor
+                                    : (categoryColor != null
+                                          ? categoryColor
+                                          : theme.textTheme.bodyLarge?.color),
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );

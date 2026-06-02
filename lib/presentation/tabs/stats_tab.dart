@@ -343,7 +343,7 @@ class _StatsTabState extends State<StatsTab> {
             children: [
               Row(
                 children: [
-                  Icon(stat.category.iconData, color: color, size: 20),
+                  SheepCategoryIcon(icon: stat.category.iconData, color: color),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(

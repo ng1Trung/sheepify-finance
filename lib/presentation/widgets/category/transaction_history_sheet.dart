@@ -97,14 +97,7 @@ class TransactionHistorySheet extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(SheepSpacing.sm),
-              decoration: BoxDecoration(
-                color: catColor.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(category.iconData, color: catColor, size: 20),
-            ),
+            SheepCategoryIcon(icon: category.iconData, color: catColor),
             const SizedBox(width: SheepSpacing.md),
             Expanded(
               child: Column(

@@ -254,8 +254,8 @@ class _CategoryTabState extends State<CategoryTab> {
                               decoration: BoxDecoration(
                                 color: AppColors.savings,
                                 borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(14),
-                                  bottomLeft: Radius.circular(10),
+                                  topRight: Radius.circular(12),
+                                  bottomLeft: Radius.circular(12),
                                 ),
                               ),
                               child: Text(
@@ -316,14 +316,7 @@ class _CategoryTabState extends State<CategoryTab> {
 
     if (cat.colorValue != null) color = Color(cat.colorValue!);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(cat.iconData, color: color, size: 24),
-    );
+    return SheepCategoryIcon(icon: cat.iconData, color: color);
   }
 
   Widget _buildInfo(CategoryModel cat, double spent, int typeIndex) {
