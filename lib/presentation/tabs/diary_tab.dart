@@ -248,7 +248,7 @@ class _DiaryTabState extends State<DiaryTab> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
                         SheepSpacing.page,
-                        0,
+                        12,
                         SheepSpacing.page,
                         24,
                       ),
@@ -546,12 +546,25 @@ class _DiaryTabState extends State<DiaryTab> {
                                                         : l10n.get('no_note'),
                                                     amountText:
                                                         !settings.hideAmounts
-                                                        ? '${isExpense ? '-' : '+'} ${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}'
+                                                        ? '${isExpense
+                                                              ? '-'
+                                                              : isSavings
+                                                              ? ''
+                                                              : '+'}${isSavings ? '' : ' '}${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}'
                                                         : CurrencyUtil.formatMaskedByCurrency(
                                                             settings
                                                                 .currencyCode,
                                                           ),
-                                                    amountColor: isExpense
+                                                    amountIcon:
+                                                        isSavings &&
+                                                            !settings
+                                                                .hideAmounts
+                                                        ? Icons
+                                                              .arrow_upward_rounded
+                                                        : null,
+                                                    amountColor: isSavings
+                                                        ? AppColors.savings
+                                                        : isExpense
                                                         ? AppColors.expense
                                                         : AppColors.income,
                                                     badgeText: isSavings
@@ -653,8 +666,15 @@ class _TransactionImageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final amountPrefix = category.effectiveTypeIndex == 1 ? '+' : '-';
-    final amountColor = category.effectiveTypeIndex == 1
+    final typeIndex = category.effectiveTypeIndex;
+    final amountPrefix = typeIndex == 0
+        ? '-'
+        : typeIndex == 1
+        ? '+'
+        : '';
+    final amountColor = typeIndex == 2
+        ? AppColors.savings
+        : typeIndex == 1
         ? AppColors.income
         : AppColors.expense;
     final amountText = settings.hideAmounts
@@ -703,15 +723,29 @@ class _TransactionImageTile extends StatelessWidget {
                       ),
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
-                        child: Text(
-                          amountText,
-                          maxLines: 1,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: amountColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (typeIndex == 2) ...[
+                              Icon(
+                                Icons.arrow_upward_rounded,
+                                size: 14,
+                                color: amountColor,
+                              ),
+                              const SizedBox(width: 2),
+                            ],
+                            Text(
+                              amountText,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: amountColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

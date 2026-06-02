@@ -13,7 +13,6 @@ import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
-import '../widgets/category/transaction_history_sheet.dart';
 import '../../core/utils/l10n.dart';
 
 class CategoryTab extends StatefulWidget {
@@ -57,6 +56,10 @@ class _CategoryTabState extends State<CategoryTab> {
             child: SheepTripleToggle(
               selectedIndex: _selectedTypeIndex,
               controller: _pageController,
+              labels: [
+                L10n.of(context).get('expense'),
+                L10n.of(context).get('income'),
+              ],
               onChanged: (val) {
                 _pageController.animateToPage(
                   val,
@@ -77,7 +80,6 @@ class _CategoryTabState extends State<CategoryTab> {
                   children: [
                     _buildCategoryList(0), // Expense
                     _buildCategoryList(1), // Income
-                    _buildCategoryList(2), // Savings
                   ],
                 )
               : _buildCategoryList(_selectedTypeIndex),
@@ -110,7 +112,12 @@ class _CategoryTabState extends State<CategoryTab> {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
+          padding: EdgeInsets.only(
+            top: widget.showTypeToggle ? 0 : SheepSpacing.lg,
+            bottom: 120,
+            left: 16,
+            right: 16,
+          ),
           itemCount: categories.length,
           itemBuilder: (context, index) {
             final cat = categories[index];
@@ -171,8 +178,7 @@ class _CategoryTabState extends State<CategoryTab> {
                     ? AppColors.savings.withOpacity(0.05)
                     : null,
                 child: InkWell(
-                  onTap: () =>
-                      _showTransactionHistory(context, cat, allTransactions),
+                  onTap: () => _showCategoryForm(context, cat),
                   borderRadius: BorderRadius.circular(SheepRadius.lg),
                   child: Container(
                     decoration: BoxDecoration(
@@ -277,9 +283,9 @@ class _CategoryTabState extends State<CategoryTab> {
   Widget _buildEmptyState(BuildContext context, int typeIndex) {
     final l10n = L10n.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         SheepSpacing.page,
-        0,
+        widget.showTypeToggle ? 0 : SheepSpacing.lg,
         SheepSpacing.page,
         24,
       ),
@@ -444,23 +450,6 @@ class _CategoryTabState extends State<CategoryTab> {
       alignment: Alignment.centerRight,
       padding: const EdgeInsets.only(right: 20),
       child: const Icon(LineIcons.trash, color: AppColors.expense),
-    );
-  }
-
-  void _showTransactionHistory(
-    BuildContext context,
-    CategoryModel cat,
-    List<Transaction> txs,
-  ) {
-    final catTxs = txs.where((tx) => tx.categoryId == cat.id).toList();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) =>
-          TransactionHistorySheet(category: cat, transactions: catTxs),
     );
   }
 

@@ -69,11 +69,11 @@ class CurrencyUtil {
   static String formatMaskedByCurrency(String currencyCode) {
     switch (currencyCode.toUpperCase()) {
       case 'VND':
-        return '******** đ';
+        return '******** \u20ab';
       case 'USD':
         return '\$********';
       case 'EUR':
-        return '******** €';
+        return '******** \u20ac';
       default:
         return '******** $currencyCode';
     }

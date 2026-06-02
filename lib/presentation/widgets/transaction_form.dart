@@ -365,12 +365,15 @@ class _TransactionFormState extends State<TransactionForm> {
 
   // Interactive pill to display and change date/time
   Widget _buildDatePill() {
+    final theme = Theme.of(context);
     return SheepDatePill(
       label: DateFormat(
         'dd/MM/yyyy',
         Localizations.localeOf(context).toString(),
       ).format(_selectedDate),
       onTap: _pickDate,
+      backgroundColor: AppColors.getSubtleSurface(theme.brightness),
+      border: Border.all(color: AppColors.getBorder(theme.brightness)),
     );
   }
 

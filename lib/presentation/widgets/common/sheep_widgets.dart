@@ -293,6 +293,7 @@ class SheepTransactionCard extends StatelessWidget {
   final String amountText;
   final Color amountColor;
   final String badgeText;
+  final IconData? amountIcon;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry? margin;
   final Color? iconColor;
@@ -306,6 +307,7 @@ class SheepTransactionCard extends StatelessWidget {
     required this.amountText,
     required this.amountColor,
     required this.badgeText,
+    this.amountIcon,
     this.onTap,
     this.margin,
     this.iconColor,
@@ -389,14 +391,24 @@ class SheepTransactionCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Text(
-                    amountText,
-                    style: TextStyle(
-                      fontSize: SheepTypeScale.amount,
-                      fontWeight: FontWeight.w600,
-                      color: amountColor,
-                      letterSpacing: 0,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (amountIcon != null) ...[
+                        Icon(amountIcon, size: 20, color: amountColor),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        amountText,
+                        style: TextStyle(
+                          fontSize: SheepTypeScale.amount,
+                          fontWeight: FontWeight.w600,
+                          color: amountColor,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
                   ),
                   const Spacer(),
                   Container(
@@ -432,8 +444,16 @@ class SheepTransactionCard extends StatelessWidget {
 class SheepDatePill extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
+  final Color? backgroundColor;
+  final BoxBorder? border;
 
-  const SheepDatePill({super.key, required this.label, required this.onTap});
+  const SheepDatePill({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.backgroundColor,
+    this.border,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -445,10 +465,13 @@ class SheepDatePill extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: theme.brightness == Brightness.light
-                ? Colors.white
-                : AppColors.getSurface(theme.brightness),
+            color:
+                backgroundColor ??
+                (theme.brightness == Brightness.light
+                    ? Colors.white
+                    : AppColors.getSurface(theme.brightness)),
             borderRadius: BorderRadius.circular(SheepRadius.xl),
+            border: border,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),

@@ -201,7 +201,9 @@ class TransactionHistorySheet extends StatelessWidget {
       itemCount: transactions.length,
       itemBuilder: (_, i) {
         final tx = transactions[i];
-        final isExpense = tx.isExpense;
+        final typeIndex = category.effectiveTypeIndex;
+        final isSavings = typeIndex == 2;
+        final isExpense = typeIndex == 0;
         return SheepTransactionCard(
           icon: category.iconData,
           iconColor: catColor,
@@ -209,9 +211,22 @@ class TransactionHistorySheet extends StatelessWidget {
           dateText: tx.note.isNotEmpty ? tx.note : l10n.get('no_note'),
           amountText: settings.hideAmounts
               ? CurrencyUtil.formatMaskedByCurrency(settings.currencyCode)
-              : '${isExpense ? '-' : '+'}${CurrencyUtil.formatMoney(tx.amount)}',
-          amountColor: isExpense ? AppColors.expense : AppColors.income,
-          badgeText: isExpense ? l10n.expense : l10n.income,
+              : '${isExpense
+                    ? '-'
+                    : isSavings
+                    ? ''
+                    : '+'}${CurrencyUtil.formatMoney(tx.amount)}',
+          amountIcon: isSavings ? Icons.arrow_upward_rounded : null,
+          amountColor: isSavings
+              ? AppColors.savings
+              : isExpense
+              ? AppColors.expense
+              : AppColors.income,
+          badgeText: isSavings
+              ? l10n.savings
+              : isExpense
+              ? l10n.expense
+              : l10n.income,
         );
       },
     );

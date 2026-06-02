@@ -158,18 +158,17 @@ class TransactionImageArea extends StatelessWidget {
     final bool isZeroValue = amountController.text.isEmpty;
     final bool hasCategory = selectedCategory != null;
 
-    // COLOR LOGIC: Strictly white until a category is selected to avoid misleading red/green colors
+    // Keep the amount state neutral until a category is selected.
     Color contentColor;
     if (!hasCategory) {
       contentColor = isZeroValue ? Colors.white24 : Colors.white;
     } else {
-      contentColor = isZeroValue
-          ? Colors.white24
-          : (selectedIndex == 0
-                ? const Color(0xFFFF8A80)
-                : (selectedIndex == 1
-                      ? const Color(0xFFB9F6CA)
-                      : const Color(0xFFBBDEFB)));
+      final typeColor = selectedIndex == 0
+          ? AppColors.expense
+          : selectedIndex == 1
+          ? AppColors.income
+          : AppColors.savings;
+      contentColor = isZeroValue ? typeColor.withOpacity(0.45) : typeColor;
     }
 
     return Container(
@@ -186,24 +185,24 @@ class TransactionImageArea extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (hasCategory) ...[
-                  Text(
-                    selectedIndex == 1 ? '+' : '-',
-                    style: TextStyle(
-                      color: contentColor,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Icon(
+                    selectedIndex == 0
+                        ? Icons.arrow_downward_rounded
+                        : selectedIndex == 1
+                        ? Icons.add_rounded
+                        : Icons.arrow_upward_rounded,
+                    color: contentColor,
+                    size: 30,
                   ),
                   const SizedBox(width: 16),
                 ],
                 IntrinsicWidth(
                   child: TextField(
                     controller: amountController,
-                    autofocus: true,
+                    autofocus: false,
                     showCursor: false,
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,

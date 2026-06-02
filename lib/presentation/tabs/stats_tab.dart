@@ -9,6 +9,7 @@ import '../../core/utils/l10n.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
 import '../../data/models/transaction.dart';
+import '../widgets/category/transaction_history_sheet.dart';
 import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_widgets.dart';
 
@@ -91,8 +92,7 @@ class _StatsTabState extends State<StatsTab> {
         final selectedTotal = totals[_selectedTypeIndex];
         final selectedTransactionCount = transactionCounts[_selectedTypeIndex];
 
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+        return Padding(
           padding: const EdgeInsets.fromLTRB(
             SheepSpacing.page,
             8,
@@ -109,41 +109,42 @@ class _StatsTabState extends State<StatsTab> {
                 }),
               ),
               const SizedBox(height: SheepSpacing.lg),
-              if (_selectedTypeIndex == 0 && selectedTotal == 0)
-                SheepCard(
-                  child: SizedBox(
-                    height: 260,
-                    child: Column(
-                      children: [
-                        _buildTransactionCount(
-                          context,
-                          selectedTransactionCount,
+              Expanded(
+                child: _selectedTypeIndex == 0 && selectedTotal == 0
+                    ? SheepCard(
+                        child: Column(
+                          children: [
+                            _buildTransactionCount(
+                              context,
+                              selectedTransactionCount,
+                            ),
+                            Expanded(
+                              child: SheepEmptyState(
+                                message: _emptyMessage(
+                                  context,
+                                  _selectedTypeIndex,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        Expanded(
-                          child: SheepEmptyState(
-                            message: _emptyMessage(context, _selectedTypeIndex),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (_selectedTypeIndex == 0)
-                _buildExpenseCard(
-                  context,
-                  stats,
-                  selectedTotal,
-                  selectedTransactionCount,
-                  settings,
-                )
-              else
-                _buildIncomeCard(
-                  context,
-                  stats,
-                  selectedTotal,
-                  selectedTransactionCount,
-                  settings,
-                ),
+                      )
+                    : _selectedTypeIndex == 0
+                    ? _buildExpenseCard(
+                        context,
+                        stats,
+                        selectedTotal,
+                        selectedTransactionCount,
+                        settings,
+                      )
+                    : _buildIncomeCard(
+                        context,
+                        stats,
+                        selectedTotal,
+                        selectedTransactionCount,
+                        settings,
+                      ),
+              ),
             ],
           ),
         );
@@ -160,17 +161,20 @@ class _StatsTabState extends State<StatsTab> {
   ) {
     return SheepCard(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          _buildTransactionCount(context, transactionCount),
-          const SizedBox(height: 8),
-          _buildPieChart(context, stats, total, settings),
-          const SizedBox(height: 18),
-          Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
-          ...stats.map(
-            (stat) => _buildProgressRow(context, stat, total, settings),
-          ),
-        ],
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            _buildTransactionCount(context, transactionCount),
+            const SizedBox(height: 8),
+            _buildPieChart(context, stats, total, settings),
+            const SizedBox(height: 18),
+            Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
+            ...stats.map(
+              (stat) => _buildProgressRow(context, stat, total, settings),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -184,8 +188,10 @@ class _StatsTabState extends State<StatsTab> {
   ) {
     return SheepCard(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
           Align(
             alignment: Alignment.centerLeft,
             child: Column(
@@ -217,7 +223,8 @@ class _StatsTabState extends State<StatsTab> {
           ...stats.map(
             (stat) => _buildProgressRow(context, stat, total, settings),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -277,20 +284,39 @@ class _StatsTabState extends State<StatsTab> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                CurrencyUtil.formatDisplayAmount(
-                  touchedIndex == -1 ? total : stats[touchedIndex].amount,
-                  settings.currencyCode,
-                  isHidden: settings.hideAmounts,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (touchedIndex != -1) ...[
+                  Text(
+                    stats[touchedIndex].category.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: SheepTextStyles.itemMeta(context).copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    CurrencyUtil.formatDisplayAmount(
+                      touchedIndex == -1 ? total : stats[touchedIndex].amount,
+                      settings.currencyCode,
+                      isHidden: settings.hideAmounts,
+                    ),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.getTextPrimary(
+                        Theme.of(context).brightness,
+                      ),
+                    ),
+                  ),
                 ),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.getTextPrimary(Theme.of(context).brightness),
-                ),
-              ),
+              ],
             ),
           ),
         ],
@@ -308,37 +334,70 @@ class _StatsTabState extends State<StatsTab> {
     final progress = total > 0 ? stat.amount / total : 0.0;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        children: [
-          Row(
+      child: InkWell(
+        onTap: () => _showTransactionHistory(context, stat.category),
+        borderRadius: BorderRadius.circular(SheepRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
             children: [
-              Icon(stat.category.iconData, color: color, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  stat.category.name,
-                  style: SheepTextStyles.itemTitle(context),
-                ),
+              Row(
+                children: [
+                  Icon(stat.category.iconData, color: color, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      stat.category.name,
+                      style: SheepTextStyles.itemTitle(context),
+                    ),
+                  ),
+                  Text(
+                    CurrencyUtil.formatDisplayAmount(
+                      stat.amount,
+                      settings.currencyCode,
+                      isHidden: settings.hideAmounts,
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right_rounded, size: 20),
+                ],
               ),
-              Text(
-                CurrencyUtil.formatDisplayAmount(
-                  stat.amount,
-                  settings.currencyCode,
-                  isHidden: settings.hideAmounts,
-                ),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0),
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(999),
+                backgroundColor: color.withOpacity(0.12),
+                valueColor: AlwaysStoppedAnimation(color),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0),
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(999),
-            backgroundColor: color.withOpacity(0.12),
-            valueColor: AlwaysStoppedAnimation(color),
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  void _showTransactionHistory(BuildContext context, CategoryModel category) {
+    final transactions = Hive.box<Transaction>(kMoneyBox).values
+        .where(
+          (tx) =>
+              tx.categoryId == category.id &&
+              !tx.date.isBefore(widget.selectedRange.start) &&
+              !tx.date.isAfter(widget.selectedRange.end),
+        )
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => TransactionHistorySheet(
+        category: category,
+        transactions: transactions,
       ),
     );
   }
