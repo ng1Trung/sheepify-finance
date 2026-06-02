@@ -462,7 +462,10 @@ class _CategoryTabState extends State<CategoryTab> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => CategoryForm(category: category),
+      builder: (_) => CategoryForm(
+        category: category,
+        fixedTypeIndex: widget.showTypeToggle ? null : widget.initialTypeIndex,
+      ),
     );
   }
 

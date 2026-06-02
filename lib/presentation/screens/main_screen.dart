@@ -280,11 +280,15 @@ class _MainScreenState extends State<MainScreen> {
         case 0:
           return DiaryTab(selectedRange: _diaryRange);
         case 1:
-          return const CategoryTab(initialTypeIndex: 2, showTypeToggle: false);
+          return const CategoryTab(
+            key: ValueKey('savings-tab'),
+            initialTypeIndex: 2,
+            showTypeToggle: false,
+          );
         case 2:
           return StatsTab(selectedRange: _diaryRange);
         case 3:
-          return const CategoryTab();
+          return const CategoryTab(key: ValueKey('categories-tab'));
         case 4:
           return const SettingsTab();
         default:
@@ -532,7 +536,10 @@ class _MainScreenState extends State<MainScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => const CategoryForm(category: null),
+      builder: (ctx) => CategoryForm(
+        category: null,
+        fixedTypeIndex: _currentIndex == 1 ? 2 : null,
+      ),
     );
   }
 

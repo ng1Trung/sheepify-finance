@@ -480,14 +480,18 @@ class SheepDatePill extends StatelessWidget {
               ),
             ],
           ),
-          child: Text(
-            label,
-            maxLines: 1,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppColors.getTextPrimary(theme.brightness),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: AppColors.getTextPrimary(theme.brightness),
+              ),
             ),
           ),
         ),

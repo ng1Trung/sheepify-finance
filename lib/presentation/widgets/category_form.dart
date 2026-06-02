@@ -16,7 +16,9 @@ import '../../core/utils/l10n.dart';
 
 class CategoryForm extends StatefulWidget {
   final CategoryModel? category;
-  const CategoryForm({super.key, this.category});
+  final int? fixedTypeIndex;
+
+  const CategoryForm({super.key, this.category, this.fixedTypeIndex});
 
   @override
   State<CategoryForm> createState() => _CategoryFormState();
@@ -99,7 +101,7 @@ class _CategoryFormState extends State<CategoryForm> {
     if (widget.category != null) {
       final cat = widget.category!;
       _nameController.text = cat.name;
-      _selectedTypeIndex = cat.effectiveTypeIndex;
+      _selectedTypeIndex = widget.fixedTypeIndex ?? cat.effectiveTypeIndex;
       _selectedIcon = cat.iconCode;
       _budgetController.text = cat.budget != null
           ? CurrencyUtil.formatNumber(cat.budget!)
@@ -123,7 +125,7 @@ class _CategoryFormState extends State<CategoryForm> {
           : _vibrantColors[0];
     } else {
       _nameController.text = '';
-      _selectedTypeIndex = 0; // Default Expense
+      _selectedTypeIndex = widget.fixedTypeIndex ?? 0; // Default Expense
       _selectedIcon = _iconList[0].codePoint;
       _selectedColor = _vibrantColors[0];
 
@@ -251,12 +253,15 @@ class _CategoryFormState extends State<CategoryForm> {
                     const SizedBox(height: SheepSpacing.xxl),
 
                     _buildSectionTitle(l10n.get('basic_info')),
-                    const SizedBox(height: 12),
-                    SheepTripleToggle(
-                      selectedIndex: _selectedTypeIndex,
-                      onChanged: (val) =>
-                          setState(() => _selectedTypeIndex = val),
-                    ),
+                    if (widget.fixedTypeIndex == null) ...[
+                      const SizedBox(height: 12),
+                      SheepTripleToggle(
+                        selectedIndex: _selectedTypeIndex,
+                        labels: [l10n.expense, l10n.income],
+                        onChanged: (val) =>
+                            setState(() => _selectedTypeIndex = val),
+                      ),
+                    ],
                     const SizedBox(height: SheepSpacing.lg),
                     _buildTextField(
                       controller: _nameController,
@@ -326,11 +331,6 @@ class _CategoryFormState extends State<CategoryForm> {
 
   Widget _buildStickyFooter() {
     final l10n = L10n.of(context);
-    final accent = _effectiveSelectedColor(context);
-    final onAccent = AppColors.getOnAccent(
-      Theme.of(context).brightness,
-      accent,
-    );
     return Container(
       padding: EdgeInsets.only(
         left: SheepSpacing.xl,
@@ -348,34 +348,14 @@ class _CategoryFormState extends State<CategoryForm> {
           ),
         ],
       ),
-      child: GestureDetector(
-        onTap: _submit,
-        child: Container(
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [accent, accent.withOpacity(0.8)]),
-            borderRadius: BorderRadius.circular(SheepRadius.pill),
-            boxShadow: [
-              BoxShadow(
-                color: accent.withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              widget.category == null
-                  ? l10n.get('create_category')
-                  : l10n.get('save_changes'),
-              style: TextStyle(
-                color: onAccent,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                fontSize: SheepTypeScale.item,
-              ),
-            ),
-          ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: SheepButton(
+          label: widget.category == null
+              ? l10n.get('create_category')
+              : l10n.get('save_changes'),
+          onPressed: _submit,
         ),
       ),
     );
