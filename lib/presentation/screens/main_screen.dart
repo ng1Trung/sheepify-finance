@@ -380,7 +380,7 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
       body: buildBody(),
-      floatingActionButton: _currentIndex == 0
+      floatingActionButton: _currentIndex == 0 || _currentIndex == 2
           ? FloatingActionButton(
               onPressed: _showAddTransactionForm,
               child: const Icon(Icons.add_rounded, size: 28),
@@ -508,13 +508,14 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _showAddTransactionForm() async {
+    final sourceIndex = _currentIndex;
     final resultDate = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       isDismissible: true,
       enableDrag: true,
       builder: (_) => TransactionForm(
-        initialDate: _currentIndex == 0 ? _diaryRange.start : _selectedDate,
+        initialDate: _usesDateRange ? _diaryRange.start : _selectedDate,
       ),
     );
 
@@ -522,7 +523,7 @@ class _MainScreenState extends State<MainScreen> {
       setState(() {
         _selectedDate = resultDate;
         _diaryRange = _dayRange(resultDate);
-        _currentIndex = 0;
+        _currentIndex = sourceIndex == 2 ? 2 : 0;
       });
     }
   }

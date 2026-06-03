@@ -55,12 +55,10 @@ class _StatsTabState extends State<StatsTab> {
         final transactionCounts = [0, 0];
         final statsMap = <String, _StatEntry>{};
 
-        if (_selectedTypeIndex == 1) {
-          for (final category in catBox.values.where(
-            (cat) => cat.effectiveTypeIndex == 1,
-          )) {
-            statsMap[category.id] = _StatEntry(category, 0);
-          }
+        for (final category in catBox.values.where(
+          (cat) => cat.effectiveTypeIndex == _selectedTypeIndex,
+        )) {
+          statsMap[category.id] = _StatEntry(category, 0);
         }
 
         for (final tx in rangeTransactions) {
@@ -110,26 +108,7 @@ class _StatsTabState extends State<StatsTab> {
               ),
               const SizedBox(height: SheepSpacing.lg),
               Expanded(
-                child: _selectedTypeIndex == 0 && selectedTotal == 0
-                    ? SheepCard(
-                        child: Column(
-                          children: [
-                            _buildTransactionCount(
-                              context,
-                              selectedTransactionCount,
-                            ),
-                            Expanded(
-                              child: SheepEmptyState(
-                                message: _emptyMessage(
-                                  context,
-                                  _selectedTypeIndex,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _selectedTypeIndex == 0
+                child: _selectedTypeIndex == 0
                     ? _buildExpenseCard(
                         context,
                         stats,
@@ -165,11 +144,12 @@ class _StatsTabState extends State<StatsTab> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
+            _buildPieChart(context, stats, total, settings),
+            const SizedBox(height: 12),
+            Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
+            const SizedBox(height: 8),
             _buildTransactionCount(context, transactionCount),
             const SizedBox(height: 8),
-            _buildPieChart(context, stats, total, settings),
-            const SizedBox(height: 18),
-            Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
             ...stats.map(
               (stat) => _buildProgressRow(context, stat, total, settings),
             ),
@@ -192,37 +172,15 @@ class _StatsTabState extends State<StatsTab> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  L10n.of(context).get('total_income'),
-                  style: SheepTextStyles.itemMeta(context),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  CurrencyUtil.formatDisplayAmount(
-                    total,
-                    settings.currencyCode,
-                    isHidden: settings.hideAmounts,
-                  ),
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppColors.income,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+            _buildPieChart(context, stats, total, settings),
+            const SizedBox(height: 12),
+            Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
+            const SizedBox(height: 8),
+            _buildTransactionCount(context, transactionCount),
+            const SizedBox(height: 8),
+            ...stats.map(
+              (stat) => _buildProgressRow(context, stat, total, settings),
             ),
-          ),
-          const SizedBox(height: 14),
-          _buildTransactionCount(context, transactionCount),
-          const SizedBox(height: 8),
-          Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
-          ...stats.map(
-            (stat) => _buildProgressRow(context, stat, total, settings),
-          ),
           ],
         ),
       ),
@@ -250,6 +208,7 @@ class _StatsTabState extends State<StatsTab> {
     final touchedIndex = _touchedIndex >= 0 && _touchedIndex < stats.length
         ? _touchedIndex
         : -1;
+    final hasTotal = total > 0;
     return SizedBox(
       height: 220,
       child: Stack(
@@ -259,11 +218,23 @@ class _StatsTabState extends State<StatsTab> {
             PieChartData(
               sectionsSpace: 2,
               centerSpaceRadius: 75,
-              sections: List.generate(stats.length, (index) {
+              sections: List.generate(stats.isEmpty ? 1 : stats.length, (
+                index,
+              ) {
+                if (stats.isEmpty) {
+                  return PieChartSectionData(
+                    color: AppColors.getBorder(Theme.of(context).brightness),
+                    value: 1,
+                    title: '',
+                    radius: 22,
+                  );
+                }
                 final stat = stats[index];
                 return PieChartSectionData(
                   color: _categoryColor(stat.category),
-                  value: stat.amount < total * 0.02
+                  value: !hasTotal
+                      ? 1
+                      : stat.amount < total * 0.02
                       ? total * 0.02
                       : stat.amount,
                   title: '',
@@ -293,9 +264,9 @@ class _StatsTabState extends State<StatsTab> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: SheepTextStyles.itemMeta(context).copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: SheepTextStyles.itemMeta(
+                      context,
+                    ).copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
                 ],
@@ -335,7 +306,7 @@ class _StatsTabState extends State<StatsTab> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: InkWell(
-        onTap: () => _showTransactionHistory(context, stat.category),
+        onTap: () => _showTransactionHistory(context, stat.category, total),
         borderRadius: BorderRadius.circular(SheepRadius.md),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -378,16 +349,21 @@ class _StatsTabState extends State<StatsTab> {
     );
   }
 
-  void _showTransactionHistory(BuildContext context, CategoryModel category) {
-    final transactions = Hive.box<Transaction>(kMoneyBox).values
-        .where(
-          (tx) =>
-              tx.categoryId == category.id &&
-              !tx.date.isBefore(widget.selectedRange.start) &&
-              !tx.date.isAfter(widget.selectedRange.end),
-        )
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+  void _showTransactionHistory(
+    BuildContext context,
+    CategoryModel category,
+    double typeTotal,
+  ) {
+    final transactions =
+        Hive.box<Transaction>(kMoneyBox).values
+            .where(
+              (tx) =>
+                  tx.categoryId == category.id &&
+                  !tx.date.isBefore(widget.selectedRange.start) &&
+                  !tx.date.isAfter(widget.selectedRange.end),
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
     showModalBottomSheet(
       context: context,
@@ -398,6 +374,7 @@ class _StatsTabState extends State<StatsTab> {
       builder: (_) => TransactionHistorySheet(
         category: category,
         transactions: transactions,
+        typeTotal: typeTotal,
       ),
     );
   }
@@ -408,12 +385,5 @@ class _StatsTabState extends State<StatsTab> {
         : _selectedTypeIndex == 0
         ? AppColors.expense
         : AppColors.income;
-  }
-
-  String _emptyMessage(BuildContext context, int typeIndex) {
-    final l10n = L10n.of(context);
-    return typeIndex == 0
-        ? l10n.get('no_data_expense')
-        : l10n.get('no_data_income');
   }
 }

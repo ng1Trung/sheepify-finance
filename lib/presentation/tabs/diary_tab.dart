@@ -128,8 +128,7 @@ class _DiaryTabState extends State<DiaryTab> {
               final selectedTypeIndex = _selectedViewMode == 1
                   ? _selectedListTypeIndex
                   : _selectedGalleryTypeIndex;
-              final isCompactAllState =
-                  compactWhenAll && selectedTypeIndex == null;
+              const isCompactAllState = false;
 
               return PopupMenuTheme(
                 data: PopupMenuThemeData(
@@ -144,46 +143,57 @@ class _DiaryTabState extends State<DiaryTab> {
                   ),
                 ),
                 child: PopupMenuButton<int>(
-                  initialValue: selectedTypeIndex,
+                  initialValue: selectedTypeIndex ?? -1,
                   onSelected: (index) => setState(() {
+                    final nextTypeIndex = index == -1 ? null : index;
                     if (_selectedViewMode == 1) {
-                      _selectedListTypeIndex = _selectedListTypeIndex == index
-                          ? null
-                          : index;
+                      _selectedListTypeIndex = nextTypeIndex;
                     } else {
-                      _selectedGalleryTypeIndex =
-                          _selectedGalleryTypeIndex == index ? null : index;
+                      _selectedGalleryTypeIndex = nextTypeIndex;
                     }
                   }),
                   offset: const Offset(0, 38),
                   padding: EdgeInsets.zero,
-                  itemBuilder: (context) => List.generate(
-                    labels.length,
-                    (index) => PopupMenuItem<int>(
-                      value: index,
-                      height: 42,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              labels[index],
-                              style: SheepTextStyles.itemMeta(context).copyWith(
-                                color: AppColors.getTextPrimary(
-                                  theme.brightness,
-                                ),
-                                fontSize: SheepTypeScale.label,
-                                fontWeight: selectedTypeIndex == index
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
+                  itemBuilder: (context) =>
+                      [
+                            -1,
+                            ...List<int>.generate(
+                              labels.length,
+                              (index) => index,
+                            ),
+                          ]
+                          .map(
+                            (index) => PopupMenuItem<int>(
+                              value: index,
+                              height: 42,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      index == -1
+                                          ? l10n.get('all')
+                                          : labels[index],
+                                      style: SheepTextStyles.itemMeta(context)
+                                          .copyWith(
+                                            color: AppColors.getTextPrimary(
+                                              theme.brightness,
+                                            ),
+                                            fontSize: SheepTypeScale.label,
+                                            fontWeight:
+                                                (selectedTypeIndex ?? -1) ==
+                                                    index
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                          ),
+                                    ),
+                                  ),
+                                  if ((selectedTypeIndex ?? -1) == index)
+                                    const Icon(Icons.check_rounded, size: 16),
+                                ],
                               ),
                             ),
-                          ),
-                          if (selectedTypeIndex == index)
-                            const Icon(Icons.check_rounded, size: 16),
-                        ],
-                      ),
-                    ),
-                  ),
+                          )
+                          .toList(),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -462,10 +472,16 @@ class _DiaryTabState extends State<DiaryTab> {
                                                 final isLastDay =
                                                     dayIdx ==
                                                     sortedDayKeys.length - 1;
-                                                final isSavings =
-                                                    cat.effectiveTypeIndex == 2;
-                                                final isExpense =
-                                                    cat.effectiveTypeIndex == 0;
+                                                final typeVisuals =
+                                                    SheepTransactionTypeVisuals.fromTypeIndex(
+                                                      cat.effectiveTypeIndex,
+                                                    );
+                                                final catColor =
+                                                    cat.colorValue != null
+                                                    ? Color(cat.colorValue!)
+                                                    : AppColors.getTextPrimary(
+                                                        theme.brightness,
+                                                      );
 
                                                 return Dismissible(
                                                   key: ValueKey(tx.key),
@@ -534,44 +550,22 @@ class _DiaryTabState extends State<DiaryTab> {
                                                       fontFamily:
                                                           'MaterialIcons',
                                                     ),
-                                                    iconColor:
-                                                        cat.colorValue != null
-                                                        ? Color(cat.colorValue!)
-                                                        : AppColors.getTextPrimary(
-                                                            theme.brightness,
-                                                          ),
+                                                    iconColor: catColor,
                                                     title: cat.name,
-                                                    dateText: tx.note.isNotEmpty
-                                                        ? tx.note
-                                                        : l10n.get('no_note'),
+                                                    dateText: tx.note,
                                                     amountText:
                                                         !settings.hideAmounts
-                                                        ? '${isExpense
+                                                        ? '${cat.effectiveTypeIndex == 0
                                                               ? '-'
-                                                              : isSavings
+                                                              : cat.effectiveTypeIndex == 2
                                                               ? ''
-                                                              : '+'}${isSavings ? '' : ' '}${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}'
+                                                              : '+'}${cat.effectiveTypeIndex == 2 ? '' : ' '}${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}'
                                                         : CurrencyUtil.formatMaskedByCurrency(
                                                             settings
                                                                 .currencyCode,
                                                           ),
-                                                    amountIcon:
-                                                        isSavings &&
-                                                            !settings
-                                                                .hideAmounts
-                                                        ? Icons
-                                                              .arrow_upward_rounded
-                                                        : null,
-                                                    amountColor: isSavings
-                                                        ? AppColors.savings
-                                                        : isExpense
-                                                        ? AppColors.expense
-                                                        : AppColors.income,
-                                                    badgeText: isSavings
-                                                        ? l10n.savings
-                                                        : isExpense
-                                                        ? l10n.expense
-                                                        : l10n.income,
+                                                    amountColor:
+                                                        typeVisuals.color,
                                                   ),
                                                 );
                                               }),

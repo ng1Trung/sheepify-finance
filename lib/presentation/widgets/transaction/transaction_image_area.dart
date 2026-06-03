@@ -159,17 +159,16 @@ class TransactionImageArea extends StatelessWidget {
   Widget _buildActionBlock(L10n l10n) {
     final bool isZeroValue = amountController.text.isEmpty;
     final bool hasCategory = selectedCategory != null;
+    final typeVisuals = SheepTransactionTypeVisuals.fromTypeIndex(
+      selectedIndex,
+    );
 
     // Keep the amount state neutral until a category is selected.
     Color contentColor;
     if (!hasCategory) {
       contentColor = isZeroValue ? Colors.white24 : Colors.white;
     } else {
-      final typeColor = selectedIndex == 0
-          ? AppColors.expense
-          : selectedIndex == 1
-          ? AppColors.income
-          : AppColors.savings;
+      final typeColor = typeVisuals.color;
       contentColor = isZeroValue ? typeColor.withOpacity(0.45) : typeColor;
     }
 
@@ -190,15 +189,7 @@ class TransactionImageArea extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (hasCategory) ...[
-                  Icon(
-                    selectedIndex == 0
-                        ? Icons.arrow_downward_rounded
-                        : selectedIndex == 1
-                        ? Icons.add_rounded
-                        : Icons.arrow_upward_rounded,
-                    color: contentColor,
-                    size: 30,
-                  ),
+                  Icon(typeVisuals.icon, color: contentColor, size: 30),
                   const SizedBox(width: 16),
                 ],
                 IntrinsicWidth(

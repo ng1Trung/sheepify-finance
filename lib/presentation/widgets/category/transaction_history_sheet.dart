@@ -11,15 +11,18 @@ import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
 import '../common/sheep_widgets.dart';
 import '../../../core/utils/l10n.dart';
+import '../transaction_form.dart';
 
 class TransactionHistorySheet extends StatelessWidget {
   final CategoryModel category;
   final List<Transaction> transactions;
+  final double typeTotal;
 
   const TransactionHistorySheet({
     super.key,
     required this.category,
     required this.transactions,
+    required this.typeTotal,
   });
 
   @override
@@ -60,9 +63,7 @@ class TransactionHistorySheet extends StatelessWidget {
             ],
 
             const SizedBox(height: SheepSpacing.lg),
-            Expanded(
-              child: _buildTransactionList(context, scrollController, catColor),
-            ),
+            Expanded(child: _buildTransactionList(context, scrollController)),
           ],
         ),
       ),
@@ -84,6 +85,13 @@ class TransactionHistorySheet extends StatelessWidget {
     final l10n = L10n.of(context);
     final settings =
         Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final typeIndex = category.effectiveTypeIndex;
+    final share = typeTotal > 0 ? (total / typeTotal * 100) : 0.0;
+    final shareTargetLabel = typeIndex == 2
+        ? l10n.savings.toLowerCase()
+        : typeIndex == 1
+        ? l10n.income.toLowerCase()
+        : l10n.expense.toLowerCase();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: SheepSpacing.xl),
       child: Container(
@@ -127,17 +135,6 @@ class TransactionHistorySheet extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  category.effectiveTypeIndex == 2
-                      ? l10n.get('total_target')
-                      : l10n.get('total_spent_cat'),
-                  style: TextStyle(
-                    fontSize: SheepTypeScale.micro,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    color: Theme.of(context).hintColor,
-                  ),
-                ),
-                Text(
                   CurrencyUtil.formatDisplayAmount(
                     total,
                     settings.currencyCode,
@@ -146,12 +143,20 @@ class TransactionHistorySheet extends StatelessWidget {
                   style: TextStyle(
                     fontSize: SheepTypeScale.bodyLarge,
                     fontWeight: FontWeight.bold,
-                    color: category.effectiveTypeIndex == 2
+                    color: typeIndex == 2
                         ? AppColors.savings
-                        : (category.effectiveTypeIndex == 0
+                        : (typeIndex == 0
                               ? AppColors.expense
                               : AppColors.income),
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Chiếm ${share.toStringAsFixed(share >= 10 ? 0 : 1)}% tổng $shareTargetLabel',
+                  textAlign: TextAlign.right,
+                  style: SheepTextStyles.itemMeta(
+                    context,
+                  ).copyWith(fontSize: SheepTypeScale.micro),
                 ),
               ],
             ),
@@ -164,7 +169,6 @@ class TransactionHistorySheet extends StatelessWidget {
   Widget _buildTransactionList(
     BuildContext context,
     ScrollController controller,
-    Color catColor,
   ) {
     final l10n = L10n.of(context);
     final settings =
@@ -185,43 +189,134 @@ class TransactionHistorySheet extends StatelessWidget {
       );
     }
 
-    return ListView.builder(
+    final grouped = <String, List<Transaction>>{};
+    for (final tx in transactions) {
+      final key = DateFormat('yyyy-MM-dd').format(tx.date);
+      grouped.putIfAbsent(key, () => []).add(tx);
+    }
+
+    final sortedDayKeys = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    final typeIndex = category.effectiveTypeIndex;
+    final isSavings = typeIndex == 2;
+    final isExpense = typeIndex == 0;
+    final typeVisuals = SheepTransactionTypeVisuals.fromTypeIndex(typeIndex);
+    final catColor = category.colorValue != null
+        ? Color(category.colorValue!)
+        : AppColors.primary;
+
+    return ListView(
       controller: controller,
-      padding: const EdgeInsets.symmetric(
-        horizontal: SheepSpacing.sm,
-        vertical: SheepSpacing.sm,
+      padding: const EdgeInsets.fromLTRB(
+        SheepSpacing.page,
+        SheepSpacing.sm,
+        SheepSpacing.page,
+        SheepSpacing.xl,
       ),
-      itemCount: transactions.length,
-      itemBuilder: (_, i) {
-        final tx = transactions[i];
-        final typeIndex = category.effectiveTypeIndex;
-        final isSavings = typeIndex == 2;
-        final isExpense = typeIndex == 0;
-        return SheepTransactionCard(
-          icon: category.iconData,
-          iconColor: catColor,
-          title: category.name,
-          dateText: tx.note.isNotEmpty ? tx.note : l10n.get('no_note'),
-          amountText: settings.hideAmounts
-              ? CurrencyUtil.formatMaskedByCurrency(settings.currencyCode)
-              : '${isExpense
-                    ? '-'
-                    : isSavings
-                    ? ''
-                    : '+'}${CurrencyUtil.formatMoney(tx.amount)}',
-          amountIcon: isSavings ? Icons.arrow_upward_rounded : null,
-          amountColor: isSavings
-              ? AppColors.savings
-              : isExpense
-              ? AppColors.expense
-              : AppColors.income,
-          badgeText: isSavings
-              ? l10n.savings
-              : isExpense
-              ? l10n.expense
-              : l10n.income,
-        );
-      },
+      children: [
+        SheepCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (int dayIdx = 0; dayIdx < sortedDayKeys.length; dayIdx++)
+                ..._buildDayGroup(
+                  context,
+                  sortedDayKeys[dayIdx],
+                  grouped[sortedDayKeys[dayIdx]]!,
+                  settings,
+                  typeVisuals.color,
+                  catColor,
+                  isExpense,
+                  isSavings,
+                  dayIdx == sortedDayKeys.length - 1,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildDayGroup(
+    BuildContext context,
+    String dayKey,
+    List<Transaction> dayTxs,
+    AppSettings settings,
+    Color amountColor,
+    Color catColor,
+    bool isExpense,
+    bool isSavings,
+    bool isLastDay,
+  ) {
+    dayTxs.sort((a, b) {
+      final dateComparison = b.date.compareTo(a.date);
+      if (dateComparison != 0) return dateComparison;
+      return b.key.toString().compareTo(a.key.toString());
+    });
+
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(0, 8, 0, 10),
+        child: Text(
+          DateFormat(
+            'EEEE, dd/MM/yyyy',
+            settings.languageCode == 'vi' ? 'vi_VN' : 'en_US',
+          ).format(DateTime.parse(dayKey)),
+          style: SheepTextStyles.itemTitle(context),
+        ),
+      ),
+      for (int i = 0; i < dayTxs.length; i++)
+        _buildTransactionRow(
+          context,
+          dayTxs[i],
+          settings,
+          amountColor,
+          catColor,
+          isExpense,
+          isSavings,
+          i == dayTxs.length - 1,
+          isLastDay,
+        ),
+    ];
+  }
+
+  Widget _buildTransactionRow(
+    BuildContext context,
+    Transaction tx,
+    AppSettings settings,
+    Color amountColor,
+    Color catColor,
+    bool isExpense,
+    bool isSavings,
+    bool isLastInDay,
+    bool isLastDay,
+  ) {
+    final titleText = tx.note.isNotEmpty ? tx.note : category.name;
+    final amountText = settings.hideAmounts
+        ? CurrencyUtil.formatMaskedByCurrency(settings.currencyCode)
+        : '${isExpense
+              ? '-'
+              : isSavings
+              ? ''
+              : '+'}${CurrencyUtil.formatMoney(tx.amount)}';
+
+    return SheepTransactionCard(
+      margin: EdgeInsets.only(
+        bottom: !isLastInDay || !isLastDay ? SheepSpacing.itemGap : 0,
+      ),
+      onTap: () => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        isDismissible: true,
+        enableDrag: true,
+        builder: (_) => TransactionForm(transaction: tx),
+      ),
+      icon: category.iconData,
+      iconColor: catColor,
+      title: titleText,
+      dateText: '',
+      amountText: amountText,
+      amountColor: amountColor,
     );
   }
 
