@@ -313,10 +313,10 @@ class _CategoryFormState extends State<CategoryForm> {
                         _buildGoalDatePicker(l10n),
                     ],
 
-                      if (_selectedTypeIndex != 1)
-                        const SizedBox(height: SheepSpacing.lg),
-                      _buildColorPicker(),
-                      const SizedBox(height: SheepSpacing.xxl),
+                    if (_selectedTypeIndex != 1)
+                      const SizedBox(height: SheepSpacing.lg),
+                    _buildColorPicker(),
+                    const SizedBox(height: SheepSpacing.xxl),
                   ],
                 ),
               ),

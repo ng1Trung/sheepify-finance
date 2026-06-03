@@ -128,8 +128,8 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                       ? Color(c.colorValue!)
                       : null;
                   final selectedColor = categoryColor ?? fallbackSelectedColor;
-                  final selectedTextColor = selectedColor.computeLuminance() >
-                          0.45
+                  final selectedTextColor =
+                      selectedColor.computeLuminance() > 0.45
                       ? Colors.black
                       : Colors.white;
                   return GestureDetector(
