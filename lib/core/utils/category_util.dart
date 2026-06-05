@@ -9,15 +9,17 @@ class CategoryUtil {
     final allTransactions = txBox.values.toList();
     final now = DateTime.now();
     double spent = 0;
-    
+
     final goalType = cat.effectiveGoalTypeIndex;
     if (goalType == 1) {
       // Monthly goal: only current month
       spent = allTransactions
-          .where((tx) => 
-              tx.categoryId == cat.id && 
-              tx.date.month == now.month && 
-              tx.date.year == now.year)
+          .where(
+            (tx) =>
+                tx.categoryId == cat.id &&
+                tx.date.month == now.month &&
+                tx.date.year == now.year,
+          )
           .fold(0.0, (sum, tx) => sum + tx.amount);
     } else if (goalType == 2) {
       // Goal: all history
@@ -27,13 +29,15 @@ class CategoryUtil {
     } else {
       // Standard Income/Expense: usually current month
       spent = allTransactions
-          .where((tx) => 
-              tx.categoryId == cat.id && 
-              tx.date.month == now.month && 
-              tx.date.year == now.year)
+          .where(
+            (tx) =>
+                tx.categoryId == cat.id &&
+                tx.date.month == now.month &&
+                tx.date.year == now.year,
+          )
           .fold(0.0, (sum, tx) => sum + tx.amount);
     }
-    
+
     return spent;
   }
 }

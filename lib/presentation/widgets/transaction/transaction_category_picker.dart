@@ -42,6 +42,10 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = L10n.of(context);
+    final fallbackSelectedColor = AppColors.getInteractiveAccent(
+      theme.brightness,
+      AppColors.primary,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(
         vertical: SheepSpacing.xl,
@@ -120,43 +124,63 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                 itemBuilder: (ctx, i) {
                   final c = filteredCats[i];
                   final isSelected = widget.selectedCategoryId == c.id;
+                  final categoryColor = c.colorValue != null
+                      ? Color(c.colorValue!)
+                      : null;
+                  final selectedColor = categoryColor ?? fallbackSelectedColor;
+                  final selectedTextColor =
+                      selectedColor.computeLuminance() > 0.45
+                      ? Colors.black
+                      : Colors.white;
                   return GestureDetector(
                     onTap: () => widget.onCategorySelected(c.id),
                     child: Container(
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? (c.colorValue != null
-                                  ? Color(c.colorValue!)
-                                  : AppColors.primary)
-                            : (c.colorValue != null
-                                  ? Color(c.colorValue!).withOpacity(0.12)
+                            ? selectedColor
+                            : (categoryColor != null
+                                  ? categoryColor.withOpacity(0.12)
                                   : theme.cardColor),
                         borderRadius: BorderRadius.circular(SheepRadius.lg),
                         border: Border.all(
                           color: isSelected
-                              ? (c.colorValue != null
-                                    ? Color(c.colorValue!)
-                                    : AppColors.primary)
-                              : (c.colorValue != null
-                                    ? Color(c.colorValue!).withOpacity(0.3)
-                                    : Colors.grey[200]!),
+                              ? selectedColor
+                              : (categoryColor != null
+                                    ? categoryColor.withOpacity(0.3)
+                                    : AppColors.getBorder(theme.brightness)),
                           width: 1,
                         ),
                       ),
-                      child: Text(
-                        c.name,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: SheepTypeScale.meta,
-                          color: isSelected
-                              ? Colors.white
-                              : (c.colorValue != null
-                                    ? Color(c.colorValue!)
-                                    : theme.textTheme.bodyLarge?.color),
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SheepCategoryIcon(
+                            icon: c.iconData,
+                            color: isSelected
+                                ? selectedTextColor
+                                : selectedColor,
+                            size: 28,
+                          ),
+                          const SizedBox(width: SheepSpacing.sm),
+                          Flexible(
+                            child: Text(
+                              c.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontSize: SheepTypeScale.meta,
+                                color: isSelected
+                                    ? selectedTextColor
+                                    : (categoryColor != null
+                                          ? categoryColor
+                                          : theme.textTheme.bodyLarge?.color),
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );

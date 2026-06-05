@@ -37,7 +37,7 @@ class AppColors {
   static const Color primaryLight = Color(0xFFF4F4F5);
   static const Color expense = Color(0xFFEE6055); // Professional Red
   static const Color income = Color(0xFF20C997); // Professional Green
-  static const Color savings = Color(0xFF1A1A1A);
+  static const Color savings = Color(0xFF4EA8DE); // Professional Blue
 
   // Backward compatibility constants (Light Mode defaults)
   static const Color bgLight = Color(0xFFFAFAFA);

@@ -17,7 +17,9 @@ import '../../core/utils/l10n.dart';
 
 class CategoryForm extends StatefulWidget {
   final CategoryModel? category;
-  const CategoryForm({super.key, this.category});
+  final int? fixedTypeIndex;
+
+  const CategoryForm({super.key, this.category, this.fixedTypeIndex});
 
   @override
   State<CategoryForm> createState() => _CategoryFormState();
@@ -34,6 +36,7 @@ class _CategoryFormState extends State<CategoryForm> {
   int _selectedReminderDay = DateTime.now().day;
   int _selectedTargetMonth = DateTime.now().month;
   int _selectedTargetYear = DateTime.now().year + 1;
+  String? _activePicker;
 
   DateTime? _selectedTargetDate;
   late int _selectedIcon;
@@ -41,18 +44,35 @@ class _CategoryFormState extends State<CategoryForm> {
 
   final List<Color> _vibrantColors = [
     Colors.black, // Màu đen hệ thống làm mặc định
-    const Color(0xFFEE6055), // Coral red
-    const Color(0xFFFF9E7D), // Soft orange
-    const Color(0xFFFFD166), // Warm yellow
-    const Color(0xFFA7C957), // Lime
-    const Color(0xFF2ECC71), // Green
-    const Color(0xFF20C997), // Mint
-    const Color(0xFF4ECDC4), // Teal
-    const Color(0xFF4EA8DE), // Blue
-    const Color(0xFF6C63FF), // Indigo
-    const Color(0xFF9B59B6), // Purple
-    const Color(0xFFFF85A1), // Pink
-    const Color(0xFF778CA3), // Blue grey
+    const Color(0xFF374151),
+    const Color(0xFF6B7280),
+    const Color(0xFF94A3B8),
+    const Color(0xFF8B5E3C),
+    const Color(0xFFB91C1C),
+    const Color(0xFFEF4444),
+    const Color(0xFFFB7185),
+    const Color(0xFFF97316),
+    const Color(0xFFFB923C),
+    const Color(0xFFF59E0B),
+    const Color(0xFFFACC15),
+    const Color(0xFFA3E635),
+    const Color(0xFF65A30D),
+    const Color(0xFF22C55E),
+    const Color(0xFF10B981),
+    const Color(0xFF0F766E),
+    const Color(0xFF14B8A6),
+    const Color(0xFF06B6D4),
+    const Color(0xFF0EA5E9),
+    const Color(0xFF3B82F6),
+    const Color(0xFF1D4ED8),
+    const Color(0xFF6366F1),
+    const Color(0xFF8B5CF6),
+    const Color(0xFFA855F7),
+    const Color(0xFFD946EF),
+    const Color(0xFFEC4899),
+    const Color(0xFFF472B6),
+    const Color(0xFFBE123C),
+    const Color(0xFF7C3AED),
   ];
 
   final List<IconData> _iconList = [
@@ -100,10 +120,11 @@ class _CategoryFormState extends State<CategoryForm> {
     if (widget.category != null) {
       final cat = widget.category!;
       _nameController.text = cat.name;
-      _selectedTypeIndex = cat.effectiveTypeIndex;
+      _selectedTypeIndex = widget.fixedTypeIndex ?? cat.effectiveTypeIndex;
       _selectedIcon = cat.iconCode;
-      _budgetController.text = cat.budget != null
-          ? CurrencyUtil.formatNumber(cat.budget!)
+      final budget = cat.budget;
+      _budgetController.text = budget != null && budget > 0
+          ? CurrencyUtil.formatNumber(budget)
           : '';
       _goalAmountController.text = cat.targetAmount != null
           ? CurrencyUtil.formatNumber(cat.targetAmount!)
@@ -124,7 +145,7 @@ class _CategoryFormState extends State<CategoryForm> {
           : _vibrantColors[0];
     } else {
       _nameController.text = '';
-      _selectedTypeIndex = 0; // Default Expense
+      _selectedTypeIndex = widget.fixedTypeIndex ?? 0; // Default Expense
       _selectedIcon = _iconList[0].codePoint;
       _selectedColor = _vibrantColors[0];
 
@@ -144,7 +165,12 @@ class _CategoryFormState extends State<CategoryForm> {
       return;
     }
 
-    final enteredBudget = CurrencyParsing.parseAmount(_budgetController.text);
+    final parsedBudget = _budgetController.text.trim().isEmpty
+        ? null
+        : CurrencyParsing.parseAmount(_budgetController.text);
+    final enteredBudget = parsedBudget != null && parsedBudget > 0
+        ? parsedBudget
+        : null;
     final enteredGoal = CurrencyParsing.parseAmount(_goalAmountController.text);
     HapticFeedback.mediumImpact();
 
@@ -251,21 +277,16 @@ class _CategoryFormState extends State<CategoryForm> {
                     _buildHeaderPreview(l10n),
                     const SizedBox(height: SheepSpacing.xxl),
 
-                    _buildSectionTitle(l10n.get('basic_info')),
-                    const SizedBox(height: 12),
-                    SheepTripleToggle(
-                      selectedIndex: _selectedTypeIndex,
-                      onChanged: (val) =>
-                          setState(() => _selectedTypeIndex = val),
-                    ),
-                    const SizedBox(height: SheepSpacing.lg),
-                    _buildTextField(
-                      controller: _nameController,
-                      hint: l10n.get('category_name'),
-                      icon: LineIcons.tag,
-                    ),
+                    if (widget.fixedTypeIndex == null) ...[
+                      SheepTripleToggle(
+                        selectedIndex: _selectedTypeIndex,
+                        labels: [l10n.expense, l10n.income],
+                        onChanged: (val) =>
+                            setState(() => _selectedTypeIndex = val),
+                      ),
+                      const SizedBox(height: SheepSpacing.xl),
+                    ],
                     if (_selectedTypeIndex == 0) ...[
-                      const SizedBox(height: 12),
                       _buildTextField(
                         controller: _budgetController,
                         hint: l10n.get('budget_monthly'),
@@ -275,7 +296,8 @@ class _CategoryFormState extends State<CategoryForm> {
                       ),
                     ],
                     if (_selectedTypeIndex == 2) ...[
-                      const SizedBox(height: 12),
+                      _buildGoalTypeToggle(l10n),
+                      const SizedBox(height: SheepSpacing.xl),
                       _buildTextField(
                         controller: _goalAmountController,
                         hint: _selectedGoalTypeIndex == 1
@@ -285,26 +307,16 @@ class _CategoryFormState extends State<CategoryForm> {
                         isNumber: true,
                         suffix: 'đ',
                       ),
-                      const SizedBox(height: SheepSpacing.xl),
-                      _buildSectionTitle(l10n.get('goal_type')),
-                      const SizedBox(height: 12),
-                      _buildGoalTypeToggle(l10n),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: SheepSpacing.lg),
                       if (_selectedGoalTypeIndex == 1)
                         _buildReminderDayPicker(l10n)
                       else
                         _buildGoalDatePicker(l10n),
                     ],
 
-                    const SizedBox(height: SheepSpacing.xxl),
-                    _buildSectionTitle(l10n.get('colors')),
-                    const SizedBox(height: 12),
+                    if (_selectedTypeIndex != 1)
+                      const SizedBox(height: SheepSpacing.lg),
                     _buildColorPicker(),
-
-                    const SizedBox(height: SheepSpacing.xxl),
-                    _buildSectionTitle(l10n.get('icons')),
-                    const SizedBox(height: 12),
-                    _buildIconPicker(),
                     const SizedBox(height: SheepSpacing.xxl),
                   ],
                 ),
@@ -327,11 +339,6 @@ class _CategoryFormState extends State<CategoryForm> {
 
   Widget _buildStickyFooter() {
     final l10n = L10n.of(context);
-    final accent = _effectiveSelectedColor(context);
-    final onAccent = AppColors.getOnAccent(
-      Theme.of(context).brightness,
-      accent,
-    );
     return Container(
       padding: EdgeInsets.only(
         left: SheepSpacing.xl,
@@ -349,34 +356,16 @@ class _CategoryFormState extends State<CategoryForm> {
           ),
         ],
       ),
-      child: GestureDetector(
-        onTap: _submit,
-        child: Container(
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [accent, accent.withOpacity(0.8)]),
-            borderRadius: BorderRadius.circular(SheepRadius.pill),
-            boxShadow: [
-              BoxShadow(
-                color: accent.withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              widget.category == null
-                  ? l10n.get('create_category')
-                  : l10n.get('save_changes'),
-              style: TextStyle(
-                color: onAccent,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                fontSize: SheepTypeScale.item,
-              ),
-            ),
-          ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: SheepButton(
+          label: widget.category == null
+              ? (_selectedTypeIndex == 2
+                    ? l10n.get('create_savings')
+                    : l10n.get('create_category'))
+              : l10n.get('save_changes'),
+          onPressed: _submit,
         ),
       ),
     );
@@ -398,35 +387,45 @@ class _CategoryFormState extends State<CategoryForm> {
     final accent = _effectiveSelectedColor(context);
     return Row(
       children: [
-        Container(
-          width: 70,
-          height: 70,
-          decoration: BoxDecoration(
-            color: accent.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: accent.withOpacity(0.3), width: 1),
-        ),
-          child: Icon(
-            resolveCategoryIcon(_selectedIcon),
+        InkWell(
+          onTap: _showIconPicker,
+          borderRadius: BorderRadius.circular(SheepRadius.md),
+          child: SheepCategoryIcon(
+            icon: IconData(_selectedIcon, fontFamily: 'MaterialIcons'),
             color: accent,
-            size: 32,
+            size: 48,
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: SheepSpacing.xl),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _nameController.text.isEmpty
-                    ? l10n.get('category_name').toUpperCase()
-                    : _nameController.text.toUpperCase(),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
+          child: TextField(
+            controller: _nameController,
+            onChanged: (_) => setState(() {}),
+            textCapitalization: TextCapitalization.sentences,
+            minLines: 1,
+            maxLines: 1,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+            decoration: InputDecoration(
+              hintText: widget.category == null
+                  ? (_selectedTypeIndex == 2
+                        ? l10n.get('new_savings')
+                        : l10n.get('new_category'))
+                  : l10n.get('category_name'),
+              hintStyle: theme.textTheme.titleLarge?.copyWith(
+                color: theme.hintColor,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
               ),
-            ],
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            ),
           ),
         ),
       ],
@@ -444,58 +443,23 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Widget _buildReminderDayPicker(L10n l10n) {
-    final theme = Theme.of(context);
-    final accent = AppColors.getInteractiveAccent(
-      theme.brightness,
-      theme.colorScheme.primary,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(l10n.get('reminder_day'), style: theme.textTheme.labelSmall),
-        const SizedBox(height: SheepSpacing.sm),
-        InkWell(
-          onTap: () => _showDayPicker(l10n),
-          borderRadius: BorderRadius.circular(SheepRadius.xl),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.getAccentSurface(theme.brightness, accent),
-              borderRadius: BorderRadius.circular(SheepRadius.xl),
-              border: Border.all(color: accent.withOpacity(0.4)),
-            ),
-            child: Row(
-              children: [
-                Icon(LineIcons.calendar, color: accent, size: 20),
-                const SizedBox(width: 12),
-                Text(
-                  l10n.get(
-                    'day_of_month',
-                    params: {'day': _selectedReminderDay.toString()},
-                  ),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                Icon(Icons.keyboard_arrow_down, color: accent),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return _buildPickerField(
+      label: l10n.get(
+        'day_of_month',
+        params: {'day': _selectedReminderDay.toString()},
+      ),
+      pickerId: 'reminder-day',
+      onTap: () => _openPicker('reminder-day', () => _showDayPicker(l10n)),
     );
   }
 
-  void _showDayPicker(L10n l10n) {
+  Future<void> _showDayPicker(L10n l10n) async {
     final theme = Theme.of(context);
     final dayController = FixedExtentScrollController(
       initialItem: _selectedReminderDay - 1,
     );
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
@@ -548,54 +512,71 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Widget _buildGoalDatePicker(L10n l10n) {
-    final theme = Theme.of(context);
-    final accent = AppColors.getInteractiveAccent(
-      theme.brightness,
-      theme.colorScheme.primary,
-    );
     final monthLabel = l10n.locale.languageCode == 'vi'
         ? 'Tháng ${_selectedTargetMonth.toString().padLeft(2, '0')}'
         : DateFormat.MMMM(
             l10n.locale.languageCode,
           ).format(DateTime(2024, _selectedTargetMonth));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(l10n.get('target_date'), style: theme.textTheme.labelSmall),
-        const SizedBox(height: SheepSpacing.sm),
-        InkWell(
-          onTap: () => _showMonthYearPicker(l10n),
-          borderRadius: BorderRadius.circular(SheepRadius.xl),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.getAccentSurface(theme.brightness, accent),
-              borderRadius: BorderRadius.circular(SheepRadius.xl),
-              border: Border.all(color: accent.withOpacity(0.4)),
-            ),
-            child: Row(
-              children: [
-                Icon(LineIcons.calendar, color: accent, size: 20),
-                const SizedBox(width: 12),
-                Text(
-                  '$monthLabel, $_selectedTargetYear',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                Icon(Icons.keyboard_arrow_down, color: accent),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return _buildPickerField(
+      label: '$monthLabel, $_selectedTargetYear',
+      pickerId: 'target-date',
+      onTap: () => _openPicker('target-date', () => _showMonthYearPicker(l10n)),
     );
   }
 
-  void _showMonthYearPicker(L10n l10n) {
+  Widget _buildPickerField({
+    required String label,
+    required String pickerId,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final isActive = _activePicker == pickerId;
+    final accent = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SheepRadius.xl),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.getSurface(theme.brightness).withOpacity(0.5),
+          borderRadius: BorderRadius.circular(SheepRadius.xl),
+          border: Border.all(
+            color: isActive ? accent : AppColors.getBorder(theme.brightness),
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(LineIcons.calendar, color: theme.hintColor, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontSize: SheepTypeScale.item,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.keyboard_arrow_down, color: theme.hintColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openPicker(
+    String pickerId,
+    Future<void> Function() openPicker,
+  ) async {
+    setState(() => _activePicker = pickerId);
+    await openPicker();
+    if (mounted) setState(() => _activePicker = null);
+  }
+
+  Future<void> _showMonthYearPicker(L10n l10n) async {
     final theme = Theme.of(context);
     final now = DateTime.now();
     final years = List.generate(2100 - now.year + 1, (i) => now.year + i);
@@ -608,7 +589,7 @@ class _CategoryFormState extends State<CategoryForm> {
       initialItem: years.indexOf(_selectedTargetYear),
     );
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
@@ -789,10 +770,7 @@ class _CategoryFormState extends State<CategoryForm> {
       decoration: BoxDecoration(
         color: AppColors.getSurface(theme.brightness).withOpacity(0.5),
         borderRadius: BorderRadius.circular(SheepRadius.xl),
-        border: Border.all(
-          color: theme.dividerColor.withOpacity(0.1),
-          width: 1.2,
-        ),
+        border: Border.all(color: AppColors.getBorder(theme.brightness)),
       ),
       child: TextField(
         controller: controller,
@@ -827,23 +805,20 @@ class _CategoryFormState extends State<CategoryForm> {
   Widget _buildColorPicker() {
     final theme = Theme.of(context);
     return Container(
-      height: 145,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(SheepRadius.xl),
         border: Border.all(color: theme.dividerColor),
       ),
-      child: GridView.builder(
+      child: GridView.count(
         padding: EdgeInsets.zero,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 6,
-          crossAxisSpacing: 15,
-          mainAxisSpacing: 15,
-        ),
-        itemCount: _vibrantColors.length,
-        itemBuilder: (ctx, i) {
-          final color = _vibrantColors[i];
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        crossAxisCount: 6,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        children: _vibrantColors.map((color) {
           final isSelected = _selectedColor.value == color.value;
           return GestureDetector(
             onTap: () {
@@ -865,54 +840,73 @@ class _CategoryFormState extends State<CategoryForm> {
                   : null,
             ),
           );
-        },
+        }).toList(),
       ),
     );
   }
 
-  Widget _buildIconPicker() {
+  void _showIconPicker() {
     final theme = Theme.of(context);
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 6,
-          crossAxisSpacing: 15,
-          mainAxisSpacing: 15,
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: 360,
+        padding: const EdgeInsets.all(SheepSpacing.xl),
+        decoration: BoxDecoration(
+          color: AppColors.getSurface(theme.brightness),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
         ),
-        itemCount: _iconList.length,
-        itemBuilder: (context, index) {
-          final icon = _iconList[index];
-          final isSelected = _selectedIcon == icon.codePoint;
-          final accent = _effectiveSelectedColor(context);
-          final onAccent = AppColors.getOnAccent(theme.brightness, accent);
-          return GestureDetector(
-            onTap: () => setState(() => _selectedIcon = icon.codePoint),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                color: isSelected ? accent : theme.cardColor,
-                shape: BoxShape.circle,
-                border: isSelected
-                    ? null
-                    : Border.all(color: theme.dividerColor),
-              ),
-              child: Icon(
-                icon,
-                color: isSelected
-                    ? onAccent
-                    : theme.textTheme.labelSmall?.color,
-                size: 20,
+        child: Column(
+          children: [
+            _buildDragHandle(),
+            const SizedBox(height: SheepSpacing.xl),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 6,
+                  crossAxisSpacing: SheepSpacing.md,
+                  mainAxisSpacing: SheepSpacing.md,
+                ),
+                itemCount: _iconList.length,
+                itemBuilder: (context, index) {
+                  final icon = _iconList[index];
+                  final isSelected = _selectedIcon == icon.codePoint;
+                  final accent = _effectiveSelectedColor(context);
+                  final onAccent = AppColors.getOnAccent(
+                    theme.brightness,
+                    accent,
+                  );
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedIcon = icon.codePoint);
+                      Navigator.pop(ctx);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: isSelected ? accent : theme.cardColor,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? null
+                            : Border.all(color: theme.dividerColor),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: isSelected
+                            ? onAccent
+                            : theme.textTheme.labelSmall?.color,
+                        size: 18,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }

@@ -13,23 +13,30 @@ import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
-import '../widgets/category/transaction_history_sheet.dart';
 import '../../core/utils/l10n.dart';
 
 class CategoryTab extends StatefulWidget {
-  const CategoryTab({super.key});
+  final int initialTypeIndex;
+  final bool showTypeToggle;
+
+  const CategoryTab({
+    super.key,
+    this.initialTypeIndex = 0,
+    this.showTypeToggle = true,
+  });
 
   @override
   State<CategoryTab> createState() => _CategoryTabState();
 }
 
 class _CategoryTabState extends State<CategoryTab> {
-  int _selectedTypeIndex = 0; // 0: expense, 1: income, 2: savings
+  late int _selectedTypeIndex; // 0: expense, 1: income, 2: savings
   late PageController _pageController;
 
   @override
   void initState() {
     super.initState();
+    _selectedTypeIndex = widget.initialTypeIndex;
     _pageController = PageController(initialPage: _selectedTypeIndex);
   }
 
@@ -43,34 +50,39 @@ class _CategoryTabState extends State<CategoryTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // --- 1. MODE TOGGLE ---
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: SheepTripleToggle(
-            selectedIndex: _selectedTypeIndex,
-            controller: _pageController,
-            onChanged: (val) {
-              _pageController.animateToPage(
-                val,
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeInOutCubic,
-              );
-            },
+        if (widget.showTypeToggle)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: SheepTripleToggle(
+              selectedIndex: _selectedTypeIndex,
+              controller: _pageController,
+              labels: [
+                L10n.of(context).get('expense'),
+                L10n.of(context).get('income'),
+              ],
+              onChanged: (val) {
+                _pageController.animateToPage(
+                  val,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOutCubic,
+                );
+              },
+            ),
           ),
-        ),
 
         Expanded(
-          child: PageView(
-            controller: _pageController,
-            onPageChanged: (val) {
-              setState(() => _selectedTypeIndex = val);
-            },
-            children: [
-              _buildCategoryList(0), // Expense
-              _buildCategoryList(1), // Income
-              _buildCategoryList(2), // Savings
-            ],
-          ),
+          child: widget.showTypeToggle
+              ? PageView(
+                  controller: _pageController,
+                  onPageChanged: (val) {
+                    setState(() => _selectedTypeIndex = val);
+                  },
+                  children: [
+                    _buildCategoryList(0), // Expense
+                    _buildCategoryList(1), // Income
+                  ],
+                )
+              : _buildCategoryList(_selectedTypeIndex),
         ),
       ],
     );
@@ -100,7 +112,12 @@ class _CategoryTabState extends State<CategoryTab> {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
+          padding: EdgeInsets.only(
+            top: widget.showTypeToggle ? 0 : SheepSpacing.lg,
+            bottom: 120,
+            left: 16,
+            right: 16,
+          ),
           itemCount: categories.length,
           itemBuilder: (context, index) {
             final cat = categories[index];
@@ -161,8 +178,7 @@ class _CategoryTabState extends State<CategoryTab> {
                     ? AppColors.savings.withOpacity(0.05)
                     : null,
                 child: InkWell(
-                  onTap: () =>
-                      _showTransactionHistory(context, cat, allTransactions),
+                  onTap: () => _showCategoryForm(context, cat),
                   borderRadius: BorderRadius.circular(SheepRadius.lg),
                   child: Container(
                     decoration: BoxDecoration(
@@ -238,8 +254,8 @@ class _CategoryTabState extends State<CategoryTab> {
                               decoration: BoxDecoration(
                                 color: AppColors.savings,
                                 borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(14),
-                                  bottomLeft: Radius.circular(10),
+                                  topRight: Radius.circular(12),
+                                  bottomLeft: Radius.circular(12),
                                 ),
                               ),
                               child: Text(
@@ -267,9 +283,9 @@ class _CategoryTabState extends State<CategoryTab> {
   Widget _buildEmptyState(BuildContext context, int typeIndex) {
     final l10n = L10n.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         SheepSpacing.page,
-        0,
+        widget.showTypeToggle ? 0 : SheepSpacing.lg,
         SheepSpacing.page,
         24,
       ),
@@ -300,14 +316,7 @@ class _CategoryTabState extends State<CategoryTab> {
 
     if (cat.colorValue != null) color = Color(cat.colorValue!);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(cat.iconData, color: color, size: 24),
-    );
+    return SheepCategoryIcon(icon: cat.iconData, color: color);
   }
 
   Widget _buildInfo(CategoryModel cat, double spent, int typeIndex) {
@@ -437,23 +446,6 @@ class _CategoryTabState extends State<CategoryTab> {
     );
   }
 
-  void _showTransactionHistory(
-    BuildContext context,
-    CategoryModel cat,
-    List<Transaction> txs,
-  ) {
-    final catTxs = txs.where((tx) => tx.categoryId == cat.id).toList();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) =>
-          TransactionHistorySheet(category: cat, transactions: catTxs),
-    );
-  }
-
   void _showCategoryForm(BuildContext context, CategoryModel? category) {
     showModalBottomSheet(
       context: context,
@@ -463,7 +455,10 @@ class _CategoryTabState extends State<CategoryTab> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => CategoryForm(category: category),
+      builder: (_) => CategoryForm(
+        category: category,
+        fixedTypeIndex: widget.showTypeToggle ? null : widget.initialTypeIndex,
+      ),
     );
   }
 

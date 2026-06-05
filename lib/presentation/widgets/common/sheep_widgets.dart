@@ -114,6 +114,33 @@ class SheepCard extends StatelessWidget {
   }
 }
 
+class SheepCategoryIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final double size;
+
+  const SheepCategoryIcon({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.size = 40,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(SheepRadius.md),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Icon(icon, color: color, size: size * 0.5),
+    );
+  }
+}
+
 class SheepSectionTitle extends StatelessWidget {
   final String title;
   final EdgeInsetsGeometry padding;
@@ -292,11 +319,13 @@ class SheepTransactionCard extends StatelessWidget {
   final String dateText;
   final String amountText;
   final Color amountColor;
-  final String badgeText;
+  final String? badgeText;
+  final IconData? amountIcon;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry? margin;
   final Color? iconColor;
   final Color? iconBackground;
+  final Color? iconBorderColor;
 
   const SheepTransactionCard({
     super.key,
@@ -305,17 +334,20 @@ class SheepTransactionCard extends StatelessWidget {
     required this.dateText,
     required this.amountText,
     required this.amountColor,
-    required this.badgeText,
+    this.badgeText,
+    this.amountIcon,
     this.onTap,
     this.margin,
     this.iconColor,
     this.iconBackground,
+    this.iconBorderColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final borderColor = AppColors.getBorder(brightness);
+    final resolvedIconColor = iconColor ?? AppColors.getTextPrimary(brightness);
     return Container(
       margin: margin ?? const EdgeInsets.only(bottom: SheepSpacing.itemGap),
       decoration: BoxDecoration(
@@ -326,135 +358,154 @@ class SheepTransactionCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(SheepRadius.lg),
         onTap: onTap,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
+        child: SizedBox(
+          height: 64,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color:
+                        iconBackground ?? resolvedIconColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(SheepRadius.md),
+                    border: Border.all(
                       color:
-                          iconBackground ??
-                          AppColors.getSubtleSurface(brightness),
-                      borderRadius: BorderRadius.circular(SheepRadius.lg),
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 24,
-                      color: iconColor ?? AppColors.getTextPrimary(brightness),
+                          iconBorderColor ?? resolvedIconColor.withOpacity(0.3),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: SheepTextStyles.itemTitle(context).copyWith(
-                            fontSize: SheepTypeScale.title,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                  child: Icon(icon, size: 17, color: resolvedIconColor),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: SheepTextStyles.itemTitle(context).copyWith(
+                          fontSize: SheepTypeScale.item,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(height: 4),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (dateText.isNotEmpty) ...[
+                        const SizedBox(height: 2),
                         Text(
                           dateText,
                           style: SheepTextStyles.itemMeta(
                             context,
-                          ).copyWith(fontSize: SheepTypeScale.item),
+                          ).copyWith(fontSize: SheepTypeScale.body),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF7A7A7A),
-                    size: 30,
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: borderColor)),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    amountText,
-                    style: TextStyle(
-                      fontSize: SheepTypeScale.amount,
-                      fontWeight: FontWeight.w600,
-                      color: amountColor,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.getSurface(brightness),
-                      borderRadius: BorderRadius.circular(SheepRadius.pill),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Text(
-                      badgeText,
-                      style: SheepTextStyles.itemMeta(context).copyWith(
-                        color: AppColors.getTextPrimary(
-                          Theme.of(context).brightness,
+                ),
+                const SizedBox(width: 10),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    if (amountIcon != null) ...[
+                      Icon(amountIcon, size: 16, color: amountColor),
+                      const SizedBox(width: 3),
+                    ],
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 128),
+                      child: Text(
+                        amountText,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontSize: SheepTypeScale.item,
+                          fontWeight: FontWeight.w700,
+                          color: amountColor,
+                          letterSpacing: 0,
                         ),
-                        fontSize: SheepTypeScale.body,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
+class SheepTransactionTypeVisuals {
+  final IconData icon;
+  final Color color;
+
+  const SheepTransactionTypeVisuals._({
+    required this.icon,
+    required this.color,
+  });
+
+  static SheepTransactionTypeVisuals fromTypeIndex(int typeIndex) {
+    if (typeIndex == 1) {
+      return const SheepTransactionTypeVisuals._(
+        icon: Icons.add_rounded,
+        color: AppColors.income,
+      );
+    }
+    if (typeIndex == 2) {
+      return const SheepTransactionTypeVisuals._(
+        icon: Icons.arrow_upward_rounded,
+        color: AppColors.savings,
+      );
+    }
+    return const SheepTransactionTypeVisuals._(
+      icon: Icons.remove_rounded,
+      color: AppColors.expense,
+    );
+  }
+
+  Color get backgroundColor => color.withOpacity(0.1);
+
+  Color get borderColor => color.withOpacity(0.22);
+}
+
 class SheepDatePill extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
-  final double? maxWidth;
+  final Color? backgroundColor;
+  final BoxBorder? border;
 
   const SheepDatePill({
     super.key,
     required this.label,
     required this.onTap,
-    this.maxWidth,
+    this.backgroundColor,
+    this.border,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final pill = IntrinsicWidth(
+    return IntrinsicWidth(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(SheepRadius.xl),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: theme.brightness == Brightness.light
-                ? Colors.white
-                : AppColors.getSurface(theme.brightness),
+            color:
+                backgroundColor ??
+                (theme.brightness == Brightness.light
+                    ? Colors.white
+                    : AppColors.getSurface(theme.brightness)),
             borderRadius: BorderRadius.circular(SheepRadius.xl),
+            border: border,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),
@@ -463,26 +514,22 @@ class SheepDatePill extends StatelessWidget {
               ),
             ],
           ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppColors.getTextPrimary(theme.brightness),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: AppColors.getTextPrimary(theme.brightness),
+              ),
             ),
           ),
         ),
       ),
-    );
-
-    if (maxWidth == null) return pill;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth!),
-      child: pill,
     );
   }
 }
@@ -687,13 +734,7 @@ class SheepDatePicker {
                       return InkWell(
                         borderRadius: BorderRadius.circular(SheepRadius.pill),
                         onTap: selectable
-                            ? () => setModalState(() {
-                                tempDate = date;
-                                visibleDateMonth = DateTime(
-                                  date.year,
-                                  date.month,
-                                );
-                              })
+                            ? () => Navigator.pop(context, date)
                             : null,
                         child: Container(
                           alignment: Alignment.center,
@@ -727,14 +768,6 @@ class SheepDatePicker {
                         ),
                       );
                     },
-                  ),
-                  const SizedBox(height: SheepSpacing.lg),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, tempDate),
-                      child: Text(l10n.save),
-                    ),
                   ),
                 ],
               );

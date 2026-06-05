@@ -4,25 +4,19 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/utils/category_icon_resolver.dart';
 import '../../core/utils/currency_util.dart';
 import '../../core/utils/l10n.dart';
-import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
+import '../../data/models/transaction.dart';
+import '../widgets/category/transaction_history_sheet.dart';
+import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_widgets.dart';
 
 class StatsTab extends StatefulWidget {
   final DateTimeRange selectedRange;
-  final int selectedTypeIndex;
-  final Widget typeFilter;
 
-  const StatsTab({
-    super.key,
-    required this.selectedRange,
-    required this.selectedTypeIndex,
-    required this.typeFilter,
-  });
+  const StatsTab({super.key, required this.selectedRange});
 
   @override
   State<StatsTab> createState() => _StatsTabState();
@@ -31,160 +25,190 @@ class StatsTab extends StatefulWidget {
 class _StatEntry {
   final CategoryModel category;
   double amount;
+
   _StatEntry(this.category, this.amount);
 }
 
 class _StatsTabState extends State<StatsTab> {
+  int _selectedTypeIndex = 0;
   int _touchedIndex = -1;
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: Hive.box<AppSettings>(kSettingsBox).listenable(),
-      builder: (context, settingsBox, _) {
-        final settings = settingsBox.get('current') ?? AppSettings();
-        final l10n = L10n.of(context);
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        Hive.box<AppSettings>(kSettingsBox).listenable(),
+        Hive.box<Transaction>(kMoneyBox).listenable(),
+        Hive.box<CategoryModel>(kCatBox).listenable(),
+      ]),
+      builder: (context, _) {
+        final settings =
+            Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+        final catBox = Hive.box<CategoryModel>(kCatBox);
+        final rangeTransactions = Hive.box<Transaction>(kMoneyBox).values.where(
+          (tx) =>
+              !tx.date.isBefore(widget.selectedRange.start) &&
+              !tx.date.isAfter(widget.selectedRange.end),
+        );
 
-        return ValueListenableBuilder(
-          valueListenable: Hive.box<Transaction>(kMoneyBox).listenable(),
-          builder: (context, box, _) {
-            return ValueListenableBuilder(
-              valueListenable: Hive.box<CategoryModel>(kCatBox).listenable(),
-              builder: (context, catBox, _) {
-                final allTransactions = box.values.cast<Transaction>().toList();
+        final totals = [0.0, 0.0];
+        final transactionCounts = [0, 0];
+        final statsMap = <String, _StatEntry>{};
 
-                final filteredTransactions = allTransactions.where(
-                  (tx) =>
-                      tx.date.isAfter(
-                        widget.selectedRange.start.subtract(
-                          const Duration(seconds: 1),
-                        ),
-                      ) &&
-                      tx.date.isBefore(
-                        widget.selectedRange.end.add(
-                          const Duration(seconds: 1),
-                        ),
+        for (final category in catBox.values.where(
+          (cat) => cat.effectiveTypeIndex == _selectedTypeIndex,
+        )) {
+          statsMap[category.id] = _StatEntry(category, 0);
+        }
+
+        for (final tx in rangeTransactions) {
+          final category = catBox.values.firstWhere(
+            (cat) => cat.id == tx.categoryId,
+            orElse: () => CategoryModel(
+              id: 'unknown-${tx.isExpense}',
+              name: L10n.of(context).get('other'),
+              iconCode: Icons.help_outline.codePoint,
+              isExpense: tx.isExpense,
+              typeIndex: tx.isExpense ? 0 : 1,
+            ),
+          );
+          final typeIndex = category.effectiveTypeIndex;
+          if (typeIndex > 1) continue;
+          totals[typeIndex] += tx.amount;
+          transactionCounts[typeIndex]++;
+          if (typeIndex != _selectedTypeIndex) continue;
+
+          statsMap.update(
+            category.id,
+            (entry) => entry..amount += tx.amount,
+            ifAbsent: () => _StatEntry(category, tx.amount),
+          );
+        }
+
+        final stats = statsMap.values.toList()
+          ..sort((a, b) => b.amount.compareTo(a.amount));
+        final selectedTotal = totals[_selectedTypeIndex];
+        final selectedTransactionCount = transactionCounts[_selectedTypeIndex];
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            SheepSpacing.page,
+            8,
+            SheepSpacing.page,
+            24,
+          ),
+          child: Column(
+            children: [
+              SheepTypeToggle(
+                isExpense: _selectedTypeIndex == 0,
+                onChanged: (isExpense) => setState(() {
+                  _selectedTypeIndex = isExpense ? 0 : 1;
+                  _touchedIndex = -1;
+                }),
+              ),
+              const SizedBox(height: SheepSpacing.lg),
+              Expanded(
+                child: _selectedTypeIndex == 0
+                    ? _buildExpenseCard(
+                        context,
+                        stats,
+                        selectedTotal,
+                        selectedTransactionCount,
+                        settings,
+                      )
+                    : _buildIncomeCard(
+                        context,
+                        stats,
+                        selectedTotal,
+                        selectedTransactionCount,
+                        settings,
                       ),
-                );
-
-                Map<String, _StatEntry> statsMap = {};
-                for (var tx in filteredTransactions) {
-                  final cat = catBox.values.firstWhere(
-                    (c) => c.id == tx.categoryId,
-                    orElse: () => CategoryModel(
-                      id: 'unknown',
-                      name: l10n.get('other'),
-                      iconCode: 58263,
-                      isExpense: tx.isExpense,
-                      typeIndex: tx.isExpense ? 0 : 1,
-                    ),
-                  );
-
-                  if (cat.effectiveTypeIndex == widget.selectedTypeIndex) {
-                    if (statsMap.containsKey(cat.id)) {
-                      statsMap[cat.id]!.amount += tx.amount;
-                    } else {
-                      statsMap[cat.id] = _StatEntry(cat, tx.amount);
-                    }
-                  }
-                }
-
-                double displayTotal = statsMap.values.fold(
-                  0,
-                  (sum, item) => sum + item.amount,
-                );
-                var sortedStats = statsMap.values.toList()
-                  ..sort((a, b) => b.amount.compareTo(a.amount));
-
-                Widget buildStatsCard({required Widget child}) {
-                  final brightness = Theme.of(context).brightness;
-                  return Container(
-                    margin: SheepSpacing.pageHorizontal,
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 24,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.getSurface(brightness),
-                      borderRadius: BorderRadius.circular(SheepRadius.xl),
-                      border: Border.all(
-                        color: AppColors.getBorder(brightness),
-                      ),
-                    ),
-                    child: child,
-                  );
-                }
-
-                if (displayTotal == 0) {
-                  return SizedBox.expand(
-                    child: buildStatsCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          widget.typeFilter,
-                          Expanded(child: _buildEmptyState(l10n)),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: Column(
-                    children: [
-                      buildStatsCard(
-                        child: Column(
-                          children: [
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: widget.typeFilter,
-                            ),
-                            const SizedBox(height: 8),
-                            _buildPieChart(
-                              sortedStats,
-                              displayTotal,
-                              settings.currencyCode,
-                              settings.hideAmounts,
-                            ),
-                            const SizedBox(height: 32),
-                            Divider(
-                              height: 1,
-                              color: AppColors.getBorder(
-                                Theme.of(context).brightness,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ...sortedStats.map(
-                              (stat) => _buildStatRow(
-                                stat,
-                                displayTotal,
-                                settings.currencyCode,
-                                settings.hideAmounts,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildPieChart(
+  Widget _buildExpenseCard(
+    BuildContext context,
     List<_StatEntry> stats,
     double total,
-    String currency,
-    bool hideAmounts,
+    int transactionCount,
+    AppSettings settings,
   ) {
+    return SheepCard(
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            _buildPieChart(context, stats, total, settings),
+            const SizedBox(height: 12),
+            Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
+            const SizedBox(height: 8),
+            _buildTransactionCount(context, transactionCount),
+            const SizedBox(height: 8),
+            ...stats.map(
+              (stat) => _buildProgressRow(context, stat, total, settings),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIncomeCard(
+    BuildContext context,
+    List<_StatEntry> stats,
+    double total,
+    int transactionCount,
+    AppSettings settings,
+  ) {
+    return SheepCard(
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            _buildPieChart(context, stats, total, settings),
+            const SizedBox(height: 12),
+            Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
+            const SizedBox(height: 8),
+            _buildTransactionCount(context, transactionCount),
+            const SizedBox(height: 8),
+            ...stats.map(
+              (stat) => _buildProgressRow(context, stat, total, settings),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionCount(BuildContext context, int count) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        L10n.of(
+          context,
+        ).get('num_transactions', params: {'count': count.toString()}),
+        style: SheepTextStyles.itemMeta(context),
+      ),
+    );
+  }
+
+  Widget _buildPieChart(
+    BuildContext context,
+    List<_StatEntry> stats,
+    double total,
+    AppSettings settings,
+  ) {
+    final touchedIndex = _touchedIndex >= 0 && _touchedIndex < stats.length
+        ? _touchedIndex
+        : -1;
+    final hasTotal = total > 0;
     return SizedBox(
       height: 220,
       child: Stack(
@@ -194,39 +218,38 @@ class _StatsTabState extends State<StatsTab> {
             PieChartData(
               sectionsSpace: 2,
               centerSpaceRadius: 75,
-              sections: List.generate(stats.length, (i) {
-                final isTouched = i == _touchedIndex;
-                final stat = stats[i];
-                final catColor = stat.category.colorValue != null
-                    ? Color(stat.category.colorValue!)
-                    : AppColors.getTextPrimary(Theme.of(context).brightness);
-
-                double visualValue = stat.amount;
-                double minVisualThreshold = total * 0.02;
-                if (visualValue < minVisualThreshold) {
-                  visualValue = minVisualThreshold;
+              sections: List.generate(stats.isEmpty ? 1 : stats.length, (
+                index,
+              ) {
+                if (stats.isEmpty) {
+                  return PieChartSectionData(
+                    color: AppColors.getBorder(Theme.of(context).brightness),
+                    value: 1,
+                    title: '',
+                    radius: 22,
+                  );
                 }
-
+                final stat = stats[index];
                 return PieChartSectionData(
-                  color: catColor,
-                  value: visualValue,
+                  color: _categoryColor(stat.category),
+                  value: !hasTotal
+                      ? 1
+                      : stat.amount < total * 0.02
+                      ? total * 0.02
+                      : stat.amount,
                   title: '',
-                  radius: isTouched ? 28 : 22,
+                  radius: index == touchedIndex ? 28 : 22,
                 );
               }),
               pieTouchData: PieTouchData(
-                touchCallback: (event, response) {
-                  setState(() {
-                    if (!event.isInterestedForInteractions ||
-                        response == null ||
-                        response.touchedSection == null) {
-                      _touchedIndex = -1;
-                      return;
-                    }
-                    _touchedIndex =
-                        response.touchedSection!.touchedSectionIndex;
-                  });
-                },
+                touchCallback: (event, response) => setState(() {
+                  if (!event.isInterestedForInteractions ||
+                      response?.touchedSection == null) {
+                    _touchedIndex = -1;
+                    return;
+                  }
+                  _touchedIndex = response!.touchedSection!.touchedSectionIndex;
+                }),
               ),
             ),
           ),
@@ -235,29 +258,25 @@ class _StatsTabState extends State<StatsTab> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_touchedIndex != -1) ...[
+                if (touchedIndex != -1) ...[
                   Text(
-                    stats[_touchedIndex].category.name,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.getTextSecondary(
-                        Theme.of(context).brightness,
-                      ),
-                    ),
-                    textAlign: TextAlign.center,
+                    stats[touchedIndex].category.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: SheepTextStyles.itemMeta(
+                      context,
+                    ).copyWith(fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                 ],
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     CurrencyUtil.formatDisplayAmount(
-                      _touchedIndex != -1 ? stats[_touchedIndex].amount : total,
-                      currency,
-                      isHidden: hideAmounts,
+                      touchedIndex == -1 ? total : stats[touchedIndex].amount,
+                      settings.currencyCode,
+                      isHidden: settings.hideAmounts,
                     ),
                     style: TextStyle(
                       fontSize: 20,
@@ -276,77 +295,95 @@ class _StatsTabState extends State<StatsTab> {
     );
   }
 
-  Widget _buildStatRow(
+  Widget _buildProgressRow(
+    BuildContext context,
     _StatEntry stat,
     double total,
-    String currency,
-    bool hideAmounts,
+    AppSettings settings,
   ) {
-    final percent = (stat.amount / total * 100).toStringAsFixed(1);
-    final brightness = Theme.of(context).brightness;
-    final catColor = stat.category.colorValue != null
-        ? Color(stat.category.colorValue!)
-        : AppColors.getTextPrimary(brightness);
-
+    final color = _categoryColor(stat.category);
+    final progress = total > 0 ? stat.amount / total : 0.0;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: SheepSpacing.lg),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: catColor.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(SheepRadius.md),
-            ),
-            child: Icon(
-              resolveCategoryIcon(stat.category.iconCode),
-              size: SheepTypeScale.amount,
-              color: catColor,
-            ),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: InkWell(
+        onTap: () => _showTransactionHistory(context, stat.category, total),
+        borderRadius: BorderRadius.circular(SheepRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  SheepCategoryIcon(icon: stat.category.iconData, color: color),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      stat.category.name,
+                      style: SheepTextStyles.itemTitle(context),
+                    ),
+                  ),
+                  Text(
+                    CurrencyUtil.formatDisplayAmount(
+                      stat.amount,
+                      settings.currencyCode,
+                      isHidden: settings.hideAmounts,
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right_rounded, size: 20),
+                ],
+              ),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0),
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(999),
+                backgroundColor: color.withOpacity(0.12),
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
+            ],
           ),
-          const SizedBox(width: SheepSpacing.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  stat.category.name,
-                  style: SheepTextStyles.itemTitle(context),
-                ),
-                Text('$percent%', style: SheepTextStyles.itemMeta(context)),
-              ],
-            ),
-          ),
-          Text(
-            CurrencyUtil.formatDisplayAmount(
-              stat.amount,
-              currency,
-              isHidden: hideAmounts,
-            ),
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: SheepTypeScale.bodyLarge,
-              color: AppColors.getTextPrimary(brightness),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildEmptyState(L10n l10n) {
-    String message;
-    switch (widget.selectedTypeIndex) {
-      case 0:
-        message = l10n.get('no_data_expense');
-        break;
-      case 1:
-        message = l10n.get('no_data_income');
-        break;
-      default:
-        message = l10n.get('no_data_savings');
-    }
+  void _showTransactionHistory(
+    BuildContext context,
+    CategoryModel category,
+    double typeTotal,
+  ) {
+    final transactions =
+        Hive.box<Transaction>(kMoneyBox).values
+            .where(
+              (tx) =>
+                  tx.categoryId == category.id &&
+                  !tx.date.isBefore(widget.selectedRange.start) &&
+                  !tx.date.isAfter(widget.selectedRange.end),
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
-    return SheepEmptyState(message: message);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => TransactionHistorySheet(
+        category: category,
+        transactions: transactions,
+        typeTotal: typeTotal,
+      ),
+    );
+  }
+
+  Color _categoryColor(CategoryModel category) {
+    return category.colorValue != null
+        ? Color(category.colorValue!)
+        : _selectedTypeIndex == 0
+        ? AppColors.expense
+        : AppColors.income;
   }
 }

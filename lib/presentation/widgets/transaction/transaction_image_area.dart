@@ -144,11 +144,13 @@ class TransactionImageArea extends StatelessWidget {
       child: Center(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 64),
-          child: Icon(
-            selectedCategory?.iconData ?? LineIcons.image,
-            size: 46,
-            color: Colors.white,
-          ),
+          child: hasCategory
+              ? SheepCategoryIcon(
+                  icon: selectedCategory!.iconData,
+                  color: Colors.white,
+                  size: 64,
+                )
+              : const Icon(LineIcons.image, size: 46, color: Colors.white),
         ),
       ),
     );
@@ -157,19 +159,17 @@ class TransactionImageArea extends StatelessWidget {
   Widget _buildActionBlock(L10n l10n) {
     final bool isZeroValue = amountController.text.isEmpty;
     final bool hasCategory = selectedCategory != null;
+    final typeVisuals = SheepTransactionTypeVisuals.fromTypeIndex(
+      selectedIndex,
+    );
 
-    // COLOR LOGIC: Strictly white until a category is selected to avoid misleading red/green colors
+    // Keep the amount state neutral until a category is selected.
     Color contentColor;
     if (!hasCategory) {
       contentColor = isZeroValue ? Colors.white24 : Colors.white;
     } else {
-      contentColor = isZeroValue
-          ? Colors.white24
-          : (selectedIndex == 0
-                ? const Color(0xFFFF8A80)
-                : (selectedIndex == 1
-                      ? const Color(0xFFB9F6CA)
-                      : const Color(0xFFBBDEFB)));
+      final typeColor = typeVisuals.color;
+      contentColor = isZeroValue ? typeColor.withOpacity(0.45) : typeColor;
     }
 
     return Container(
@@ -186,24 +186,16 @@ class TransactionImageArea extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (hasCategory) ...[
-                  Text(
-                    selectedIndex == 1 ? '+' : '-',
-                    style: TextStyle(
-                      color: contentColor,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Icon(typeVisuals.icon, color: contentColor, size: 30),
                   const SizedBox(width: 16),
                 ],
                 IntrinsicWidth(
                   child: TextField(
                     controller: amountController,
-                    autofocus: true,
+                    autofocus: false,
                     showCursor: false,
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,

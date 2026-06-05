@@ -13,7 +13,6 @@ import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
 import '../widgets/transaction_form.dart';
 import '../../core/theme/app_colors.dart';
-import 'stats_tab.dart';
 import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_dialogs.dart';
@@ -28,8 +27,7 @@ class DiaryTab extends StatefulWidget {
 }
 
 class _DiaryTabState extends State<DiaryTab> {
-  int _selectedViewMode = 1; // 0: chart, 1: list, 2: image
-  int _selectedChartTypeIndex = 0;
+  int _selectedViewMode = 1; // 1: list, 2: image
   int? _selectedListTypeIndex; // null means all
   int? _selectedGalleryTypeIndex; // null means all
   @override
@@ -86,32 +84,7 @@ class _DiaryTabState extends State<DiaryTab> {
             final displayTxs = filterTransactions(_selectedListTypeIndex);
             final galleryTxs = filterTransactions(_selectedGalleryTypeIndex);
 
-            // 4. Summary Statistics (Exclude goals)
-            double totalIncome = 0;
-            double totalExpense = 0;
-            for (var tx in rangeTxs) {
-              final cat = catBox.values.firstWhere(
-                (c) => c.id == tx.categoryId,
-                orElse: () => CategoryModel(
-                  id: '',
-                  name: '?',
-                  iconCode: Icons.help.codePoint,
-                  isExpense: tx.isExpense,
-                  typeIndex: tx.isExpense ? 0 : 1,
-                ),
-              );
-
-              // Skip goals in summary
-              if (cat.effectiveTypeIndex == 2) continue;
-
-              if (cat.effectiveTypeIndex == 0) {
-                totalExpense += tx.amount;
-              } else {
-                totalIncome += tx.amount;
-              }
-            }
-
-            // 5. Group by date
+            // 4. Group by date
             Map<String, List<Transaction>> grouped = {};
             for (var tx in displayTxs) {
               final dayKey = DateFormat('yyyy-MM-dd').format(tx.date);
@@ -137,15 +110,12 @@ class _DiaryTabState extends State<DiaryTab> {
                   SheepSpacing.page,
                   12,
                 ),
-                child: SheepTripleToggle(
-                  selectedIndex: _selectedViewMode,
-                  labels: [
-                    l10n.get('chart_view'),
-                    l10n.get('list_view'),
-                    l10n.get('image_view'),
-                  ],
-                  onChanged: (index) =>
-                      setState(() => _selectedViewMode = index),
+                child: SheepTypeToggle(
+                  isExpense: _selectedViewMode == 1,
+                  leftLabel: l10n.get('list_view'),
+                  rightLabel: l10n.get('image_view'),
+                  onChanged: (isList) =>
+                      setState(() => _selectedViewMode = isList ? 1 : 2),
                 ),
               );
             }
@@ -156,13 +126,10 @@ class _DiaryTabState extends State<DiaryTab> {
                 l10n.get('income'),
                 l10n.get('savings'),
               ];
-              final selectedTypeIndex = _selectedViewMode == 0
-                  ? _selectedChartTypeIndex
-                  : _selectedViewMode == 1
+              final selectedTypeIndex = _selectedViewMode == 1
                   ? _selectedListTypeIndex
                   : _selectedGalleryTypeIndex;
-              final isCompactAllState =
-                  compactWhenAll && selectedTypeIndex == null;
+              const isCompactAllState = false;
 
               return PopupMenuTheme(
                 data: PopupMenuThemeData(
@@ -177,48 +144,57 @@ class _DiaryTabState extends State<DiaryTab> {
                   ),
                 ),
                 child: PopupMenuButton<int>(
-                  initialValue: selectedTypeIndex,
+                  initialValue: selectedTypeIndex ?? -1,
                   onSelected: (index) => setState(() {
-                    if (_selectedViewMode == 0) {
-                      _selectedChartTypeIndex = index;
-                    } else if (_selectedViewMode == 1) {
-                      _selectedListTypeIndex = _selectedListTypeIndex == index
-                          ? null
-                          : index;
+                    final nextTypeIndex = index == -1 ? null : index;
+                    if (_selectedViewMode == 1) {
+                      _selectedListTypeIndex = nextTypeIndex;
                     } else {
-                      _selectedGalleryTypeIndex =
-                          _selectedGalleryTypeIndex == index ? null : index;
+                      _selectedGalleryTypeIndex = nextTypeIndex;
                     }
                   }),
                   offset: const Offset(0, 38),
                   padding: EdgeInsets.zero,
-                  itemBuilder: (context) => List.generate(
-                    labels.length,
-                    (index) => PopupMenuItem<int>(
-                      value: index,
-                      height: 42,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              labels[index],
-                              style: SheepTextStyles.itemMeta(context).copyWith(
-                                color: AppColors.getTextPrimary(
-                                  theme.brightness,
-                                ),
-                                fontSize: SheepTypeScale.label,
-                                fontWeight: selectedTypeIndex == index
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
+                  itemBuilder: (context) =>
+                      [
+                            -1,
+                            ...List<int>.generate(
+                              labels.length,
+                              (index) => index,
+                            ),
+                          ]
+                          .map(
+                            (index) => PopupMenuItem<int>(
+                              value: index,
+                              height: 42,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      index == -1
+                                          ? l10n.get('all')
+                                          : labels[index],
+                                      style: SheepTextStyles.itemMeta(context)
+                                          .copyWith(
+                                            color: AppColors.getTextPrimary(
+                                              theme.brightness,
+                                            ),
+                                            fontSize: SheepTypeScale.label,
+                                            fontWeight:
+                                                (selectedTypeIndex ?? -1) ==
+                                                    index
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                          ),
+                                    ),
+                                  ),
+                                  if ((selectedTypeIndex ?? -1) == index)
+                                    const Icon(Icons.check_rounded, size: 16),
+                                ],
                               ),
                             ),
-                          ),
-                          if (selectedTypeIndex == index)
-                            const Icon(Icons.check_rounded, size: 16),
-                        ],
-                      ),
-                    ),
-                  ),
+                          )
+                          .toList(),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -260,72 +236,6 @@ class _DiaryTabState extends State<DiaryTab> {
               );
             }
 
-            Widget buildSummaryCard() {
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: SheepSpacing.page,
-                  vertical: 8,
-                ),
-                child: SheepCard(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      Text(
-                        isSingleDay
-                            ? l10n.get('daily_balance')
-                            : l10n.get('range_balance'),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.getTextSecondary(theme.brightness),
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        CurrencyUtil.formatDisplayAmount(
-                          totalIncome - totalExpense,
-                          settings.currencyCode,
-                          isHidden: settings.hideAmounts,
-                        ),
-                        style: Theme.of(context).textTheme.displayLarge
-                            ?.copyWith(
-                              color: (totalIncome - totalExpense) >= 0
-                                  ? AppColors.income
-                                  : AppColors.expense,
-                            ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatItem(
-                              l10n.income,
-                              totalIncome,
-                              AppColors.income,
-                              settings.currencyCode,
-                              isHidden: settings.hideAmounts,
-                            ),
-                          ),
-                          Container(
-                            width: 1,
-                            height: 20,
-                            color: theme.dividerColor,
-                          ),
-                          Expanded(
-                            child: _buildStatItem(
-                              l10n.expense,
-                              totalExpense,
-                              AppColors.expense,
-                              settings.currencyCode,
-                              isHidden: settings.hideAmounts,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
             Widget buildContentHeader(int count) {
               return Row(
                 children: [
@@ -341,21 +251,6 @@ class _DiaryTabState extends State<DiaryTab> {
               );
             }
 
-            if (_selectedViewMode == 0) {
-              return Column(
-                children: [
-                  buildViewModeSelector(),
-                  Expanded(
-                    child: StatsTab(
-                      selectedRange: widget.selectedRange,
-                      selectedTypeIndex: _selectedChartTypeIndex,
-                      typeFilter: buildTypeFilter(),
-                    ),
-                  ),
-                ],
-              );
-            }
-
             if (_selectedViewMode == 2) {
               return Column(
                 children: [
@@ -364,7 +259,7 @@ class _DiaryTabState extends State<DiaryTab> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
                         SheepSpacing.page,
-                        0,
+                        12,
                         SheepSpacing.page,
                         24,
                       ),
@@ -451,7 +346,6 @@ class _DiaryTabState extends State<DiaryTab> {
               return Column(
                 children: [
                   buildViewModeSelector(),
-                  buildSummaryCard(),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
@@ -490,8 +384,6 @@ class _DiaryTabState extends State<DiaryTab> {
                     physics: const BouncingScrollPhysics(),
                     child: Column(
                       children: [
-                        // --- SUMMARY CARD ---
-                        buildSummaryCard(),
                         Builder(
                           builder: (context) {
                             const topGap = 12.0;
@@ -581,10 +473,16 @@ class _DiaryTabState extends State<DiaryTab> {
                                                 final isLastDay =
                                                     dayIdx ==
                                                     sortedDayKeys.length - 1;
-                                                final isSavings =
-                                                    cat.effectiveTypeIndex == 2;
-                                                final isExpense =
-                                                    cat.effectiveTypeIndex == 0;
+                                                final typeVisuals =
+                                                    SheepTransactionTypeVisuals.fromTypeIndex(
+                                                      cat.effectiveTypeIndex,
+                                                    );
+                                                final catColor =
+                                                    cat.colorValue != null
+                                                    ? Color(cat.colorValue!)
+                                                    : AppColors.getTextPrimary(
+                                                        theme.brightness,
+                                                      );
 
                                                 return Dismissible(
                                                   key: ValueKey(tx.key),
@@ -651,31 +549,22 @@ class _DiaryTabState extends State<DiaryTab> {
                                                     icon: resolveCategoryIcon(
                                                       cat.iconCode,
                                                     ),
-                                                    iconColor:
-                                                        cat.colorValue != null
-                                                        ? Color(cat.colorValue!)
-                                                        : AppColors.getTextPrimary(
-                                                            theme.brightness,
-                                                          ),
+                                                    iconColor: catColor,
                                                     title: cat.name,
-                                                    dateText: tx.note.isNotEmpty
-                                                        ? tx.note
-                                                        : l10n.get('no_note'),
+                                                    dateText: tx.note,
                                                     amountText:
                                                         !settings.hideAmounts
-                                                        ? '${isExpense ? '-' : '+'} ${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}'
+                                                        ? '${cat.effectiveTypeIndex == 0
+                                                              ? '-'
+                                                              : cat.effectiveTypeIndex == 2
+                                                              ? ''
+                                                              : '+'}${cat.effectiveTypeIndex == 2 ? '' : ' '}${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}'
                                                         : CurrencyUtil.formatMaskedByCurrency(
                                                             settings
                                                                 .currencyCode,
                                                           ),
-                                                    amountColor: isExpense
-                                                        ? AppColors.expense
-                                                        : AppColors.income,
-                                                    badgeText: isSavings
-                                                        ? l10n.savings
-                                                        : isExpense
-                                                        ? l10n.expense
-                                                        : l10n.income,
+                                                    amountColor:
+                                                        typeVisuals.color,
                                                   ),
                                                 );
                                               }),
@@ -699,40 +588,6 @@ class _DiaryTabState extends State<DiaryTab> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildStatItem(
-    String label,
-    double amount,
-    Color color,
-    String currencyCode, {
-    bool isHidden = false,
-  }) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
-        ),
-        const SizedBox(height: 4),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            CurrencyUtil.formatDisplayAmount(
-              amount,
-              currencyCode,
-              isHidden: isHidden,
-            ),
-            maxLines: 1,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -804,8 +659,15 @@ class _TransactionImageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final amountPrefix = category.effectiveTypeIndex == 1 ? '+' : '-';
-    final amountColor = category.effectiveTypeIndex == 1
+    final typeIndex = category.effectiveTypeIndex;
+    final amountPrefix = typeIndex == 0
+        ? '-'
+        : typeIndex == 1
+        ? '+'
+        : '';
+    final amountColor = typeIndex == 2
+        ? AppColors.savings
+        : typeIndex == 1
         ? AppColors.income
         : AppColors.expense;
     final amountText = settings.hideAmounts
@@ -854,15 +716,29 @@ class _TransactionImageTile extends StatelessWidget {
                       ),
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
-                        child: Text(
-                          amountText,
-                          maxLines: 1,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: amountColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (typeIndex == 2) ...[
+                              Icon(
+                                Icons.arrow_upward_rounded,
+                                size: 14,
+                                color: amountColor,
+                              ),
+                              const SizedBox(width: 2),
+                            ],
+                            Text(
+                              amountText,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: amountColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
