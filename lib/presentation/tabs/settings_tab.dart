@@ -351,6 +351,10 @@ class SettingsTab extends StatelessWidget {
     bool closeOnTap = false,
   }) {
     final isSelected = settings.themePresetName == palette.name;
+    final selectionBorder = AppColors.getOnAccent(
+      Theme.of(context).brightness,
+      palette.primary,
+    );
     return GestureDetector(
       onTap: () {
         settings.themePresetName = palette.name;
@@ -368,7 +372,7 @@ class SettingsTab extends StatelessWidget {
               color: palette.primary,
               shape: BoxShape.circle,
               border: Border.all(
-                color: isSelected ? Colors.black : Colors.transparent,
+                color: isSelected ? selectionBorder : Colors.transparent,
                 width: 2,
               ),
             ),

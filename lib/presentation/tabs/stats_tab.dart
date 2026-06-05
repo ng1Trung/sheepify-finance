@@ -1,13 +1,15 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
 import '../../core/constants/constants.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/utils/category_icon_resolver.dart';
 import '../../core/utils/currency_util.dart';
+import '../../core/utils/l10n.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/utils/l10n.dart';
 import '../widgets/common/sheep_widgets.dart';
 
 class StatsTab extends StatefulWidget {
@@ -197,7 +199,7 @@ class _StatsTabState extends State<StatsTab> {
                 final stat = stats[i];
                 final catColor = stat.category.colorValue != null
                     ? Color(stat.category.colorValue!)
-                    : Colors.black;
+                    : AppColors.getTextPrimary(Theme.of(context).brightness);
 
                 double visualValue = stat.amount;
                 double minVisualThreshold = total * 0.02;
@@ -297,7 +299,7 @@ class _StatsTabState extends State<StatsTab> {
               borderRadius: BorderRadius.circular(SheepRadius.md),
             ),
             child: Icon(
-              IconData(stat.category.iconCode, fontFamily: 'MaterialIcons'),
+              resolveCategoryIcon(stat.category.iconCode),
               size: SheepTypeScale.amount,
               color: catColor,
             ),

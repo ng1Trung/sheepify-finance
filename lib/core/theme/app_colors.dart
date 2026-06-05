@@ -75,7 +75,7 @@ class AppColors {
         accent,
       ).withOpacity(b == Brightness.dark ? 0.18 : 0.12);
   static Color getOnAccent(Brightness b, Color accent) =>
-      getInteractiveAccent(b, accent).computeLuminance() > 0.45
+      accent.computeLuminance() > 0.45
       ? Colors.black
       : Colors.white;
   static Color getSwitchAccent(Brightness b, Color accent) {

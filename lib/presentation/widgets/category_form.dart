@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/category_icon_resolver.dart';
 import '../../core/utils/currency_util.dart';
 import 'common/sheep_toggles.dart';
 import 'common/sheep_widgets.dart';
@@ -403,10 +404,10 @@ class _CategoryFormState extends State<CategoryForm> {
           decoration: BoxDecoration(
             color: accent.withOpacity(0.15),
             borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: accent.withOpacity(0.3), width: 1),
-          ),
+          border: Border.all(color: accent.withOpacity(0.3), width: 1),
+        ),
           child: Icon(
-            IconData(_selectedIcon, fontFamily: 'MaterialIcons'),
+            resolveCategoryIcon(_selectedIcon),
             color: accent,
             size: 32,
           ),

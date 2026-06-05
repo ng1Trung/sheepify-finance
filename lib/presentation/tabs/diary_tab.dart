@@ -4,8 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:line_icons/line_icons.dart';
 
 import '../../core/constants/constants.dart';
-import '../../core/utils/l10n.dart';
+import '../../core/utils/category_icon_resolver.dart';
 import '../../core/utils/currency_util.dart';
+import '../../core/utils/l10n.dart';
 import '../../core/utils/transaction_image_store.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
@@ -647,10 +648,8 @@ class _DiaryTabState extends State<DiaryTab> {
                                                                 transaction: tx,
                                                               ),
                                                         ),
-                                                    icon: IconData(
+                                                    icon: resolveCategoryIcon(
                                                       cat.iconCode,
-                                                      fontFamily:
-                                                          'MaterialIcons',
                                                     ),
                                                     iconColor:
                                                         cat.colorValue != null
@@ -879,7 +878,7 @@ class _TransactionImageTile extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      IconData(category.iconCode, fontFamily: 'MaterialIcons'),
+                      resolveCategoryIcon(category.iconCode),
                       size: 14,
                       color: category.colorValue != null
                           ? Color(category.colorValue!)

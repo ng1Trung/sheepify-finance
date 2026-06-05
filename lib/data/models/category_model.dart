@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+import '../../core/utils/category_icon_resolver.dart';
+
 part 'category_model.g.dart';
 
 @HiveType(typeId: 2)
@@ -64,5 +66,5 @@ class CategoryModel extends HiveObject {
   int get effectiveGoalTypeIndex => goalTypeIndex ?? 0;
   bool get isMonthlyGoal => effectiveGoalTypeIndex == 1;
 
-  IconData get iconData => IconData(iconCode, fontFamily: 'MaterialIcons');
+  IconData get iconData => resolveCategoryIcon(iconCode);
 }

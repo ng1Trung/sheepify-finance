@@ -56,30 +56,35 @@ class _MainScreenState extends State<MainScreen> {
           name: 'Hoá đơn',
           iconCode: Icons.receipt.codePoint,
           isExpense: true,
+          typeIndex: 0,
         ),
         CategoryModel(
           id: 'cat_eat',
           name: 'Ăn uống',
           iconCode: Icons.restaurant.codePoint,
           isExpense: true,
+          typeIndex: 0,
         ),
         CategoryModel(
           id: 'cat_shop',
           name: 'Mua sắm',
           iconCode: Icons.shopping_cart.codePoint,
           isExpense: true,
+          typeIndex: 0,
         ),
         CategoryModel(
           id: 'cat_salary',
           name: 'Lương',
           iconCode: Icons.attach_money.codePoint,
           isExpense: false,
+          typeIndex: 1,
         ),
         CategoryModel(
           id: 'cat_bonus',
           name: 'Thưởng',
           iconCode: Icons.card_giftcard.codePoint,
           isExpense: false,
+          typeIndex: 1,
         ),
       ];
       _catBox.addAll(parents);
