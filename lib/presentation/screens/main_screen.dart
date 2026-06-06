@@ -642,28 +642,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                               currentSettings.avatarImageRef,
                             );
 
-                            return Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _DrawerAvatar(
-                                  username: username,
-                                  streakCount: streakCount,
-                                  avatarFile: avatarFile,
-                                  onTap: () => _showAvatarActions(
-                                    context,
-                                    currentSettings,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                _DrawerPrivacyButton(
-                                  isHidden: currentSettings.hideAmounts,
-                                  onPressed: () {
-                                    currentSettings.hideAmounts =
-                                        !currentSettings.hideAmounts;
-                                    currentSettings.save();
-                                  },
-                                ),
-                              ],
+                            return _DrawerAvatar(
+                              username: username,
+                              streakCount: streakCount,
+                              avatarFile: avatarFile,
+                              onTap: () => _showAvatarActions(
+                                context,
+                                currentSettings,
+                              ),
                             );
                           },
                         ),
@@ -672,6 +658,27 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                   ),
                   const Spacer(),
                   _DrawerOverviewCard(status: overview),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ValueListenableBuilder(
+                      valueListenable: Hive.box<AppSettings>(
+                        kSettingsBox,
+                      ).listenable(),
+                      builder: (context, settingsBox, _) {
+                        final currentSettings =
+                            settingsBox.get('current') ?? AppSettings();
+                        return _DrawerPrivacyButton(
+                          isHidden: currentSettings.hideAmounts,
+                          onPressed: () {
+                            currentSettings.hideAmounts =
+                                !currentSettings.hideAmounts;
+                            currentSettings.save();
+                          },
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1328,7 +1335,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return _DrawerOverviewStatus(
       icon: Icons.local_fire_department_rounded,
       title: 'Streak',
-      message: '$streak ngày liên tiếp quan tâm tới tài chính của bạn',
+      message: '$streak ngày liên tiếp',
       color: const Color(0xFF1F7AE0),
       backgroundColor: const Color(0xDDE8F2FF),
     );
@@ -1521,18 +1528,29 @@ class _DrawerAvatar extends StatelessWidget {
                   border: Border.all(color: const Color(0x66FFFFFF), width: 1),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Text(
-                    '🔥 $streakLabel',
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                      letterSpacing: 0,
-                    ),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.local_fire_department_rounded,
+                        color: Color(0xFFFFA726),
+                        size: 12,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        streakLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        style: const TextStyle(
+                          color: Color(0xFFFFA726),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
