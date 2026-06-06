@@ -270,7 +270,9 @@ class _CategoryFormState extends State<CategoryForm> {
             _buildStickyHeader(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: SheepSpacing.page,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -341,8 +343,8 @@ class _CategoryFormState extends State<CategoryForm> {
     final l10n = L10n.of(context);
     return Container(
       padding: EdgeInsets.only(
-        left: SheepSpacing.xl,
-        right: SheepSpacing.xl,
+        left: SheepSpacing.page,
+        right: SheepSpacing.page,
         top: SheepSpacing.lg,
         bottom: MediaQuery.of(context).viewInsets.bottom + SheepSpacing.xl,
       ),

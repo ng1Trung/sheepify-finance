@@ -328,8 +328,8 @@ class _TransactionFormState extends State<TransactionForm> {
       ),
       padding: EdgeInsets.only(
         top: SheepSpacing.xl,
-        left: SheepSpacing.xl,
-        right: SheepSpacing.xl,
+        left: SheepSpacing.page,
+        right: SheepSpacing.page,
         bottom: MediaQuery.of(context).viewInsets.bottom + SheepSpacing.xl,
       ),
       child: SingleChildScrollView(
