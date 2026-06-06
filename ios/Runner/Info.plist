@@ -48,6 +48,6 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Ứng dụng cần sử dụng Camera để chụp ảnh hóa đơn.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Ứng dụng cần truy cập Thư viện ảnh để chọn ảnh hóa đơn.</string>
+	<string>Ứng dụng cần truy cập Thư viện ảnh để chọn ảnh đại diện và ảnh hóa đơn.</string>
 </dict>
 </plist>

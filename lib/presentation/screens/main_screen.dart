@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/constants.dart';
@@ -17,12 +20,17 @@ import '../tabs/stats_tab.dart';
 import '../tabs/settings_tab.dart';
 import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/avatar_image_store.dart';
 import '../../core/utils/currency_util.dart';
 import '../../core/utils/l10n.dart';
 
+import '../widgets/common/sheep_notifications.dart';
+import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_widgets.dart';
 
 enum _DrawerInsightType { budget, cycle, savings, today, streak }
+
+enum _AvatarAction { preview, change, delete }
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -623,32 +631,41 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                       const SizedBox(width: 12),
                       SizedBox(
                         width: 48,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _DrawerAvatar(
-                              username: username,
-                              streakCount: streakCount,
-                            ),
-                            const SizedBox(height: 2),
-                            ValueListenableBuilder(
-                              valueListenable: Hive.box<AppSettings>(
-                                kSettingsBox,
-                              ).listenable(),
-                              builder: (context, settingsBox, _) {
-                                final currentSettings =
-                                    settingsBox.get('current') ?? AppSettings();
-                                return _DrawerPrivacyButton(
+                        child: ValueListenableBuilder(
+                          valueListenable: Hive.box<AppSettings>(
+                            kSettingsBox,
+                          ).listenable(),
+                          builder: (context, settingsBox, _) {
+                            final currentSettings =
+                                settingsBox.get('current') ?? AppSettings();
+                            final avatarFile = AvatarImageStore.resolve(
+                              currentSettings.avatarImageRef,
+                            );
+
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _DrawerAvatar(
+                                  username: username,
+                                  streakCount: streakCount,
+                                  avatarFile: avatarFile,
+                                  onTap: () => _showAvatarActions(
+                                    context,
+                                    currentSettings,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                _DrawerPrivacyButton(
                                   isHidden: currentSettings.hideAmounts,
                                   onPressed: () {
                                     currentSettings.hideAmounts =
                                         !currentSettings.hideAmounts;
                                     currentSettings.save();
                                   },
-                                );
-                              },
-                            ),
-                          ],
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -831,6 +848,202 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  Future<void> _showAvatarActions(
+    BuildContext context,
+    AppSettings settings,
+  ) async {
+    final avatarFile = AvatarImageStore.resolve(settings.avatarImageRef);
+    final hasAvatar = avatarFile != null && avatarFile.existsSync();
+    final action = await showModalBottomSheet<_AvatarAction>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7DDE1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _AvatarActionTile(
+                  icon: Icons.account_circle_rounded,
+                  label: 'Xem ảnh đại diện',
+                  enabled: hasAvatar,
+                  color: theme.primaryColor,
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _AvatarAction.preview),
+                ),
+                _AvatarActionTile(
+                  icon: Icons.photo_library_rounded,
+                  label: 'Đổi ảnh',
+                  color: theme.primaryColor,
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _AvatarAction.change),
+                ),
+                _AvatarActionTile(
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Xoá ảnh',
+                  enabled: hasAvatar,
+                  color: AppColors.expense,
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _AvatarAction.delete),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case _AvatarAction.preview:
+        _previewAvatar(settings);
+        break;
+      case _AvatarAction.change:
+        await _changeAvatar(settings);
+        break;
+      case _AvatarAction.delete:
+        _confirmDeleteAvatar(settings);
+        break;
+    }
+  }
+
+  void _confirmDeleteAvatar(AppSettings settings) {
+    showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => SheepConfirmDialog(
+        title: 'Xoá ảnh đại diện?',
+        content: 'Ảnh đại diện hiện tại sẽ bị xoá khỏi thiết bị.',
+        confirmLabel: 'Xoá ảnh',
+        confirmColor: AppColors.expense,
+        icon: Icons.delete_outline_rounded,
+        onConfirm: () => _deleteAvatar(settings),
+      ),
+    );
+  }
+
+  void _previewAvatar(AppSettings settings) {
+    final avatarFile = AvatarImageStore.resolve(settings.avatarImageRef);
+    if (avatarFile == null || !avatarFile.existsSync()) return;
+
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black,
+      builder: (dialogContext) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 4,
+                    child: Image.file(avatarFile, fit: BoxFit.contain),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeAvatar(AppSettings settings) async {
+    final themeColor = Theme.of(context).primaryColor;
+    final oldAvatarRef = settings.avatarImageRef;
+    String? newAvatarRef;
+
+    try {
+      final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (picked == null) return;
+
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        maxWidth: 512,
+        maxHeight: 512,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 80,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Đổi ảnh đại diện',
+            toolbarColor: themeColor,
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: themeColor,
+            initAspectRatio: CropAspectRatioPreset.square,
+            aspectRatioPresets: const [CropAspectRatioPreset.square],
+            lockAspectRatio: true,
+          ),
+          IOSUiSettings(
+            title: 'Đổi ảnh đại diện',
+            doneButtonTitle: 'Lưu',
+            cancelButtonTitle: 'Huỷ',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            aspectRatioPickerButtonHidden: true,
+            aspectRatioPresets: const [CropAspectRatioPreset.square],
+          ),
+        ],
+      );
+      if (cropped == null) return;
+
+      newAvatarRef = await AvatarImageStore.saveFromSourcePath(cropped.path);
+      settings.avatarImageRef = newAvatarRef;
+      await settings.save();
+      await AvatarImageStore.deleteStoredRef(oldAvatarRef);
+      if (!mounted) return;
+      SheepNotifications.showSuccess(context, 'Đã cập nhật ảnh đại diện');
+    } catch (_) {
+      await AvatarImageStore.deleteStoredRef(newAvatarRef);
+      if (!mounted) return;
+      SheepNotifications.showError(context, 'Không thể cập nhật ảnh đại diện');
+    }
+  }
+
+  Future<void> _deleteAvatar(AppSettings settings) async {
+    final oldAvatarRef = settings.avatarImageRef;
+    if (oldAvatarRef == null || oldAvatarRef.isEmpty) return;
+
+    try {
+      settings.avatarImageRef = null;
+      await settings.save();
+      await AvatarImageStore.deleteStoredRef(oldAvatarRef);
+      if (!mounted) return;
+      SheepNotifications.showSuccess(context, 'Đã xoá ảnh đại diện');
+    } catch (_) {
+      if (!mounted) return;
+      SheepNotifications.showError(context, 'Không thể xoá ảnh đại diện');
+    }
   }
 
   int _calculateTransactionStreak() {
@@ -1206,11 +1419,55 @@ class _DrawerOverviewCard extends StatelessWidget {
   }
 }
 
+class _AvatarActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _AvatarActionTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = enabled ? color : const Color(0xFFB8AEB3);
+    return ListTile(
+      enabled: enabled,
+      minVerticalPadding: 10,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      leading: Icon(icon, color: foreground, size: 24),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: enabled ? const Color(0xFF4D4449) : const Color(0xFFB8AEB3),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0,
+        ),
+      ),
+      onTap: enabled ? onTap : null,
+    );
+  }
+}
+
 class _DrawerAvatar extends StatelessWidget {
   final String username;
   final int streakCount;
+  final File? avatarFile;
+  final VoidCallback onTap;
 
-  const _DrawerAvatar({required this.username, required this.streakCount});
+  const _DrawerAvatar({
+    required this.username,
+    required this.streakCount,
+    required this.avatarFile,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1219,56 +1476,69 @@ class _DrawerAvatar extends StatelessWidget {
         : username.trim().characters.first.toUpperCase();
     final hasStreak = streakCount >= 1;
     final streakLabel = streakCount > 999 ? '999+' : '$streakCount';
+    final hasAvatar = avatarFile != null && avatarFile!.existsSync();
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 46,
-          height: 46,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: Color(0x38FFFFFF),
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            initial,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            alignment: Alignment.center,
+            clipBehavior: Clip.antiAlias,
+            decoration: const BoxDecoration(
+              color: Color(0x38FFFFFF),
+              shape: BoxShape.circle,
             ),
+            child: hasAvatar
+                ? Image.file(
+                    avatarFile!,
+                    width: 46,
+                    height: 46,
+                    fit: BoxFit.cover,
+                  )
+                : Text(
+                    initial,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
+                    ),
+                  ),
           ),
-        ),
-        if (hasStreak)
-          Positioned(
-            top: -7,
-            right: -5,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: const Color(0x52000000),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0x66FFFFFF), width: 1),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Text(
-                  '🔥 $streakLabel',
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    height: 1,
-                    letterSpacing: 0,
+          if (hasStreak)
+            Positioned(
+              top: -7,
+              right: -5,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0x52000000),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0x66FFFFFF), width: 1),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Text(
+                    '🔥 $streakLabel',
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                      letterSpacing: 0,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
