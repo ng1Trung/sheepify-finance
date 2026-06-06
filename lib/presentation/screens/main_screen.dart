@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -21,7 +22,7 @@ import '../../core/utils/l10n.dart';
 
 import '../widgets/common/sheep_widgets.dart';
 
-enum _DrawerInsightType { budget, cycle, savings, today }
+enum _DrawerInsightType { budget, cycle, savings, today, streak }
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -29,7 +30,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentIndex = 0; // Bắt đầu từ Nhật ký
 
   // TIME AND VIEW MODE MANAGEMENT
@@ -40,8 +41,12 @@ class _MainScreenState extends State<MainScreen> {
   bool _isDrawerOpen = false;
   DateTime? _drawerLastClosedAt;
   _DrawerInsightType? _activeInsightType;
+  Timer? _foregroundTimer;
+  DateTime? _lastForegroundTickAt;
+  Future<void>? _streakBoxOpenFuture;
 
   static const Duration _insightRepickDelay = Duration(seconds: 180);
+  static const int _dailyStreakCompletionSeconds = 30;
 
   static DateTimeRange _dayRange(DateTime date) {
     return DateTimeRange(
@@ -55,24 +60,140 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _moneyListenable = Hive.box<Transaction>(kMoneyBox).listenable();
     _moneyListenable.addListener(_handleTransactionEvents);
     _seedParentCategories();
     _activeInsightType = _pickRandomInsightType();
+    unawaited(_prepareStreakTracking());
   }
 
   @override
   void dispose() {
+    _stopForegroundTracking();
     _moneyListenable.removeListener(_handleTransactionEvents);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startForegroundTracking();
+      return;
+    }
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      _stopForegroundTracking();
+    }
+  }
+
   void _handleTransactionEvents() {
+    _completeStreakDaysForTransactions();
+    if (!Hive.isBoxOpen(kStreakBox)) {
+      unawaited(_syncStreakAfterBoxOpen());
+    }
     if (!_isDrawerOpen || !mounted) return;
     setState(() {
       _activeInsightType =
           _validInsightType(_activeInsightType) ?? _pickRandomInsightType();
     });
+  }
+
+  Future<void> _prepareStreakTracking() async {
+    try {
+      await _ensureStreakBoxOpen();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+    _completeStreakDaysForTransactions();
+    _startForegroundTracking();
+    setState(() {});
+  }
+
+  Future<void> _syncStreakAfterBoxOpen() async {
+    try {
+      await _ensureStreakBoxOpen();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+    _completeStreakDaysForTransactions();
+    setState(() {});
+  }
+
+  Future<void> _ensureStreakBoxOpen() {
+    if (Hive.isBoxOpen(kStreakBox)) {
+      return Future.value();
+    }
+    return _streakBoxOpenFuture ??= Hive.openBox(kStreakBox)
+        .then((_) {})
+        .catchError((Object error) {
+          _streakBoxOpenFuture = null;
+          throw error;
+        });
+  }
+
+  Box<dynamic>? _streakBoxOrNull({bool openIfNeeded = true}) {
+    if (Hive.isBoxOpen(kStreakBox)) {
+      return Hive.box(kStreakBox);
+    }
+    if (openIfNeeded) {
+      unawaited(_ensureStreakBoxOpen().catchError((Object _) {}));
+    }
+    return null;
+  }
+
+  void _startForegroundTracking() {
+    _lastForegroundTickAt = DateTime.now();
+    _foregroundTimer ??= Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _trackForegroundTime(),
+    );
+  }
+
+  void _stopForegroundTracking() {
+    _trackForegroundTime(openIfNeeded: false);
+    _foregroundTimer?.cancel();
+    _foregroundTimer = null;
+    _lastForegroundTickAt = null;
+  }
+
+  void _trackForegroundTime({bool openIfNeeded = true}) {
+    final now = DateTime.now();
+    final lastTick = _lastForegroundTickAt;
+    _lastForegroundTickAt = now;
+    if (lastTick == null) return;
+
+    final elapsedSeconds = now.difference(lastTick).inSeconds;
+    if (elapsedSeconds <= 0) return;
+
+    final todayKey = _dayKey(now);
+    final completedKey = _streakCompletedKey(todayKey);
+    final streakBox = _streakBoxOrNull(openIfNeeded: openIfNeeded);
+    if (streakBox == null) return;
+    if (streakBox.get(completedKey) == true) return;
+
+    final activeKey = _streakActiveSecondsKey(todayKey);
+    final previousSeconds = streakBox.get(activeKey) as int? ?? 0;
+    final nextSeconds = previousSeconds + elapsedSeconds;
+    streakBox.put(activeKey, nextSeconds);
+
+    if (nextSeconds >= _dailyStreakCompletionSeconds) {
+      streakBox.put(completedKey, true);
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _completeStreakDaysForTransactions() {
+    final streakBox = _streakBoxOrNull();
+    if (streakBox == null) return;
+    for (final tx in Hive.box<Transaction>(kMoneyBox).values) {
+      streakBox.put(_streakCompletedKey(_dayKey(tx.date)), true);
+    }
   }
 
   void _handleDrawerChanged(bool isOpened) {
@@ -713,20 +834,41 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   int _calculateTransactionStreak() {
-    final transactionDays = Hive.box<Transaction>(kMoneyBox).values.map((tx) {
-      return DateTime(tx.date.year, tx.date.month, tx.date.day);
-    }).toSet();
+    final streakBox = _streakBoxOrNull();
+    if (streakBox == null) {
+      unawaited(_syncStreakAfterBoxOpen());
+    }
+    final completedDayKeys = <String>{
+      ...Hive.box<Transaction>(kMoneyBox).values.map((tx) => _dayKey(tx.date)),
+      if (streakBox != null)
+        ...streakBox.keys
+            .whereType<String>()
+            .where((key) => key.startsWith('completed:'))
+            .where((key) => streakBox.get(key) == true)
+            .map((key) => key.substring('completed:'.length)),
+    };
     final now = DateTime.now();
-    var cursor = DateTime(now.year, now.month, now.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    var cursor = completedDayKeys.contains(_dayKey(today)) ? today : yesterday;
     var streak = 0;
 
-    while (transactionDays.contains(cursor)) {
+    while (completedDayKeys.contains(_dayKey(cursor))) {
       streak++;
       cursor = cursor.subtract(const Duration(days: 1));
     }
 
     return streak;
   }
+
+  String _dayKey(DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    return DateFormat('yyyy-MM-dd').format(day);
+  }
+
+  String _streakCompletedKey(String dayKey) => 'completed:$dayKey';
+
+  String _streakActiveSecondsKey(String dayKey) => 'active_seconds:$dayKey';
 
   _DrawerOverviewStatus _buildFinancialOverview(AppSettings settings) {
     final type = _activeInsightType ?? _validInsightType(null);
@@ -776,6 +918,7 @@ class _MainScreenState extends State<MainScreen> {
       _DrawerInsightType.cycle => _buildCycleOverview(),
       _DrawerInsightType.savings => _buildSavingsOverview(settings),
       _DrawerInsightType.today => _buildTodayOverview(settings),
+      _DrawerInsightType.streak => _buildStreakOverview(),
     };
   }
 
@@ -965,6 +1108,19 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  _DrawerOverviewStatus? _buildStreakOverview() {
+    final streak = _calculateTransactionStreak();
+    if (streak <= 0) return null;
+
+    return _DrawerOverviewStatus(
+      icon: Icons.local_fire_department_rounded,
+      title: 'Streak',
+      message: '$streak ngày liên tiếp quan tâm tới tài chính của bạn',
+      color: const Color(0xFF1F7AE0),
+      backgroundColor: const Color(0xDDE8F2FF),
+    );
+  }
+
   String _formatCompactAmount(double amount, AppSettings settings) {
     if (settings.hideAmounts) return '****';
     return '${CurrencyUtil.formatCompact(amount)}${CurrencyUtil.getCurrencySymbol(settings.currencyCode)}';
@@ -1062,6 +1218,7 @@ class _DrawerAvatar extends StatelessWidget {
         ? 'S'
         : username.trim().characters.first.toUpperCase();
     final hasStreak = streakCount >= 1;
+    final streakLabel = streakCount > 999 ? '999+' : '$streakCount';
 
     return Stack(
       clipBehavior: Clip.none,
@@ -1069,61 +1226,44 @@ class _DrawerAvatar extends StatelessWidget {
         Container(
           width: 46,
           height: 46,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            color: Color(0x38FFFFFF),
             shape: BoxShape.circle,
-            gradient: hasStreak
-                ? const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFFF7A1A), Color(0xFFFFD44D)],
-                  )
-                : null,
-            border: null,
           ),
-          child: Container(
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: Color(0x38FFFFFF),
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0,
-              ),
+          child: Text(
+            initial,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
             ),
           ),
         ),
         if (hasStreak)
           Positioned(
-            top: -5,
+            top: -7,
             right: -5,
-            child: Container(
-              height: 18,
-              constraints: const BoxConstraints(minWidth: 18),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              alignment: Alignment.center,
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFFF7A1A), Color(0xFFFFD44D)],
-                ),
+                color: const Color(0x52000000),
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white, width: 1.2),
+                border: Border.all(color: const Color(0x66FFFFFF), width: 1),
               ),
-              child: Text(
-                '$streakCount',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  height: 1,
-                  letterSpacing: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Text(
+                  '🔥 $streakLabel',
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
             ),

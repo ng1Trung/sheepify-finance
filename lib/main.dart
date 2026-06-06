@@ -31,6 +31,7 @@ void main() async {
   final moneyBox = await Hive.openBox<Transaction>(kMoneyBox);
   await Hive.openBox<CategoryModel>(kCatBox);
   final settingsBox = await Hive.openBox<AppSettings>(kSettingsBox);
+  await Hive.openBox(kStreakBox);
 
   // Initialize Default Settings if empty
   if (settingsBox.isEmpty) {
