@@ -28,6 +28,9 @@ class AppSettings extends HiveObject {
   @HiveField(7)
   String? _themeMode;
 
+  @HiveField(8)
+  String? avatarImageRef;
+
   bool get hideAmounts => _hideAmounts ?? false;
 
   set hideAmounts(bool value) => _hideAmounts = value;
@@ -43,6 +46,7 @@ class AppSettings extends HiveObject {
     this.currencyCode = 'VND',
     this.fontFamily = 'Inter',
     this.isDarkMode = false,
+    this.avatarImageRef,
     String themeMode = 'system',
     bool hideAmounts = false,
   }) : _themeMode = themeMode,

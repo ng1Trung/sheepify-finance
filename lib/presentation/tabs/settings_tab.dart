@@ -27,7 +27,12 @@ class SettingsTab extends StatelessWidget {
 
         return Scaffold(
           body: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+            padding: const EdgeInsets.fromLTRB(
+              SheepSpacing.page,
+              20,
+              SheepSpacing.page,
+              32,
+            ),
             children: [
               SheepCard(
                 padding: EdgeInsets.zero,
@@ -421,7 +426,12 @@ class SettingsTab extends StatelessWidget {
       ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+          padding: const EdgeInsets.fromLTRB(
+            SheepSpacing.page,
+            18,
+            SheepSpacing.page,
+            24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -497,7 +507,12 @@ class SettingsTab extends StatelessWidget {
       ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+          padding: const EdgeInsets.fromLTRB(
+            SheepSpacing.page,
+            18,
+            SheepSpacing.page,
+            24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -531,7 +546,12 @@ class SettingsTab extends StatelessWidget {
       ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+          padding: const EdgeInsets.fromLTRB(
+            SheepSpacing.page,
+            18,
+            SheepSpacing.page,
+            24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

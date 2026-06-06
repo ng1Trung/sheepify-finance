@@ -27,13 +27,14 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       themeMode:
           fields[7] as String? ??
           ((fields[5] as bool? ?? false) ? 'dark' : 'light'),
+      avatarImageRef: fields[8] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.accumulateBalance)
       ..writeByte(1)
@@ -49,7 +50,9 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(6)
       ..write(obj._hideAmounts)
       ..writeByte(7)
-      ..write(obj._themeMode);
+      ..write(obj._themeMode)
+      ..writeByte(8)
+      ..write(obj.avatarImageRef);
   }
 
   @override

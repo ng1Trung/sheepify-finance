@@ -40,7 +40,7 @@ We support four clean UI fonts: **Inter**, **Be Vietnam Pro**, **Quicksand**, an
 The design system follows a **4px/8px grid** for consistency.
 
 ### Spacing
-- **Page Padding**: `24px`.
+- **Page Padding**: `12px`.
 - **Scale**: `4 / 8 / 12 / 16 / 24 / 32px`.
 - **Inter-component (Small)**: `8px` (between elements within a section).
 - **Inter-component (Large)**: `24px` (between major sections).

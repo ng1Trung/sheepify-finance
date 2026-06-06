@@ -52,7 +52,12 @@ class _CategoryTabState extends State<CategoryTab> {
       children: [
         if (widget.showTypeToggle)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(
+              SheepSpacing.page,
+              8,
+              SheepSpacing.page,
+              16,
+            ),
             child: SheepTripleToggle(
               selectedIndex: _selectedTypeIndex,
               controller: _pageController,
@@ -115,8 +120,8 @@ class _CategoryTabState extends State<CategoryTab> {
           padding: EdgeInsets.only(
             top: widget.showTypeToggle ? 0 : SheepSpacing.lg,
             bottom: 120,
-            left: 16,
-            right: 16,
+            left: SheepSpacing.page,
+            right: SheepSpacing.page,
           ),
           itemCount: categories.length,
           itemBuilder: (context, index) {

@@ -12,12 +12,14 @@ import 'core/theme/app_colors.dart';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/utils/l10n.dart';
+import 'core/utils/avatar_image_store.dart';
 import 'core/utils/transaction_image_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('vi_VN', null);
   await Hive.initFlutter();
+  await AvatarImageStore.initialize();
   await TransactionImageStore.initialize();
 
   // Register Adapters
@@ -31,6 +33,7 @@ void main() async {
   final moneyBox = await Hive.openBox<Transaction>(kMoneyBox);
   await Hive.openBox<CategoryModel>(kCatBox);
   final settingsBox = await Hive.openBox<AppSettings>(kSettingsBox);
+  await Hive.openBox(kStreakBox);
 
   // Initialize Default Settings if empty
   if (settingsBox.isEmpty) {

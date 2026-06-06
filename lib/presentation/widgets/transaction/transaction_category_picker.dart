@@ -49,7 +49,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
     return Container(
       padding: const EdgeInsets.symmetric(
         vertical: SheepSpacing.xl,
-        horizontal: SheepSpacing.lg,
+        horizontal: SheepSpacing.page,
       ),
       decoration: BoxDecoration(
         color: AppColors.getSurface(theme.brightness),
@@ -61,20 +61,11 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l10n.get('choose_category'),
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(letterSpacing: 1),
-              ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, size: 20, color: Colors.grey),
-              ),
-            ],
+          Text(
+            l10n.get('choose_category'),
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(letterSpacing: 1),
           ),
           const SizedBox(height: SheepSpacing.lg),
 

@@ -11,7 +11,7 @@ class SheepSpacing {
   static const double lg = 16;
   static const double xl = 24;
   static const double xxl = 32;
-  static const double page = 24;
+  static const double page = 12;
   static const double sectionGap = 24;
   static const double itemGap = 12;
   static const EdgeInsets pageHorizontal = EdgeInsets.symmetric(
