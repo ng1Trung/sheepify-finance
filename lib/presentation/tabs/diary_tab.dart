@@ -106,7 +106,7 @@ class _DiaryTabState extends State<DiaryTab> {
               return Padding(
                 padding: const EdgeInsets.fromLTRB(
                   SheepSpacing.page,
-                  8,
+                  4,
                   SheepSpacing.page,
                   12,
                 ),

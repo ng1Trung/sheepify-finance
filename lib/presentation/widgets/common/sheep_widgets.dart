@@ -33,10 +33,11 @@ class SheepTypeScale {
   static const double meta = 12;
   static const double label = 13;
   static const double body = 14;
-  static const double item = 15;
+  static const double item = 14;
   static const double bodyLarge = 16;
   static const double title = 18;
-  static const double amount = 20;
+  static const double amount = 16;
+  static const double amountLarge = 30;
   static const double headline = 24;
 }
 
