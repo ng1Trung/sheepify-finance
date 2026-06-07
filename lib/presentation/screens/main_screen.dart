@@ -5,7 +5,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:image_cropper/image_cropper.dart';
+import 'package:image_cropper/image_cropper.dart' as cropper;
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -41,6 +41,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentIndex = 0; // Bắt đầu từ Nhật ký
+  int _diaryViewMode = 1; // 1: list, 2: gallery, 3: timeline
 
   // TIME AND VIEW MODE MANAGEMENT
   DateTime _selectedDate = DateTime.now();
@@ -70,6 +71,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return FinancialCycleUtil.cycleRangeFor(
       date ?? DateTime.now(),
       settings.financialCycleStartDay,
+    );
+  }
+
+  static DateTimeRange _monthRange(DateTime date) {
+    return DateTimeRange(
+      start: DateTime(date.year, date.month, 1),
+      end: DateTime(date.year, date.month + 1, 0, 23, 59, 59),
     );
   }
 
@@ -325,7 +333,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   void _changeTime(int offset) {
     setState(() {
-      if (_usesDateRange) {
+      if (_isDiaryTimeline) {
+        _diaryRange = _monthRange(
+          DateTime(_diaryRange.start.year, _diaryRange.start.month + offset),
+        );
+      } else if (_usesDateRange) {
         final start = _diaryRange.start.add(Duration(days: offset));
         final end = _diaryRange.end.add(Duration(days: offset));
         _diaryRange = DateTimeRange(start: start, end: end);
@@ -340,12 +352,26 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _currentIndex = index;
       _selectedDate = DateTime.now();
       if (_tabUsesDateRange(index)) {
-        _diaryRange = _currentCycleRange();
+        _diaryRange = index == 0 && _diaryViewMode == 3
+            ? _monthRange(DateTime.now())
+            : _currentCycleRange();
       }
     });
   }
 
   Future<void> _pickTime() async {
+    if (_isDiaryTimeline) {
+      final picked = await SheepDatePicker.show(
+        context: context,
+        initialDate: _diaryRange.start,
+        mode: SheepDateMode.month,
+      );
+      if (picked != null) {
+        setState(() => _diaryRange = _monthRange(picked));
+      }
+      return;
+    }
+
     if (_usesDateRange) {
       final picked = await SheepDateRangePicker.show(
         context: context,
@@ -370,6 +396,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   bool get _usesDateRange => _tabUsesDateRange(_currentIndex);
 
   bool _tabUsesDateRange(int index) => index == 0 || index == 2;
+
+  bool get _isDiaryTimeline => _currentIndex == 0 && _diaryViewMode == 3;
 
   @override
   Widget build(BuildContext context) {
@@ -474,7 +502,21 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     Widget buildBody() {
       switch (_currentIndex) {
         case 0:
-          return DiaryTab(selectedRange: _diaryRange);
+          return DiaryTab(
+            selectedRange: _diaryRange,
+            selectedViewMode: _diaryViewMode,
+            onViewModeChanged: (mode) {
+              setState(() {
+                final wasTimeline = _diaryViewMode == 3;
+                _diaryViewMode = mode;
+                if (mode == 3) {
+                  _diaryRange = _monthRange(_diaryRange.start);
+                } else if (wasTimeline) {
+                  _diaryRange = _currentCycleRange(date: _diaryRange.start);
+                }
+              });
+            },
+          );
         case 1:
           return const CategoryTab(
             key: ValueKey('savings-tab'),
@@ -1015,31 +1057,31 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (picked == null) return;
 
-      final cropped = await ImageCropper().cropImage(
+      final cropped = await cropper.ImageCropper().cropImage(
         sourcePath: picked.path,
-        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        aspectRatio: const cropper.CropAspectRatio(ratioX: 1, ratioY: 1),
         maxWidth: 512,
         maxHeight: 512,
-        compressFormat: ImageCompressFormat.jpg,
+        compressFormat: cropper.ImageCompressFormat.jpg,
         compressQuality: 80,
         uiSettings: [
-          AndroidUiSettings(
+          cropper.AndroidUiSettings(
             toolbarTitle: 'Đổi ảnh đại diện',
             toolbarColor: themeColor,
             toolbarWidgetColor: Colors.white,
             activeControlsWidgetColor: themeColor,
-            initAspectRatio: CropAspectRatioPreset.square,
-            aspectRatioPresets: const [CropAspectRatioPreset.square],
+            initAspectRatio: cropper.CropAspectRatioPreset.square,
+            aspectRatioPresets: const [cropper.CropAspectRatioPreset.square],
             lockAspectRatio: true,
           ),
-          IOSUiSettings(
+          cropper.IOSUiSettings(
             title: 'Đổi ảnh đại diện',
             doneButtonTitle: 'Lưu',
             cancelButtonTitle: 'Huỷ',
             aspectRatioLockEnabled: true,
             resetAspectRatioEnabled: false,
             aspectRatioPickerButtonHidden: true,
-            aspectRatioPresets: const [CropAspectRatioPreset.square],
+            aspectRatioPresets: const [cropper.CropAspectRatioPreset.square],
           ),
         ],
       );

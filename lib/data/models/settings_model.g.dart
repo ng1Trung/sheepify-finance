@@ -29,13 +29,14 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
           ((fields[5] as bool? ?? false) ? 'dark' : 'light'),
       avatarImageRef: fields[8] as String?,
       financialCycleStartDay: fields[9] as int? ?? 1,
+      weekStartDay: fields[10] as int? ?? DateTime.monday,
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.accumulateBalance)
       ..writeByte(1)
@@ -55,7 +56,9 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(8)
       ..write(obj.avatarImageRef)
       ..writeByte(9)
-      ..write(obj.financialCycleStartDay);
+      ..write(obj.financialCycleStartDay)
+      ..writeByte(10)
+      ..write(obj._weekStartDay);
   }
 
   @override

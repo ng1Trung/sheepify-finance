@@ -34,6 +34,9 @@ class AppSettings extends HiveObject {
   @HiveField(9)
   int financialCycleStartDay;
 
+  @HiveField(10)
+  int? _weekStartDay;
+
   bool get hideAmounts => _hideAmounts ?? false;
 
   set hideAmounts(bool value) => _hideAmounts = value;
@@ -41,6 +44,10 @@ class AppSettings extends HiveObject {
   String get themeMode => _themeMode ?? (isDarkMode ? 'dark' : 'light');
 
   set themeMode(String value) => _themeMode = value;
+
+  int get weekStartDay => _weekStartDay ?? DateTime.monday;
+
+  set weekStartDay(int value) => _weekStartDay = value;
 
   AppSettings({
     this.accumulateBalance = true,
@@ -53,6 +60,8 @@ class AppSettings extends HiveObject {
     this.financialCycleStartDay = 1,
     String themeMode = 'system',
     bool hideAmounts = false,
+    int weekStartDay = DateTime.monday,
   }) : _themeMode = themeMode,
-       _hideAmounts = hideAmounts;
+       _hideAmounts = hideAmounts,
+       _weekStartDay = weekStartDay;
 }
