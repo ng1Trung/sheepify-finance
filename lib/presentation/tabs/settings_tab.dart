@@ -140,6 +140,13 @@ class SettingsTab extends StatelessWidget {
                       value: _languageLabel(settings.languageCode, l10n),
                       onTap: () => _showLanguagePicker(context, settings),
                     ),
+                    _buildDivider(),
+                    _buildSettingsRow(
+                      context,
+                      title: l10n.get('week_start_day'),
+                      value: _weekdayLabel(settings.weekStartDay, l10n),
+                      onTap: () => _showWeekStartPicker(context, settings),
+                    ),
                   ],
                 ),
               ),
@@ -277,6 +284,25 @@ class SettingsTab extends StatelessWidget {
 
   String _financialCycleStartLabel(int day, L10n l10n) {
     return l10n.get('day_of_month', params: {'day': day.toString()});
+  }
+
+  String _weekdayLabel(int weekday, L10n l10n) {
+    switch (weekday) {
+      case DateTime.tuesday:
+        return l10n.get('weekday_tuesday');
+      case DateTime.wednesday:
+        return l10n.get('weekday_wednesday');
+      case DateTime.thursday:
+        return l10n.get('weekday_thursday');
+      case DateTime.friday:
+        return l10n.get('weekday_friday');
+      case DateTime.saturday:
+        return l10n.get('weekday_saturday');
+      case DateTime.sunday:
+        return l10n.get('weekday_sunday');
+      default:
+        return l10n.get('weekday_monday');
+    }
   }
 
   Widget _buildFontItem(
@@ -577,6 +603,36 @@ class SettingsTab extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _showWeekStartPicker(
+    BuildContext context,
+    AppSettings settings,
+  ) {
+    final l10n = L10n.of(context);
+    final items = [
+      for (final weekday in const [
+        DateTime.monday,
+        DateTime.tuesday,
+        DateTime.wednesday,
+        DateTime.thursday,
+        DateTime.friday,
+        DateTime.saturday,
+        DateTime.sunday,
+      ])
+        (weekday.toString(), _weekdayLabel(weekday, l10n)),
+    ];
+
+    return _showChoiceSheet(
+      context,
+      title: l10n.get('week_start_day'),
+      items: items,
+      selectedValue: settings.weekStartDay.toString(),
+      onSelected: (value) {
+        settings.weekStartDay = int.tryParse(value) ?? DateTime.monday;
+        settings.save();
+      },
     );
   }
 
