@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:line_icons/line_icons.dart';
 
 import '../../core/constants/constants.dart';
+import '../../core/utils/category_util.dart';
 import '../../core/utils/currency_util.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
@@ -103,10 +104,7 @@ class _CategoryTabState extends State<CategoryTab> {
       builder: (context, _) {
         final l10n = L10n.of(context);
         final box = Hive.box<CategoryModel>(kCatBox);
-        final txBox = Hive.box<Transaction>(kMoneyBox);
         final now = DateTime.now();
-
-        List<Transaction> allTransactions = txBox.values.toList();
 
         final categories = box.values
             .where((c) => c.effectiveTypeIndex == typeIndex)
@@ -127,32 +125,7 @@ class _CategoryTabState extends State<CategoryTab> {
           itemBuilder: (context, index) {
             final cat = categories[index];
 
-            // Calculate spent for this category
-            double spent = 0;
-            final goalType = cat.effectiveGoalTypeIndex;
-            if (goalType == 1) {
-              spent = allTransactions
-                  .where(
-                    (tx) =>
-                        tx.categoryId == cat.id &&
-                        tx.date.month == now.month &&
-                        tx.date.year == now.year,
-                  )
-                  .fold(0.0, (sum, tx) => sum + tx.amount);
-            } else if (goalType == 2) {
-              spent = allTransactions
-                  .where((tx) => tx.categoryId == cat.id)
-                  .fold(0.0, (sum, tx) => sum + tx.amount);
-            } else {
-              spent = allTransactions
-                  .where(
-                    (tx) =>
-                        tx.categoryId == cat.id &&
-                        tx.date.month == now.month &&
-                        tx.date.year == now.year,
-                  )
-                  .fold(0.0, (sum, tx) => sum + tx.amount);
-            }
+            final spent = CategoryUtil.calculateCategorySpent(cat, now: now);
 
             final bool isOverBudget =
                 typeIndex == 0 && cat.budget != null && spent > cat.budget!;

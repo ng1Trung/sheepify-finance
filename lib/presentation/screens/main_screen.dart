@@ -22,6 +22,7 @@ import '../widgets/category_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/avatar_image_store.dart';
 import '../../core/utils/currency_util.dart';
+import '../../core/utils/financial_cycle_util.dart';
 import '../../core/utils/l10n.dart';
 
 import '../widgets/common/sheep_notifications.dart';
@@ -63,6 +64,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
+  DateTimeRange _currentCycleRange({DateTime? date}) {
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    return FinancialCycleUtil.cycleRangeFor(
+      date ?? DateTime.now(),
+      settings.financialCycleStartDay,
+    );
+  }
+
   final _catBox = Hive.box<CategoryModel>(kCatBox);
 
   @override
@@ -71,6 +81,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _moneyListenable = Hive.box<Transaction>(kMoneyBox).listenable();
     _moneyListenable.addListener(_handleTransactionEvents);
+    _diaryRange = _currentCycleRange();
     _seedParentCategories();
     _activeInsightType = _pickRandomInsightType();
     unawaited(_prepareStreakTracking());
@@ -328,8 +339,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     setState(() {
       _currentIndex = index;
       _selectedDate = DateTime.now();
-      if (index == 0) {
-        _diaryRange = _dayRange(DateTime.now());
+      if (_tabUsesDateRange(index)) {
+        _diaryRange = _currentCycleRange();
       }
     });
   }
@@ -356,7 +367,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
   }
 
-  bool get _usesDateRange => _currentIndex == 0 || _currentIndex == 2;
+  bool get _usesDateRange => _tabUsesDateRange(_currentIndex);
+
+  bool _tabUsesDateRange(int index) => index == 0 || index == 2;
 
   @override
   Widget build(BuildContext context) {
@@ -646,10 +659,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                               username: username,
                               streakCount: streakCount,
                               avatarFile: avatarFile,
-                              onTap: () => _showAvatarActions(
-                                context,
-                                currentSettings,
-                              ),
+                              onTap: () =>
+                                  _showAvatarActions(context, currentSettings),
                             );
                           },
                         ),
@@ -659,25 +670,35 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                   const Spacer(),
                   _DrawerOverviewCard(status: overview),
                   const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ValueListenableBuilder(
-                      valueListenable: Hive.box<AppSettings>(
-                        kSettingsBox,
-                      ).listenable(),
-                      builder: (context, settingsBox, _) {
-                        final currentSettings =
-                            settingsBox.get('current') ?? AppSettings();
-                        return _DrawerPrivacyButton(
-                          isHidden: currentSettings.hideAmounts,
-                          onPressed: () {
-                            currentSettings.hideAmounts =
-                                !currentSettings.hideAmounts;
-                            currentSettings.save();
-                          },
-                        );
-                      },
-                    ),
+                  ValueListenableBuilder(
+                    valueListenable: Hive.box<AppSettings>(
+                      kSettingsBox,
+                    ).listenable(),
+                    builder: (context, settingsBox, _) {
+                      final currentSettings =
+                          settingsBox.get('current') ?? AppSettings();
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _DrawerCyclePill(
+                              label: _formatCurrentCycleLabel(
+                                context,
+                                currentSettings,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _DrawerPrivacyButton(
+                            isHidden: currentSettings.hideAmounts,
+                            onPressed: () {
+                              currentSettings.hideAmounts =
+                                  !currentSettings.hideAmounts;
+                              currentSettings.save();
+                            },
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -782,7 +803,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (resultDate != null) {
       setState(() {
         _selectedDate = resultDate;
-        _diaryRange = _dayRange(resultDate);
+        _diaryRange = _currentCycleRange(date: resultDate);
         _currentIndex = sourceIndex == 2 ? 2 : 0;
       });
     }
@@ -1134,18 +1155,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     AppSettings settings,
   ) {
     return switch (type) {
-      _DrawerInsightType.budget => _buildBudgetOverview(),
-      _DrawerInsightType.cycle => _buildCycleOverview(),
+      _DrawerInsightType.budget => _buildBudgetOverview(settings),
+      _DrawerInsightType.cycle => _buildCycleOverview(settings),
       _DrawerInsightType.savings => _buildSavingsOverview(settings),
       _DrawerInsightType.today => _buildTodayOverview(settings),
       _DrawerInsightType.streak => _buildStreakOverview(),
     };
   }
 
-  _DrawerOverviewStatus? _buildBudgetOverview() {
+  _DrawerOverviewStatus? _buildBudgetOverview(AppSettings settings) {
     final now = DateTime.now();
-    final start = DateTime(now.year, now.month);
-    final end = DateTime(now.year, now.month + 1);
+    final cycleRange = FinancialCycleUtil.cycleRangeFor(
+      now,
+      settings.financialCycleStartDay,
+    );
     final transactions = Hive.box<Transaction>(kMoneyBox).values.toList();
     _DrawerOverviewStatus? bestUnderBudget;
     double bestProgress = -1;
@@ -1162,8 +1185,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           .where(
             (tx) =>
                 tx.categoryId == category.id &&
-                !tx.date.isBefore(start) &&
-                tx.date.isBefore(end),
+                FinancialCycleUtil.isInRange(tx.date, cycleRange),
           )
           .fold(0.0, (sum, tx) => sum + tx.amount);
       if (spent <= 0) continue;
@@ -1194,12 +1216,16 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return bestOverBudget ?? bestUnderBudget;
   }
 
-  _DrawerOverviewStatus? _buildCycleOverview() {
+  _DrawerOverviewStatus? _buildCycleOverview(AppSettings settings) {
     final now = DateTime.now();
-    final currentStart = DateTime(now.year, now.month);
-    final currentEnd = DateTime(now.year, now.month + 1);
-    final previousStart = DateTime(now.year, now.month - 1);
-    final previousEnd = currentStart;
+    final currentRange = FinancialCycleUtil.cycleRangeFor(
+      now,
+      settings.financialCycleStartDay,
+    );
+    final previousRange = FinancialCycleUtil.previousCycleRange(
+      now,
+      settings.financialCycleStartDay,
+    );
     final transactions = Hive.box<Transaction>(kMoneyBox).values.toList();
     final categoriesById = {
       for (final cat in Hive.box<CategoryModel>(kCatBox).values) cat.id: cat,
@@ -1213,13 +1239,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 category?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
             return effectiveTypeIndex == typeIndex &&
                 !tx.date.isBefore(start) &&
-                tx.date.isBefore(end);
+                !tx.date.isAfter(end);
           })
           .fold(0.0, (sum, tx) => sum + tx.amount);
     }
 
-    final currentExpense = sumForRange(currentStart, currentEnd, 0);
-    final previousExpense = sumForRange(previousStart, previousEnd, 0);
+    final currentExpense = sumForRange(currentRange.start, currentRange.end, 0);
+    final previousExpense = sumForRange(
+      previousRange.start,
+      previousRange.end,
+      0,
+    );
     if (previousExpense > 0 && currentExpense != previousExpense) {
       final percent =
           ((currentExpense - previousExpense).abs() / previousExpense * 100)
@@ -1236,8 +1266,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       );
     }
 
-    final currentIncome = sumForRange(currentStart, currentEnd, 1);
-    final previousIncome = sumForRange(previousStart, previousEnd, 1);
+    final currentIncome = sumForRange(currentRange.start, currentRange.end, 1);
+    final previousIncome = sumForRange(
+      previousRange.start,
+      previousRange.end,
+      1,
+    );
     if (previousIncome > 0 && currentIncome > previousIncome) {
       final percent = ((currentIncome - previousIncome) / previousIncome * 100)
           .round();
@@ -1344,6 +1378,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   String _formatCompactAmount(double amount, AppSettings settings) {
     if (settings.hideAmounts) return '****';
     return '${CurrencyUtil.formatCompact(amount)}${CurrencyUtil.getCurrencySymbol(settings.currencyCode)}';
+  }
+
+  String _formatCurrentCycleLabel(BuildContext context, AppSettings settings) {
+    final range = FinancialCycleUtil.cycleRangeFor(
+      DateTime.now(),
+      settings.financialCycleStartDay,
+    );
+    final locale = Localizations.localeOf(context).toString();
+    final start = DateFormat('dd/MM', locale).format(range.start);
+    final end = DateFormat('dd/MM', locale).format(range.end);
+    return '${L10n.of(context).get('current_cycle')}: $start - $end';
   }
 
   String _getGreeting(L10n l10n) {
@@ -1528,7 +1573,10 @@ class _DrawerAvatar extends StatelessWidget {
                   border: Border.all(color: const Color(0x66FFFFFF), width: 1),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 3,
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1555,6 +1603,45 @@ class _DrawerAvatar extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DrawerCyclePill extends StatelessWidget {
+  final String label;
+
+  const _DrawerCyclePill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      decoration: BoxDecoration(
+        color: const Color(0x24FFFFFF),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0x30FFFFFF)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.date_range_rounded, color: Colors.white, size: 14),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
         ],
       ),
     );

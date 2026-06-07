@@ -65,6 +65,17 @@ class SettingsTab extends StatelessWidget {
                         },
                       ),
                     ),
+                    _buildDivider(),
+                    _buildSettingsRow(
+                      context,
+                      title: l10n.get('financial_cycle_start'),
+                      value: _financialCycleStartLabel(
+                        settings.financialCycleStartDay,
+                        l10n,
+                      ),
+                      onTap: () =>
+                          _showFinancialCycleStartPicker(context, settings),
+                    ),
                   ],
                 ),
               ),
@@ -262,6 +273,10 @@ class SettingsTab extends StatelessWidget {
       default:
         return l10n.get('system');
     }
+  }
+
+  String _financialCycleStartLabel(int day, L10n l10n) {
+    return l10n.get('day_of_month', params: {'day': day.toString()});
   }
 
   Widget _buildFontItem(
@@ -495,6 +510,73 @@ class SettingsTab extends StatelessWidget {
         settings.languageCode = value;
         settings.save();
       },
+    );
+  }
+
+  Future<void> _showFinancialCycleStartPicker(
+    BuildContext context,
+    AppSettings settings,
+  ) {
+    final l10n = L10n.of(context);
+    return showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            SheepSpacing.page,
+            18,
+            SheepSpacing.page,
+            24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.get('financial_cycle_start_title'),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l10n.get('financial_cycle_start_subtitle'),
+                textAlign: TextAlign.center,
+                style: SheepTextStyles.itemMeta(context),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 360,
+                child: ListView.builder(
+                  itemCount: 31,
+                  itemBuilder: (context, index) {
+                    final day = index + 1;
+                    final isSelected = settings.financialCycleStartDay == day;
+                    return ListTile(
+                      title: Text(
+                        _financialCycleStartLabel(day, l10n),
+                        style: TextStyle(
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_rounded)
+                          : null,
+                      onTap: () {
+                        settings.financialCycleStartDay = day;
+                        settings.save();
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

@@ -87,6 +87,7 @@ class _StatsTabState extends State<StatsTab> {
 
         final stats = statsMap.values.toList()
           ..sort((a, b) => b.amount.compareTo(a.amount));
+        final chartStats = stats.where((stat) => stat.amount > 0).toList();
         final selectedTotal = totals[_selectedTypeIndex];
         final selectedTransactionCount = transactionCounts[_selectedTypeIndex];
 
@@ -111,6 +112,7 @@ class _StatsTabState extends State<StatsTab> {
                 child: _selectedTypeIndex == 0
                     ? _buildExpenseCard(
                         context,
+                        chartStats,
                         stats,
                         selectedTotal,
                         selectedTransactionCount,
@@ -118,6 +120,7 @@ class _StatsTabState extends State<StatsTab> {
                       )
                     : _buildIncomeCard(
                         context,
+                        chartStats,
                         stats,
                         selectedTotal,
                         selectedTransactionCount,
@@ -133,6 +136,7 @@ class _StatsTabState extends State<StatsTab> {
 
   Widget _buildExpenseCard(
     BuildContext context,
+    List<_StatEntry> chartStats,
     List<_StatEntry> stats,
     double total,
     int transactionCount,
@@ -144,7 +148,7 @@ class _StatsTabState extends State<StatsTab> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            _buildPieChart(context, stats, total, settings),
+            _buildPieChart(context, chartStats, total, settings),
             const SizedBox(height: 12),
             Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
             const SizedBox(height: 8),
@@ -161,6 +165,7 @@ class _StatsTabState extends State<StatsTab> {
 
   Widget _buildIncomeCard(
     BuildContext context,
+    List<_StatEntry> chartStats,
     List<_StatEntry> stats,
     double total,
     int transactionCount,
@@ -172,7 +177,7 @@ class _StatsTabState extends State<StatsTab> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            _buildPieChart(context, stats, total, settings),
+            _buildPieChart(context, chartStats, total, settings),
             const SizedBox(height: 12),
             Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
             const SizedBox(height: 8),
@@ -302,7 +307,18 @@ class _StatsTabState extends State<StatsTab> {
     AppSettings settings,
   ) {
     final color = _categoryColor(stat.category);
-    final progress = total > 0 ? stat.amount / total : 0.0;
+    final budget = stat.category.budget;
+    final progressBase = _selectedTypeIndex == 0 && budget != null && budget > 0
+        ? budget
+        : total;
+    final progress = progressBase > 0 ? stat.amount / progressBase : 0.0;
+    final barColor =
+        _selectedTypeIndex == 0 &&
+            budget != null &&
+            budget > 0 &&
+            stat.amount > budget
+        ? AppColors.expense
+        : color;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: InkWell(
@@ -339,8 +355,8 @@ class _StatsTabState extends State<StatsTab> {
                 value: progress.clamp(0.0, 1.0),
                 minHeight: 6,
                 borderRadius: BorderRadius.circular(999),
-                backgroundColor: color.withOpacity(0.12),
-                valueColor: AlwaysStoppedAnimation(color),
+                backgroundColor: barColor.withOpacity(0.12),
+                valueColor: AlwaysStoppedAnimation(barColor),
               ),
             ],
           ),
