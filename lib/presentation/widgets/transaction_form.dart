@@ -238,7 +238,10 @@ class _TransactionFormState extends State<TransactionForm> {
         final cat = _catBox.values.firstWhere(
           (c) => c.id == _selectedCategoryId,
         );
-        final spent = CategoryUtil.calculateCategorySpent(cat);
+        final spent = CategoryUtil.calculateCategorySpent(
+          cat,
+          now: _selectedDate,
+        );
 
         if (cat.effectiveTypeIndex == 0) {
           // Expense

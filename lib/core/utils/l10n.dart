@@ -23,6 +23,11 @@ class L10n {
       'accumulate_balance': 'Cộng dồn số dư từ tháng trước',
       'accumulate_subtitle':
           'Số dư tháng này sẽ bao gồm cả số dư khả dụng từ các tháng trước đó.',
+      'financial_cycle_start': 'Ngày bắt đầu chu kỳ',
+      'financial_cycle_start_title': 'Ngày bắt đầu chu kỳ tài chính',
+      'financial_cycle_start_subtitle':
+          'Ngân sách và thống kê mặc định sẽ tính từ ngày này hàng tháng.',
+      'current_cycle': 'Chu kỳ hiện tại',
       'system_settings': 'CÀI ĐẶT HỆ THỐNG',
       'theme': 'Giao diện & Màu sắc',
       'language': 'Ngôn ngữ',
@@ -182,6 +187,11 @@ class L10n {
       'accumulate_balance': 'Roll over balance from last month',
       'accumulate_subtitle':
           'Balance for this month will include available balance from previous months.',
+      'financial_cycle_start': 'Financial cycle starts',
+      'financial_cycle_start_title': 'Financial cycle start day',
+      'financial_cycle_start_subtitle':
+          'Budgets and default statistics will count from this day each month.',
+      'current_cycle': 'Current cycle',
       'system_settings': 'SYSTEM SETTINGS',
       'theme': 'Theme & Colors',
       'language': 'Language',

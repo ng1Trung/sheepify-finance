@@ -6,6 +6,7 @@ import 'package:line_icons/line_icons.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/constants.dart';
 import '../../../core/utils/currency_util.dart';
+import '../../../core/utils/financial_cycle_util.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
@@ -31,7 +32,11 @@ class TransactionHistorySheet extends StatelessWidget {
         ? Color(category.colorValue!)
         : AppColors.primary;
 
-    final double totalAccumulated = transactions.fold(
+    final allCategoryTransactions = Hive.box<Transaction>(
+      kMoneyBox,
+    ).values.where((tx) => tx.categoryId == category.id);
+
+    final double totalAccumulated = allCategoryTransactions.fold(
       0.0,
       (sum, tx) => sum + tx.amount,
     );
@@ -329,26 +334,33 @@ class TransactionHistorySheet extends StatelessWidget {
     final settings =
         Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     final now = DateTime.now();
-    final totalInMonth = transactions
-        .where((tx) => tx.date.month == now.month && tx.date.year == now.year)
+    final cycleRange = FinancialCycleUtil.cycleRangeFor(
+      now,
+      settings.financialCycleStartDay,
+    );
+    final allCategoryTransactions = Hive.box<Transaction>(
+      kMoneyBox,
+    ).values.where((tx) => tx.categoryId == category.id);
+    final totalInCycle = allCategoryTransactions
+        .where((tx) => FinancialCycleUtil.isInRange(tx.date, cycleRange))
         .fold(0.0, (sum, tx) => sum + tx.amount);
 
     final goalType = category.effectiveGoalTypeIndex;
     if (goalType == 1) {
       // --- LOẠI: ĐỊNH KỲ HÀNG THÁNG ---
       final target = category.targetAmount ?? 0;
-      final remaining = target - totalInMonth;
+      final remaining = target - totalInCycle;
       final progress = target > 0
-          ? (totalInMonth / target).clamp(0.0, 1.0)
+          ? (totalInCycle / target).clamp(0.0, 1.0)
           : 0.0;
 
-      // Calculate days left until reminder day in this month
-      int reminderDay = category.reminderDay ?? 10;
-      // Handle end of month
-      int lastDay = DateTime(now.year, now.month + 1, 0).day;
-      if (reminderDay > lastDay) reminderDay = lastDay;
+      final reminderDate = FinancialCycleUtil.cycleDateInRange(
+        range: cycleRange,
+        day: category.reminderDay ?? 10,
+      );
+      final today = DateTime(now.year, now.month, now.day);
+      final daysLeft = reminderDate.difference(today).inDays;
 
-      int daysLeft = reminderDay - now.day;
       String infoText = "";
       String planningText = "";
 
@@ -365,23 +377,23 @@ class TransactionHistorySheet extends StatelessWidget {
           },
         );
         planningText =
-            '${l10n.get('target_date')}: ${l10n.get('day')} $reminderDay ${l10n.get('month')} ${now.month} (${l10n.get('days_left', params: {'count': daysLeft.toString()})})';
+            '${l10n.get('target_date')}: ${DateFormat('dd/MM/yyyy').format(reminderDate)} (${l10n.get('days_left', params: {'count': daysLeft.toString()})})';
       } else if (remaining <= 0) {
         planningText = l10n.get('done_this_month');
       } else {
         planningText =
-            '${l10n.get('overdue')} (${l10n.get('day')} $reminderDay)';
+            '${l10n.get('overdue')} (${DateFormat('dd/MM/yyyy').format(reminderDate)})';
       }
 
       return _buildDashboardCard(
         context,
         title:
-            '${l10n.get('accumulate_periodic').toUpperCase()} ${l10n.get('month').toUpperCase()} ${now.month}',
+            '${l10n.get('accumulate_periodic').toUpperCase()} - ${l10n.get('current_cycle').toUpperCase()}',
         subtitle: planningText,
         progress: progress,
         info: infoText,
         footerLeft:
-            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatDisplayAmount(totalInMonth, settings.currencyCode, isHidden: settings.hideAmounts)}',
+            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatDisplayAmount(totalInCycle, settings.currencyCode, isHidden: settings.hideAmounts)}',
         footerRight:
             '${l10n.get('monthly_goal_label')}: ${CurrencyUtil.formatDisplayAmount(target, settings.currencyCode, isHidden: settings.hideAmounts)}',
       );
