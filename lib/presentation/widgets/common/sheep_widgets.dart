@@ -361,6 +361,8 @@ class SheepTransactionCard extends StatelessWidget {
     final brightness = Theme.of(context).brightness;
     final borderColor = AppColors.getBorder(brightness);
     final resolvedIconColor = iconColor ?? AppColors.getTextPrimary(brightness);
+    final hasNote = dateText.trim().isNotEmpty;
+
     return Container(
       margin: margin ?? const EdgeInsets.only(bottom: SheepSpacing.itemGap),
       decoration: BoxDecoration(
@@ -372,11 +374,11 @@ class SheepTransactionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(SheepRadius.lg),
         onTap: onTap,
         child: SizedBox(
-          height: 64,
+          height: hasNote ? 64 : 54,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
                   width: 34,
@@ -394,72 +396,116 @@ class SheepTransactionCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: SheepTextStyles.itemTitle(context)
-                                  .copyWith(
-                                    fontSize: SheepTypeScale.item,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              if (amountIcon != null) ...[
-                                Icon(amountIcon, size: 16, color: amountColor),
-                                const SizedBox(width: 3),
-                              ],
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 128,
-                                ),
-                                child: Text(
-                                  amountText,
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    fontSize: SheepTypeScale.item,
-                                    fontWeight: FontWeight.w700,
-                                    color: amountColor,
-                                    letterSpacing: 0,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                  child: !hasNote
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                title,
+                                style: SheepTextStyles.itemTitle(context)
+                                    .copyWith(
+                                      fontSize: SheepTypeScale.item,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      if (dateText.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        FractionallySizedBox(
-                          widthFactor: 0.72,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            dateText,
-                            style: SheepTextStyles.itemMeta(
-                              context,
-                            ).copyWith(fontSize: SheepTypeScale.body),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            ),
+                            const SizedBox(width: 10),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                if (amountIcon != null) ...[
+                                  Icon(amountIcon, size: 16, color: amountColor),
+                                  const SizedBox(width: 3),
+                                ],
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 128,
+                                  ),
+                                  child: Text(
+                                    amountText,
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      fontSize: SheepTypeScale.item,
+                                      fontWeight: FontWeight.w700,
+                                      color: amountColor,
+                                      letterSpacing: 0,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    style: SheepTextStyles.itemTitle(context)
+                                        .copyWith(
+                                          fontSize: SheepTypeScale.item,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    if (amountIcon != null) ...[
+                                      Icon(amountIcon, size: 16, color: amountColor),
+                                      const SizedBox(width: 3),
+                                    ],
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 128,
+                                      ),
+                                      child: Text(
+                                        amountText,
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          fontSize: SheepTypeScale.item,
+                                          fontWeight: FontWeight.w700,
+                                          color: amountColor,
+                                          letterSpacing: 0,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            FractionallySizedBox(
+                              widthFactor: 0.72,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                dateText,
+                                style: SheepTextStyles.itemMeta(
+                                  context,
+                                ).copyWith(fontSize: SheepTypeScale.body),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ],
-                  ),
                 ),
               ],
             ),

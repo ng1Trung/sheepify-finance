@@ -838,7 +838,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       isDismissible: true,
       enableDrag: true,
       builder: (_) => TransactionForm(
-        initialDate: _usesDateRange ? _diaryRange.start : _selectedDate,
+        initialDate: DateTime.now(),
       ),
     );
 

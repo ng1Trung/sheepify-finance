@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -151,7 +152,7 @@ class _StatsTabState extends State<StatsTab> {
     AppSettings settings,
   ) {
     return SheepCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(
@@ -180,7 +181,7 @@ class _StatsTabState extends State<StatsTab> {
     AppSettings settings,
   ) {
     return SheepCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(
@@ -214,7 +215,7 @@ class _StatsTabState extends State<StatsTab> {
     final remainingCount = stats.length - visibleStats.length;
 
     return [
-      const SizedBox(height: 14),
+      const SizedBox(height: 12),
       ...visibleStats.map(
         (stat) => _buildProgressRow(
           context,
@@ -297,15 +298,42 @@ class _StatsTabState extends State<StatsTab> {
     final displayCount = touchedIndex == -1
         ? transactionCount
         : stats[touchedIndex].count;
+
+    // Calculate angles of sections to place labels outside
+    final List<double> sectionValues = [];
+    for (final stat in stats) {
+      final val = stat.amount < total * 0.02 ? total * 0.02 : stat.amount;
+      sectionValues.add(val);
+    }
+    final double sectionValuesSum = sectionValues.fold(0.0, (sum, val) => sum + val);
+
+    final List<double> midAngles = [];
+    if (hasTotal && sectionValuesSum > 0) {
+      double currentSum = 0.0;
+      for (final val in sectionValues) {
+        final double startAngle = 270.0 + (currentSum / sectionValuesSum) * 360.0;
+        final double sweepAngle = (val / sectionValuesSum) * 360.0;
+        final double midAngle = startAngle + sweepAngle / 2.0;
+        midAngles.add(midAngle);
+        currentSum += val;
+      }
+    }
+
+    const double centerSpaceRadius = 65.0;
+    const double normalRadius = 32.0;
+    const double touchedRadius = 40.0;
+    const double badgeDistance = 107.0; // Optimized spacing to prevent clipping on the sides and make leader lines shorter
+
     return SizedBox(
-      height: 220,
+      height: 230, // Optimized height to balance top and bottom spacing inside parent card
       child: Stack(
         alignment: Alignment.center,
         children: [
           PieChart(
             PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 75,
+              sectionsSpace: 2, // Smaller gap between segments
+              centerSpaceRadius: centerSpaceRadius,
+              startDegreeOffset: 270,
               sections: List.generate(stats.isEmpty ? 1 : stats.length, (
                 index,
               ) {
@@ -314,10 +342,41 @@ class _StatsTabState extends State<StatsTab> {
                     color: AppColors.getBorder(Theme.of(context).brightness),
                     value: 1,
                     title: '',
-                    radius: 22,
+                    radius: normalRadius,
                   );
                 }
+
                 final stat = stats[index];
+                final isTouched = index == touchedIndex;
+                final radius = isTouched ? touchedRadius : normalRadius;
+
+                Widget? badgeWidget;
+                double badgeOffset = 1.0;
+                double deltaD = 0.0;
+
+                if (hasTotal && index < 4) {
+                  final exactPercent = (stat.amount / total) * 100;
+                  if (exactPercent >= 5.0) {
+                    final percentLabels = _buildPercentLabels(stats, total);
+                    final percentText = percentLabels[stat.category.id] ?? exactPercent.toStringAsFixed(0);
+                    final midAngleDeg = midAngles[index];
+                    final midAngleRad = midAngleDeg * math.pi / 180.0;
+                    final isLeft = math.cos(midAngleRad) < 0;
+
+                    badgeOffset = (badgeDistance - centerSpaceRadius) / radius;
+                    deltaD = badgeDistance - (centerSpaceRadius + radius);
+
+                    badgeWidget = PieChartLabelWidget(
+                      categoryName: stat.category.name,
+                      percentText: percentText,
+                      color: _categoryColor(stat.category),
+                      angle: midAngleRad,
+                      isLeft: isLeft,
+                      deltaD: deltaD,
+                    );
+                  }
+                }
+
                 return PieChartSectionData(
                   color: _categoryColor(stat.category),
                   value: !hasTotal
@@ -326,7 +385,14 @@ class _StatsTabState extends State<StatsTab> {
                       ? total * 0.02
                       : stat.amount,
                   title: '',
-                  radius: index == touchedIndex ? 28 : 22,
+                  radius: radius,
+                  cornerRadius: 8, // Smoother rounded corner (prevents distortion on small segments)
+                  borderSide: BorderSide(
+                    color: Theme.of(context).cardColor,
+                    width: 2.0,
+                  ),
+                  badgeWidget: badgeWidget,
+                  badgePositionPercentageOffset: badgeOffset,
                 );
               }),
               pieTouchData: PieTouchData(
@@ -347,7 +413,9 @@ class _StatsTabState extends State<StatsTab> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  L10n.of(context).get('total'),
+                  touchedIndex == -1
+                      ? L10n.of(context).get(_selectedTypeIndex == 0 ? 'expense' : 'income')
+                      : stats[touchedIndex].category.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -590,5 +658,140 @@ class _StatsTabState extends State<StatsTab> {
         : _selectedTypeIndex == 0
         ? AppColors.expense
         : AppColors.income;
+  }
+}
+
+class LeaderLinePainter extends CustomPainter {
+  final double angle;
+  final Color color;
+  final bool isLeft;
+  final double deltaD;
+
+  LeaderLinePainter({
+    required this.angle,
+    required this.color,
+    required this.isLeft,
+    required this.deltaD,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withOpacity(0.8)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    final dotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    final dx = cx - deltaD * math.cos(angle);
+    final dy = cy - deltaD * math.sin(angle);
+
+    // Draw dot on the slice edge
+    canvas.drawCircle(Offset(dx, dy), 2.5, dotPaint);
+
+    // Draw line from dot to elbow, then horizontal bend
+    final path = Path();
+    path.moveTo(dx, dy);
+    path.lineTo(cx, cy);
+
+    final horizontalEnd = isLeft ? cx - 5.0 : cx + 5.0;
+    path.lineTo(horizontalEnd, cy);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant LeaderLinePainter oldDelegate) {
+    return oldDelegate.angle != angle ||
+        oldDelegate.color != color ||
+        oldDelegate.isLeft != isLeft ||
+        oldDelegate.deltaD != deltaD;
+  }
+}
+
+class PieChartLabelWidget extends StatelessWidget {
+  final String categoryName;
+  final String percentText;
+  final Color color;
+  final double angle;
+  final bool isLeft;
+  final double deltaD;
+
+  const PieChartLabelWidget({
+    super.key,
+    required this.categoryName,
+    required this.percentText,
+    required this.color,
+    required this.angle,
+    required this.isLeft,
+    required this.deltaD,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const double width = 80.0;
+    const double height = 50.0;
+
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: LeaderLinePainter(
+                angle: angle,
+                color: color,
+                isLeft: isLeft,
+                deltaD: deltaD,
+              ),
+            ),
+          ),
+          Positioned(
+            left: isLeft ? null : (width / 2) + 8,
+            right: isLeft ? (width / 2) + 8 : null,
+            top: 0,
+            bottom: 0,
+            child: Align(
+              alignment: isLeft ? Alignment.centerRight : Alignment.centerLeft,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment:
+                    isLeft ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    categoryName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: isLeft ? TextAlign.end : TextAlign.start,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '$percentText%',
+                    textAlign: isLeft ? TextAlign.end : TextAlign.start,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

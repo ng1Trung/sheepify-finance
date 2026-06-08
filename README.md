@@ -11,7 +11,7 @@
 - **Clean Amount Entry**: Amounts are entered and displayed as plain numbers with comma separators, without currency symbols.
 - **Image Attachments**: Capture or import receipt images; Sheepify copies them into app storage so old transactions remain viewable after restarts and source-file deletion.
 - **Detailed History**: Review transactions by date range in list and gallery views with independent content filters.
-- **Readable Transaction Cards**: Transaction rows prioritize category, note, and amount with one-line ellipsis behavior for long notes.
+- **Readable Transaction Cards**: Transaction rows prioritize category, note, and amount with one-line ellipsis behavior for long notes. Displays as a compact, vertically centered single line when no note is present.
 
 ### 2. Diary Views
 - **List View**: Groups transactions by date with muted date headers so transaction details remain the focus.
@@ -42,6 +42,17 @@
 - **Offline-First**: All data is stored locally on your device using Hive. Your financial life never leaves your phone.
 - **No Account Required**: Start tracking immediately. No email, no password, no tracking pixels.
 - **Data Ownership**: You have full control over your data. Future-proof and private by design.
+
+---
+
+## Recent UI/UX Improvements
+
+- **Today Default for FAB**: Opening the transaction creation form defaults to today's date instead of the cycle start date.
+- **Pressable Submit Button**: Primary action button features a double ring (outer ring + solid inner button) for a tactile, pressable feel, with an increased gap to the photo attachment button.
+- **Form Submission Guard**: The submit button remains disabled until a valid amount (>0) and a category are selected.
+- **Left-Aligned Category Picker**: Items align left-to-right with ellipsis truncation and clean spacing.
+- **Photo Deletion Safety**: Added confirmation dialogs when deleting photo attachments to avoid accidental loss.
+- **Unified Pill Aesthetics**: Synchronized Category Pill design with the Date Pill, showing centered placeholder text when no category is selected.
 
 ---
 

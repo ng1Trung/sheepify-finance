@@ -31,9 +31,13 @@ class TransactionForm extends StatefulWidget {
   State<TransactionForm> createState() => _TransactionFormState();
 }
 
-class _TransactionFormState extends State<TransactionForm> {
+class _TransactionFormState extends State<TransactionForm>
+    with SingleTickerProviderStateMixin {
+  static const int _noteMaxLength = 50;
   final _noteController = TextEditingController();
   final _amountController = TextEditingController();
+  late final AnimationController _noteShakeController;
+  late final Animation<double> _noteShakeAnimation;
 
   late DateTime _selectedDate;
   late int _selectedTypeIndex; // 0: expense, 1: income, 2: savings
@@ -53,6 +57,20 @@ class _TransactionFormState extends State<TransactionForm> {
   @override
   void initState() {
     super.initState();
+    _noteShakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+    _noteShakeAnimation =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 0, end: -8), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: -8, end: 8), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: 8, end: -5), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: -5, end: 5), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: 5, end: 0), weight: 1),
+        ]).animate(
+          CurvedAnimation(parent: _noteShakeController, curve: Curves.easeOut),
+        );
     if (widget.transaction != null) {
       // Initialize state with existing transaction data
       final tx = widget.transaction!;
@@ -100,6 +118,19 @@ class _TransactionFormState extends State<TransactionForm> {
     // Refresh state on each character typed to update visual feedback
     _amountController.addListener(() => setState(() {}));
     _noteController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _noteShakeController.dispose();
+    _noteController.dispose();
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  void _shakeNoteField() {
+    HapticFeedback.selectionClick();
+    _noteShakeController.forward(from: 0);
   }
 
   bool get _hasChanges {
@@ -168,6 +199,24 @@ class _TransactionFormState extends State<TransactionForm> {
           setState(() => _imagePath = storedImageRef);
         }
       }
+    }
+  }
+
+  Future<void> _confirmRemoveImage() async {
+    final l10n = L10n.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => SheepConfirmDialog(
+        title: 'Xoá ảnh đính kèm?',
+        content: 'Ảnh giao dịch hiện tại sẽ bị xoá khỏi biểu mẫu.',
+        confirmLabel: l10n.delete,
+        confirmColor: AppColors.expense,
+        icon: Icons.delete_outline_rounded,
+        onConfirm: () {},
+      ),
+    );
+    if (confirm == true) {
+      setState(() => _imagePath = null);
     }
   }
 
@@ -341,54 +390,299 @@ class _TransactionFormState extends State<TransactionForm> {
           children: [
             _buildDragHandle(),
             const SizedBox(height: SheepSpacing.xl),
-            _buildDatePill(),
-            const SizedBox(height: SheepSpacing.xl),
             TransactionImageArea(
               imagePath: _imagePath,
-              isExpense: _selectedTypeIndex == 0,
-              selectedIndex: _selectedTypeIndex, // PASSING NEW PROP
+              selectedIndex: _selectedTypeIndex,
               selectedCategory: selectedCategory,
               categoryColor: selectedCategory?.colorValue != null
                   ? Color(selectedCategory!.colorValue!)
                   : null,
               amountController: _amountController,
               noteController: _noteController,
-              onPickImage: _pickImage,
-              onRemoveImage: () => setState(() => _imagePath = null),
-              onShowCategoryPicker: _showCategoryPicker,
+              onRemoveImage: _confirmRemoveImage,
+              noteShakeAnimation: _noteShakeAnimation,
+              noteMaxLength: _noteMaxLength,
+              onNoteLimitExceeded: _shakeNoteField,
             ),
+            const SizedBox(height: SheepSpacing.lg),
+            _buildMetaControls(selectedCategory),
             const SizedBox(height: SheepSpacing.xl),
-            _buildSaveButton(),
-            const SizedBox(height: SheepSpacing.sm),
+            _buildActionButtons(),
           ],
         ),
       ),
     );
   }
 
-  // Interactive pill to display and change date/time
-  Widget _buildDatePill() {
-    final theme = Theme.of(context);
-    return SheepDatePill(
-      label: DateFormat(
-        'dd/MM/yyyy',
-        Localizations.localeOf(context).toString(),
-      ).format(_selectedDate),
-      onTap: _pickDate,
-      backgroundColor: AppColors.getSubtleSurface(theme.brightness),
-      border: Border.all(color: AppColors.getBorder(theme.brightness)),
+  Widget _buildMetaControls(CategoryModel? selectedCategory) {
+    return Row(
+      children: [
+        Expanded(child: _buildCategoryPill(selectedCategory)),
+        const SizedBox(width: 10),
+        Expanded(child: _buildDatePill()),
+      ],
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildCategoryPill(CategoryModel? selectedCategory) {
+    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
+    final hasCategory = selectedCategory != null;
+    final accent = hasCategory
+        ? (selectedCategory.colorValue != null
+              ? Color(selectedCategory.colorValue!)
+              : AppColors.getInteractiveAccent(
+                  theme.brightness,
+                  theme.colorScheme.primary,
+                ))
+        : AppColors.getTextSecondary(theme.brightness);
+
+    final showArrow = hasCategory || widget.transaction != null;
+
+    Widget content;
+    if (!hasCategory) {
+      // Centered placeholder text without arrow
+      content = Center(
+        child: Text(
+          l10n.get('category_placeholder'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: SheepTextStyles.itemTitle(context).copyWith(
+            color: AppColors.getTextPrimary(theme.brightness),
+            fontSize: SheepTypeScale.item,
+          ),
+        ),
+      );
+    } else {
+      // With icon and arrow at the end
+      content = Row(
+        children: [
+          SheepCategoryIcon(
+            icon: selectedCategory.iconData,
+            color: accent,
+            size: 24,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              selectedCategory.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: SheepTextStyles.itemTitle(context).copyWith(
+                color: AppColors.getTextPrimary(theme.brightness),
+                fontSize: SheepTypeScale.item,
+              ),
+            ),
+          ),
+          if (showArrow)
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.getTextSecondary(theme.brightness),
+              size: 18,
+            ),
+        ],
+      );
+    }
+
+    return _TransactionPill(
+      onTap: _showCategoryPicker,
+      color: accent,
+      backgroundColor: hasCategory
+          ? AppColors.getAccentSurface(theme.brightness, accent)
+          : AppColors.getSubtleSurface(theme.brightness),
+      borderColor: hasCategory
+          ? accent.withValues(alpha: 0.32)
+          : AppColors.getBorder(theme.brightness),
+      child: content,
+    );
+  }
+
+  Widget _buildDatePill() {
+    final theme = Theme.of(context);
+    final accent = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
+    return _TransactionPill(
+      onTap: _pickDate,
+      color: accent,
+      backgroundColor: AppColors.getSubtleSurface(theme.brightness),
+      borderColor: AppColors.getBorder(theme.brightness),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              DateFormat(
+                'dd/MM/yyyy',
+                Localizations.localeOf(context).toString(),
+              ).format(_selectedDate),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: SheepTextStyles.itemTitle(
+                context,
+              ).copyWith(fontSize: SheepTypeScale.item),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    final theme = Theme.of(context);
+    final enteredAmount = CurrencyParsing.parseAmount(_amountController.text);
+    final isAmountValid = _amountController.text.isNotEmpty && enteredAmount > 0;
+    final isCategoryValid = _selectedCategoryId != null;
+    final canSubmit = isAmountValid && isCategoryValid && (widget.transaction == null || _hasChanges);
+    final accent = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
+
     return SizedBox(
+      height: 86,
       width: double.infinity,
-      height: 56,
-      child: SheepButton(
-        label: widget.transaction == null
-            ? L10n.of(context).get('create')
-            : L10n.of(context).save,
-        onPressed: widget.transaction == null || _hasChanges ? _submit : null,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildCircleActionButton(
+                icon: Icons.photo_library_rounded,
+                label: L10n.of(context).uploadImage,
+                color: AppColors.getTextSecondary(theme.brightness),
+                onTap: _pickImage,
+                size: 62,
+              ),
+              const SizedBox(width: 40),
+              const SizedBox(width: 78), // Placeholder for primary button
+              const SizedBox(width: 102), // Balance: 40 (gap) + 62 (photo button size)
+            ],
+          ),
+          _buildCircleActionButton(
+            icon: Icons.check_rounded,
+            label: widget.transaction == null
+                ? L10n.of(context).get('create')
+                : L10n.of(context).save,
+            color: accent,
+            onTap: canSubmit ? _submit : null,
+            size: 78,
+            isPrimary: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCircleActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onTap,
+    required double size,
+    bool isPrimary = false,
+  }) {
+    final theme = Theme.of(context);
+    final isEnabled = onTap != null;
+    final buttonColor = isPrimary
+        ? color
+        : AppColors.getSubtleSurface(theme.brightness);
+    final iconColor = isPrimary
+        ? AppColors.getOnAccent(theme.brightness, color)
+        : AppColors.getTextSecondary(theme.brightness);
+
+    Widget buttonContent = Container(
+      width: isPrimary ? size - 14 : size,
+      height: isPrimary ? size - 14 : size,
+      decoration: BoxDecoration(
+        color: buttonColor,
+        shape: BoxShape.circle,
+        border: isPrimary
+            ? null
+            : Border.all(
+                color: AppColors.getBorder(theme.brightness),
+                width: 1,
+              ),
+        boxShadow: isPrimary
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.22),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
+      ),
+      child: Icon(icon, color: iconColor, size: isPrimary ? 30 : 26),
+    );
+
+    if (isPrimary) {
+      buttonContent = Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: color.withValues(alpha: 0.38),
+            width: 3.0,
+          ),
+        ),
+        child: buttonContent,
+      );
+    }
+
+    return Semantics(
+      button: true,
+      label: label,
+      enabled: isEnabled,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 160),
+          opacity: isEnabled ? 1 : 0.45,
+          child: buttonContent,
+        ),
+      ),
+    );
+  }
+}
+
+class _TransactionPill extends StatelessWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  final Color color;
+  final Color backgroundColor;
+  final Color borderColor;
+
+  const _TransactionPill({
+    required this.child,
+    required this.onTap,
+    required this.color,
+    required this.backgroundColor,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(SheepRadius.md),
+        child: Ink(
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(SheepRadius.md),
+            border: Border.all(color: borderColor),
+          ),
+          child: Center(child: child),
+        ),
       ),
     );
   }

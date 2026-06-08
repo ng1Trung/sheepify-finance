@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:line_icons/line_icons.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -10,28 +11,28 @@ import '../common/sheep_widgets.dart';
 
 class TransactionImageArea extends StatelessWidget {
   final String? imagePath;
-  final bool isExpense;
-  final int selectedIndex; // NEW
+  final int selectedIndex;
   final CategoryModel? selectedCategory;
   final Color? categoryColor;
   final TextEditingController amountController;
   final TextEditingController noteController;
-  final VoidCallback onPickImage;
   final VoidCallback onRemoveImage;
-  final VoidCallback onShowCategoryPicker;
+  final Animation<double> noteShakeAnimation;
+  final int noteMaxLength;
+  final VoidCallback onNoteLimitExceeded;
 
   const TransactionImageArea({
     super.key,
     required this.imagePath,
-    required this.isExpense,
     required this.selectedIndex,
     required this.selectedCategory,
     this.categoryColor,
     required this.amountController,
     required this.noteController,
-    required this.onPickImage,
     required this.onRemoveImage,
-    required this.onShowCategoryPicker,
+    required this.noteShakeAnimation,
+    required this.noteMaxLength,
+    required this.onNoteLimitExceeded,
   });
 
   @override
@@ -42,7 +43,7 @@ class TransactionImageArea extends StatelessWidget {
     final l10n = L10n.of(context);
 
     return AspectRatio(
-      aspectRatio: 0.82,
+      aspectRatio: 1,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -50,7 +51,7 @@ class TransactionImageArea extends StatelessWidget {
           borderRadius: BorderRadius.circular(SheepRadius.sheet),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 25,
               offset: const Offset(0, 12),
             ),
@@ -59,55 +60,50 @@ class TransactionImageArea extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // BACKGROUND (IMAGE OR GRADIENT)
-            GestureDetector(
-              onTap: onPickImage,
-              child: hasReadableImage
-                  ? Image.file(
-                      imageFile!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildPlaceholder(hasCategory),
-                    )
-                  : _buildPlaceholder(hasCategory),
-            ),
-
-            // Header UI
-            Positioned(
-              top: SheepSpacing.xl,
-              left: SheepSpacing.xl,
-              right: SheepSpacing.xl,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _buildCategoryPicker(l10n),
+            hasReadableImage
+                ? Image.file(
+                    imageFile!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildPlaceholder(hasCategory),
+                  )
+                : _buildPlaceholder(hasCategory),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.03),
+                      Colors.black.withValues(alpha: 0.34),
+                    ],
+                  ),
+                ),
               ),
             ),
-
-            // Action Block (Amount input and Note field)
             Positioned(
               bottom: SheepSpacing.xl,
               left: SheepSpacing.xl,
               right: SheepSpacing.xl,
-              child: _buildActionBlock(l10n),
+              child: _buildActionBlock(context, l10n),
             ),
-
-            // Delete Image Button
             if (hasReadableImage)
               Positioned(
-                top: SheepSpacing.xl,
-                right: SheepSpacing.xl,
+                top: SheepSpacing.lg,
+                right: SheepSpacing.lg,
                 child: GestureDetector(
                   onTap: onRemoveImage,
                   child: Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.black45,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.42),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.close,
+                    child: Icon(
+                      Icons.delete_outline_rounded,
                       size: 20,
-                      color: Colors.white,
+                      color: AppColors.expense,
                     ),
                   ),
                 ),
@@ -127,7 +123,7 @@ class TransactionImageArea extends StatelessWidget {
           colors: !hasCategory
               ? [const Color(0xFFBDBDBD), const Color(0xFF757575)]
               : (categoryColor != null
-                    ? [categoryColor!, categoryColor!.withOpacity(0.7)]
+                    ? [categoryColor!, categoryColor!.withValues(alpha: 0.72)]
                     : (selectedIndex == 0
                           ? [const Color(0xFFC62828), const Color(0xFF8E24AA)]
                           : (selectedIndex == 1
@@ -143,7 +139,7 @@ class TransactionImageArea extends StatelessWidget {
       ),
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 64),
+          padding: const EdgeInsets.only(bottom: 58),
           child: hasCategory
               ? SheepCategoryIcon(
                   icon: selectedCategory!.iconData,
@@ -156,125 +152,156 @@ class TransactionImageArea extends StatelessWidget {
     );
   }
 
-  Widget _buildActionBlock(L10n l10n) {
-    final bool isZeroValue = amountController.text.isEmpty;
-    final bool hasCategory = selectedCategory != null;
+  Widget _buildActionBlock(BuildContext context, L10n l10n) {
+    final isZeroValue = amountController.text.isEmpty;
+    final hasCategory = selectedCategory != null;
     final typeVisuals = SheepTransactionTypeVisuals.fromTypeIndex(
       selectedIndex,
     );
 
-    // Keep the amount state neutral until a category is selected.
     Color contentColor;
     if (!hasCategory) {
-      contentColor = isZeroValue ? Colors.white24 : Colors.white;
+      contentColor = isZeroValue ? Colors.white38 : Colors.white;
     } else {
       final typeColor = typeVisuals.color;
-      contentColor = isZeroValue ? typeColor.withOpacity(0.45) : typeColor;
+      contentColor = isZeroValue ? typeColor.withValues(alpha: 0.5) : typeColor;
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
+      padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
+        color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(SheepRadius.sheet),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // AMOUNT INPUT SECTION
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
+            padding: EdgeInsets.zero,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
                 if (hasCategory) ...[
-                  Icon(typeVisuals.icon, color: contentColor, size: 30),
-                  const SizedBox(width: 16),
-                ],
-                IntrinsicWidth(
-                  child: TextField(
-                    controller: amountController,
-                    autofocus: false,
-                    showCursor: false,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Icon(
+                      typeVisuals.icon,
                       color: contentColor,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                      size: 30,
                     ),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      filled: false,
-                      fillColor: Colors.transparent,
-                      hintText: '0',
-                      hintStyle: const TextStyle(color: Colors.white24),
+                  ),
+                ],
+                Center(
+                  child: IntrinsicWidth(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 220),
+                      child: TextField(
+                        controller: amountController,
+                        autofocus: false,
+                        showCursor: false,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: contentColor,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          filled: false,
+                          fillColor: Colors.transparent,
+                          hintText: '0',
+                          hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Colors.white38,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        inputFormatters: [CurrencyInputFormatter()],
+                      ),
                     ),
-                    inputFormatters: [CurrencyInputFormatter()],
                   ),
                 ),
               ],
             ),
           ),
-
-          Container(height: 1, color: Colors.white.withOpacity(0.12)),
-          const SizedBox(height: 10),
-          TextField(
-            controller: noteController,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-            textAlign: TextAlign.center,
-            decoration: InputDecoration(
-              hintText: l10n.get('add_note'),
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.32)),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              disabledBorder: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-              filled: false,
-              fillColor: Colors.transparent,
+          const SizedBox(height: 2),
+          AnimatedBuilder(
+            animation: noteShakeAnimation,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(noteShakeAnimation.value, 0),
+                child: child,
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(SheepRadius.xl),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+              child: TextField(
+                controller: noteController,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white,
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+                minLines: 1,
+                maxLines: 2,
+                inputFormatters: [
+                  _NoteLimitFormatter(
+                    maxLength: noteMaxLength,
+                    onExceeded: onNoteLimitExceeded,
+                  ),
+                ],
+                decoration: InputDecoration(
+                  hintText: l10n.get('add_note'),
+                  hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.46),
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  filled: false,
+                  fillColor: Colors.transparent,
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildCategoryPicker(L10n l10n) {
-    bool hasCat = selectedCategory != null;
-    return GestureDetector(
-      onTap: onShowCategoryPicker,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color:
-              (categoryColor ??
-                      (hasCat ? AppColors.primary : Colors.grey[400]!))
-                  .withOpacity(0.9),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              hasCat
-                  ? selectedCategory!.name
-                  : l10n.get('category_placeholder'),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+class _NoteLimitFormatter extends TextInputFormatter {
+  final int maxLength;
+  final VoidCallback onExceeded;
+
+  const _NoteLimitFormatter({
+    required this.maxLength,
+    required this.onExceeded,
+  });
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.characters.length <= maxLength) {
+      return newValue;
+    }
+    onExceeded();
+    return oldValue;
   }
 }

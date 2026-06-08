@@ -126,7 +126,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                   return GestureDetector(
                     onTap: () => widget.onCategorySelected(c.id),
                     child: Container(
-                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? selectedColor
@@ -144,7 +144,6 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                         ),
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
                           SheepCategoryIcon(
                             icon: c.iconData,
@@ -154,10 +153,11 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                             size: 28,
                           ),
                           const SizedBox(width: SheepSpacing.sm),
-                          Flexible(
+                          Expanded(
                             child: Text(
                               c.name,
                               overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 fontSize: SheepTypeScale.meta,
                                 color: isSelected
