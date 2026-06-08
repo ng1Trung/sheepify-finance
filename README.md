@@ -53,6 +53,8 @@
 - **Left-Aligned Category Picker**: Items align left-to-right with ellipsis truncation and clean spacing.
 - **Photo Deletion Safety**: Added confirmation dialogs when deleting photo attachments to avoid accidental loss.
 - **Unified Pill Aesthetics**: Synchronized Category Pill design with the Date Pill, showing centered placeholder text when no category is selected.
+- **Premium Donut Chart Styling**: Redesigned the donut chart to feature smooth rounded corners (`cornerRadius`), card-colored borders for floating segment separation, and short leader lines. Labels are dynamically aligned to prevent text clipping, and the chart center displays interactive transaction counts and selected category details.
+- **Optimized Vertical Spacing**: Balanced the chart margins and top padding to fit the chart, 5 categories, and the "+x other categories" button perfectly on a single screen page.
 
 ---
 
