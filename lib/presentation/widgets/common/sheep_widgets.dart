@@ -69,6 +69,18 @@ class SheepTextStyles {
     );
   }
 
+  static TextStyle dateHeader(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return Theme.of(context).textTheme.bodyMedium!.copyWith(
+      color: AppColors.getTextSecondary(
+        brightness,
+      ).withValues(alpha: brightness == Brightness.light ? 0.42 : 0.58),
+      fontSize: SheepTypeScale.item,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0,
+    );
+  }
+
   static TextStyle emptyMessage(BuildContext context) {
     return Theme.of(context).textTheme.bodyMedium!.copyWith(
       color: AppColors.getTextSecondary(Theme.of(context).brightness),
@@ -364,6 +376,7 @@ class SheepTransactionCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   width: 34,
@@ -382,57 +395,71 @@ class SheepTransactionCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: SheepTextStyles.itemTitle(context).copyWith(
-                          fontSize: SheepTypeScale.item,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: SheepTextStyles.itemTitle(context)
+                                  .copyWith(
+                                    fontSize: SheepTypeScale.item,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              if (amountIcon != null) ...[
+                                Icon(amountIcon, size: 16, color: amountColor),
+                                const SizedBox(width: 3),
+                              ],
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 128,
+                                ),
+                                child: Text(
+                                  amountText,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: SheepTypeScale.item,
+                                    fontWeight: FontWeight.w700,
+                                    color: amountColor,
+                                    letterSpacing: 0,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                       if (dateText.isNotEmpty) ...[
                         const SizedBox(height: 2),
-                        Text(
-                          dateText,
-                          style: SheepTextStyles.itemMeta(
-                            context,
-                          ).copyWith(fontSize: SheepTypeScale.body),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        FractionallySizedBox(
+                          widthFactor: 0.72,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            dateText,
+                            style: SheepTextStyles.itemMeta(
+                              context,
+                            ).copyWith(fontSize: SheepTypeScale.body),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (amountIcon != null) ...[
-                      Icon(amountIcon, size: 16, color: amountColor),
-                      const SizedBox(width: 3),
-                    ],
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 128),
-                      child: Text(
-                        amountText,
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: SheepTypeScale.item,
-                          fontWeight: FontWeight.w700,
-                          color: amountColor,
-                          letterSpacing: 0,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),

@@ -1,82 +1,33 @@
-import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 class CurrencyUtil {
-  /// Default formatting for money with currency symbol
-  /// e.g. 30.000 ₫ or $30.00
   static String formatMoney(
     double amount, {
-    String locale = 'vi_VN',
+    String locale = 'en_US',
     String? symbol,
   }) {
-    return NumberFormat.currency(
-      locale: locale,
-      symbol: symbol ?? (locale == 'vi_VN' ? '₫' : null),
-      decimalDigits: locale == 'vi_VN' ? 0 : 2,
-    ).format(amount);
+    return formatNumber(amount, locale: locale);
   }
 
-  /// Formats only the number with thousands separators as requested (e.g., 3000 -> 3.000)
-  /// Uses Vietnamese locale by default to provide the dot separator.
-  static String formatNumber(num amount, {String locale = 'vi_VN'}) {
+  static String formatNumber(num amount, {String locale = 'en_US'}) {
     return NumberFormat.decimalPattern(locale).format(amount);
   }
 
-  /// Specific format for VND (dots for thousands, ₫ at the end, no decimals)
   static String formatVND(double amount) {
-    return NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: '₫',
-      decimalDigits: 0,
-    ).format(amount);
+    return formatNumber(amount);
   }
 
-  /// Formats amount based on currency code
   static String formatByCurrency(double amount, String currencyCode) {
-    switch (currencyCode.toUpperCase()) {
-      case 'VND':
-        return formatVND(amount);
-      case 'USD':
-        return NumberFormat.simpleCurrency(
-          locale: 'en_US',
-          name: 'USD',
-        ).format(amount);
-      case 'EUR':
-        return NumberFormat.simpleCurrency(
-          locale: 'de_DE',
-          name: 'EUR',
-        ).format(amount);
-      default:
-        return NumberFormat.simpleCurrency(
-          name: currencyCode.toUpperCase(),
-        ).format(amount);
-    }
+    return formatNumber(amount);
   }
 
   static String getCurrencySymbol(String currencyCode) {
-    switch (currencyCode.toUpperCase()) {
-      case 'VND':
-        return 'đ';
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      default:
-        return currencyCode;
-    }
+    return '';
   }
 
   static String formatMaskedByCurrency(String currencyCode) {
-    switch (currencyCode.toUpperCase()) {
-      case 'VND':
-        return '******** \u20ab';
-      case 'USD':
-        return '\$********';
-      case 'EUR':
-        return '******** \u20ac';
-      default:
-        return '******** $currencyCode';
-    }
+    return '********';
   }
 
   static String formatDisplayAmount(
@@ -86,7 +37,7 @@ class CurrencyUtil {
   }) {
     return isHidden
         ? formatMaskedByCurrency(currencyCode)
-        : formatByCurrency(amount, currencyCode);
+        : formatNumber(amount);
   }
 
   static String formatDisplayCompact(
@@ -97,21 +48,20 @@ class CurrencyUtil {
     return isHidden ? '****' : formatCompact(amount, locale: locale);
   }
 
-  /// Compact formatting for amounts (e.g., 8.000.000 -> 8M or 8Tr)
   static String formatCompact(double amount, {String locale = 'vi_VN'}) {
-    bool isNegative = amount < 0;
-    double absAmount = amount.abs();
-    bool isVi = locale.startsWith('vi');
+    final isNegative = amount < 0;
+    final absAmount = amount.abs();
+    final isVi = locale.startsWith('vi');
 
     String result;
     if (absAmount >= 1000000) {
-      double value = absAmount / 1000000;
-      String suffix = isVi ? 'Tr' : 'M';
+      final value = absAmount / 1000000;
+      final suffix = isVi ? 'Tr' : 'M';
       result = value % 1 == 0
           ? '${value.toInt()}$suffix'
           : '${value.toStringAsFixed(1)}$suffix';
     } else if (absAmount >= 1000) {
-      double value = absAmount / 1000;
+      final value = absAmount / 1000;
       result = value % 1 == 0
           ? '${value.toInt()}K'
           : '${value.toStringAsFixed(1)}K';
@@ -123,12 +73,10 @@ class CurrencyUtil {
   }
 }
 
-/// A Custom TextInputFormatter to format numbers as the user types
-/// e.g., 30000 becomes 30,000 in the UI but remains numeric in logic
 class CurrencyInputFormatter extends TextInputFormatter {
   final String locale;
 
-  CurrencyInputFormatter({this.locale = 'vi_VN'});
+  CurrencyInputFormatter({this.locale = 'en_US'});
 
   @override
   TextEditingValue formatEditUpdate(
@@ -139,15 +87,11 @@ class CurrencyInputFormatter extends TextInputFormatter {
       return newValue.copyWith(text: '');
     }
 
-    // Remove all non-numeric characters
-    String cleanText = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final cleanText = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (cleanText.isEmpty) return newValue.copyWith(text: '');
 
-    double value = double.parse(cleanText);
-
-    // Format the numeric value
-    final formatter = NumberFormat.decimalPattern(locale);
-    String newText = formatter.format(value);
+    final value = double.parse(cleanText);
+    final newText = NumberFormat.decimalPattern(locale).format(value);
 
     return newValue.copyWith(
       text: newText,
@@ -157,12 +101,9 @@ class CurrencyInputFormatter extends TextInputFormatter {
 }
 
 extension CurrencyParsing on CurrencyUtil {
-  /// Converts a formatted string (e.g., 30,000 or 30.000đ) back to a numeric double
   static double parseAmount(String text) {
     if (text.isEmpty) return 0;
-    // Remove all non-numeric characters (keeping only digits)
-    // This works well for integer-based currencies like VND
-    String cleanText = text.replaceAll(RegExp(r'[^0-9]'), '');
+    final cleanText = text.replaceAll(RegExp(r'[^0-9]'), '');
     return double.tryParse(cleanText) ?? 0;
   }
 }

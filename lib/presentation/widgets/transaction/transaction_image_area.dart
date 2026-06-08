@@ -218,15 +218,6 @@ class TransactionImageArea extends StatelessWidget {
                     inputFormatters: [CurrencyInputFormatter()],
                   ),
                 ),
-                const SizedBox(width: 16),
-                Text(
-                  'đ',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
               ],
             ),
           ),

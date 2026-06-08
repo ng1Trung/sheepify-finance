@@ -63,7 +63,7 @@ class _TransactionFormState extends State<TransactionForm> {
       _selectedCategoryId = tx.categoryId;
       _imagePath = tx.imagePath;
 
-      // Load current settings for currency
+      // Use the current monthly cycle for budget/goal checks.
       final settings =
           Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
       _amountController.text = CurrencyUtil.formatNumber(

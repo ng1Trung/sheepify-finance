@@ -25,13 +25,15 @@ class StatsTab extends StatefulWidget {
 class _StatEntry {
   final CategoryModel category;
   double amount;
+  int count;
 
-  _StatEntry(this.category, this.amount);
+  _StatEntry(this.category, this.amount, {this.count = 0});
 }
 
 class _StatsTabState extends State<StatsTab> {
   int _selectedTypeIndex = 0;
   int _touchedIndex = -1;
+  final Set<int> _expandedStatTypes = {};
 
   @override
   Widget build(BuildContext context) {
@@ -80,8 +82,10 @@ class _StatsTabState extends State<StatsTab> {
 
           statsMap.update(
             category.id,
-            (entry) => entry..amount += tx.amount,
-            ifAbsent: () => _StatEntry(category, tx.amount),
+            (entry) => entry
+              ..amount += tx.amount
+              ..count += 1,
+            ifAbsent: () => _StatEntry(category, tx.amount, count: 1),
           );
         }
 
@@ -90,6 +94,7 @@ class _StatsTabState extends State<StatsTab> {
         final chartStats = stats.where((stat) => stat.amount > 0).toList();
         final selectedTotal = totals[_selectedTypeIndex];
         final selectedTransactionCount = transactionCounts[_selectedTypeIndex];
+        final percentLabels = _buildPercentLabels(stats, selectedTotal);
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -116,6 +121,7 @@ class _StatsTabState extends State<StatsTab> {
                         stats,
                         selectedTotal,
                         selectedTransactionCount,
+                        percentLabels,
                         settings,
                       )
                     : _buildIncomeCard(
@@ -124,6 +130,7 @@ class _StatsTabState extends State<StatsTab> {
                         stats,
                         selectedTotal,
                         selectedTransactionCount,
+                        percentLabels,
                         settings,
                       ),
               ),
@@ -140,6 +147,7 @@ class _StatsTabState extends State<StatsTab> {
     List<_StatEntry> stats,
     double total,
     int transactionCount,
+    Map<String, String> percentLabels,
     AppSettings settings,
   ) {
     return SheepCard(
@@ -148,15 +156,14 @@ class _StatsTabState extends State<StatsTab> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            _buildPieChart(context, chartStats, total, settings),
-            const SizedBox(height: 12),
-            Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
-            const SizedBox(height: 8),
-            _buildTransactionCount(context, transactionCount),
-            const SizedBox(height: 8),
-            ...stats.map(
-              (stat) => _buildProgressRow(context, stat, total, settings),
+            _buildPieChart(
+              context,
+              chartStats,
+              total,
+              transactionCount,
+              settings,
             ),
+            ..._buildStatRows(context, stats, total, percentLabels, settings),
           ],
         ),
       ),
@@ -169,6 +176,7 @@ class _StatsTabState extends State<StatsTab> {
     List<_StatEntry> stats,
     double total,
     int transactionCount,
+    Map<String, String> percentLabels,
     AppSettings settings,
   ) {
     return SheepCard(
@@ -177,29 +185,100 @@ class _StatsTabState extends State<StatsTab> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            _buildPieChart(context, chartStats, total, settings),
-            const SizedBox(height: 12),
-            Divider(color: AppColors.getBorder(Theme.of(context).brightness)),
-            const SizedBox(height: 8),
-            _buildTransactionCount(context, transactionCount),
-            const SizedBox(height: 8),
-            ...stats.map(
-              (stat) => _buildProgressRow(context, stat, total, settings),
+            _buildPieChart(
+              context,
+              chartStats,
+              total,
+              transactionCount,
+              settings,
             ),
+            ..._buildStatRows(context, stats, total, percentLabels, settings),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTransactionCount(BuildContext context, int count) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        L10n.of(
+  List<Widget> _buildStatRows(
+    BuildContext context,
+    List<_StatEntry> stats,
+    double total,
+    Map<String, String> percentLabels,
+    AppSettings settings,
+  ) {
+    const defaultVisibleCount = 5;
+    final isExpanded = _expandedStatTypes.contains(_selectedTypeIndex);
+    final visibleStats = isExpanded
+        ? stats
+        : stats.take(defaultVisibleCount).toList();
+    final remainingCount = stats.length - visibleStats.length;
+
+    return [
+      const SizedBox(height: 14),
+      ...visibleStats.map(
+        (stat) => _buildProgressRow(
           context,
-        ).get('num_transactions', params: {'count': count.toString()}),
-        style: SheepTextStyles.itemMeta(context),
+          stat,
+          total,
+          settings,
+          percentLabels[stat.category.id] ?? '0',
+        ),
+      ),
+      if (remainingCount > 0)
+        _buildMoreCategoriesButton(context, remainingCount),
+    ];
+  }
+
+  Widget _buildMoreCategoriesButton(BuildContext context, int remainingCount) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 14, bottom: 2),
+      child: Center(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(SheepRadius.pill),
+          onTap: () {
+            setState(() {
+              _expandedStatTypes.add(_selectedTypeIndex);
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.getSubtleSurface(theme.brightness),
+              borderRadius: BorderRadius.circular(SheepRadius.pill),
+              border: Border.all(
+                color: AppColors.getBorder(
+                  theme.brightness,
+                ).withValues(alpha: 0.6),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '+$remainingCount danh mục khác',
+                  style: SheepTextStyles.itemMeta(context).copyWith(
+                    color: AppColors.getInteractiveAccent(
+                      theme.brightness,
+                      theme.colorScheme.primary,
+                    ),
+                    fontSize: SheepTypeScale.label,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                  color: AppColors.getInteractiveAccent(
+                    theme.brightness,
+                    theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -208,12 +287,16 @@ class _StatsTabState extends State<StatsTab> {
     BuildContext context,
     List<_StatEntry> stats,
     double total,
+    int transactionCount,
     AppSettings settings,
   ) {
     final touchedIndex = _touchedIndex >= 0 && _touchedIndex < stats.length
         ? _touchedIndex
         : -1;
     final hasTotal = total > 0;
+    final displayCount = touchedIndex == -1
+        ? transactionCount
+        : stats[touchedIndex].count;
     return SizedBox(
       height: 220,
       child: Stack(
@@ -263,18 +346,16 @@ class _StatsTabState extends State<StatsTab> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (touchedIndex != -1) ...[
-                  Text(
-                    stats[touchedIndex].category.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: SheepTextStyles.itemMeta(
-                      context,
-                    ).copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                ],
+                Text(
+                  L10n.of(context).get('total'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: SheepTextStyles.itemMeta(
+                    context,
+                  ).copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
@@ -286,11 +367,22 @@ class _StatsTabState extends State<StatsTab> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.getTextPrimary(
-                        Theme.of(context).brightness,
-                      ),
+                      color: _selectedTypeIndex == 0
+                          ? AppColors.expense
+                          : AppColors.income,
                     ),
                   ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  L10n.of(context).get(
+                    'num_transactions',
+                    params: {'count': displayCount.toString()},
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: SheepTextStyles.itemMeta(context),
                 ),
               ],
             ),
@@ -305,8 +397,11 @@ class _StatsTabState extends State<StatsTab> {
     _StatEntry stat,
     double total,
     AppSettings settings,
+    String percentText,
   ) {
     final color = _categoryColor(stat.category);
+    final hasAmount = stat.amount > 0;
+    final showProgress = _selectedTypeIndex == 0;
     final budget = stat.category.budget;
     final progressBase = _selectedTypeIndex == 0 && budget != null && budget > 0
         ? budget
@@ -320,43 +415,104 @@ class _StatsTabState extends State<StatsTab> {
         ? AppColors.expense
         : color;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: InkWell(
-        onTap: () => _showTransactionHistory(context, stat.category, total),
+        onTap: () =>
+            _showTransactionHistory(context, stat.category, total, percentText),
         borderRadius: BorderRadius.circular(SheepRadius.md),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  SheepCategoryIcon(icon: stat.category.iconData, color: color),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      stat.category.name,
-                      style: SheepTextStyles.itemTitle(context),
+              SheepCategoryIcon(icon: stat.category.iconData, color: color),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            stat.category.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: SheepTextStyles.itemTitle(
+                              context,
+                            ).copyWith(fontSize: SheepTypeScale.bodyLarge),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: hasAmount
+                                ? Text(
+                                    CurrencyUtil.formatDisplayAmount(
+                                      stat.amount,
+                                      settings.currencyCode,
+                                      isHidden: settings.hideAmounts,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.right,
+                                    style: SheepTextStyles.itemTitle(context)
+                                        .copyWith(
+                                          fontSize: SheepTypeScale.bodyLarge,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    CurrencyUtil.formatDisplayAmount(
-                      stat.amount,
-                      settings.currencyCode,
-                      isHidden: settings.hideAmounts,
-                    ),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right_rounded, size: 20),
-                ],
+                    if (showProgress) ...[
+                      const SizedBox(height: 5),
+                      LinearProgressIndicator(
+                        value: progress.clamp(0.0, 1.0),
+                        minHeight: 6,
+                        borderRadius: BorderRadius.circular(999),
+                        backgroundColor: barColor.withValues(alpha: 0.12),
+                        valueColor: AlwaysStoppedAnimation(barColor),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: progress.clamp(0.0, 1.0),
-                minHeight: 6,
-                borderRadius: BorderRadius.circular(999),
-                backgroundColor: barColor.withOpacity(0.12),
-                valueColor: AlwaysStoppedAnimation(barColor),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 58,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: hasAmount
+                          ? Text(
+                              '$percentText%',
+                              maxLines: 1,
+                              textAlign: TextAlign.right,
+                              style: SheepTextStyles.itemTitle(context)
+                                  .copyWith(
+                                    color: barColor,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: AppColors.getTextSecondary(
+                        Theme.of(context).brightness,
+                      ).withValues(alpha: 0.45),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -369,6 +525,7 @@ class _StatsTabState extends State<StatsTab> {
     BuildContext context,
     CategoryModel category,
     double typeTotal,
+    String sharePercentText,
   ) {
     final transactions =
         Hive.box<Transaction>(kMoneyBox).values
@@ -391,8 +548,40 @@ class _StatsTabState extends State<StatsTab> {
         category: category,
         transactions: transactions,
         typeTotal: typeTotal,
+        sharePercentText: sharePercentText,
       ),
     );
+  }
+
+  Map<String, String> _buildPercentLabels(
+    List<_StatEntry> stats,
+    double total,
+  ) {
+    final activeStats = stats.where((stat) => stat.amount > 0).toList();
+    if (total <= 0 || activeStats.isEmpty) return const {};
+
+    final floors = <String, int>{};
+    final remainders = <({String id, double remainder})>[];
+    var floorSum = 0;
+
+    for (final stat in activeStats) {
+      final exact = stat.amount / total * 100;
+      final floorValue = exact.floor();
+      floors[stat.category.id] = floorValue;
+      floorSum += floorValue;
+      remainders.add((id: stat.category.id, remainder: exact - floorValue));
+    }
+
+    var remaining = 100 - floorSum;
+    remainders.sort((a, b) => b.remainder.compareTo(a.remainder));
+    for (var i = 0; i < remainders.length && remaining > 0; i++, remaining--) {
+      final id = remainders[i].id;
+      floors[id] = (floors[id] ?? 0) + 1;
+    }
+
+    return {
+      for (final entry in floors.entries) entry.key: entry.value.toString(),
+    };
   }
 
   Color _categoryColor(CategoryModel category) {

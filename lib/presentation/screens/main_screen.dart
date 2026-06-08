@@ -1419,7 +1419,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   String _formatCompactAmount(double amount, AppSettings settings) {
     if (settings.hideAmounts) return '****';
-    return '${CurrencyUtil.formatCompact(amount)}${CurrencyUtil.getCurrencySymbol(settings.currencyCode)}';
+    return CurrencyUtil.formatCompact(amount);
   }
 
   String _formatCurrentCycleLabel(BuildContext context, AppSettings settings) {
