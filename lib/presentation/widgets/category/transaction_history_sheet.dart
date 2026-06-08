@@ -18,12 +18,14 @@ class TransactionHistorySheet extends StatelessWidget {
   final CategoryModel category;
   final List<Transaction> transactions;
   final double typeTotal;
+  final String? sharePercentText;
 
   const TransactionHistorySheet({
     super.key,
     required this.category,
     required this.transactions,
     required this.typeTotal,
+    this.sharePercentText,
   });
 
   @override
@@ -32,11 +34,7 @@ class TransactionHistorySheet extends StatelessWidget {
         ? Color(category.colorValue!)
         : AppColors.primary;
 
-    final allCategoryTransactions = Hive.box<Transaction>(
-      kMoneyBox,
-    ).values.where((tx) => tx.categoryId == category.id);
-
-    final double totalAccumulated = allCategoryTransactions.fold(
+    final double rangeTotal = transactions.fold(
       0.0,
       (sum, tx) => sum + tx.amount,
     );
@@ -60,11 +58,11 @@ class TransactionHistorySheet extends StatelessWidget {
             _buildDragHandle(),
             const SizedBox(height: SheepSpacing.lg),
 
-            _buildHeader(context, catColor, totalAccumulated),
+            _buildHeader(context, catColor, rangeTotal),
 
             if (isSavings && category.targetAmount != null) ...[
               const SizedBox(height: SheepSpacing.lg),
-              _buildGoalDashboard(context, catColor, totalAccumulated),
+              _buildGoalDashboard(context, catColor, rangeTotal),
             ],
 
             const SizedBox(height: SheepSpacing.lg),
@@ -91,7 +89,9 @@ class TransactionHistorySheet extends StatelessWidget {
     final settings =
         Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     final typeIndex = category.effectiveTypeIndex;
+    final hasTotal = total > 0;
     final share = typeTotal > 0 ? (total / typeTotal * 100) : 0.0;
+    final shareText = sharePercentText ?? _formatSharePercent(share);
     final shareTargetLabel = typeIndex == 2
         ? l10n.savings.toLowerCase()
         : typeIndex == 1
@@ -135,36 +135,37 @@ class TransactionHistorySheet extends StatelessWidget {
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  CurrencyUtil.formatDisplayAmount(
-                    total,
-                    settings.currencyCode,
-                    isHidden: settings.hideAmounts,
+            if (hasTotal)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    CurrencyUtil.formatDisplayAmount(
+                      total,
+                      settings.currencyCode,
+                      isHidden: settings.hideAmounts,
+                    ),
+                    style: TextStyle(
+                      fontSize: SheepTypeScale.bodyLarge,
+                      fontWeight: FontWeight.bold,
+                      color: typeIndex == 2
+                          ? AppColors.savings
+                          : (typeIndex == 0
+                                ? AppColors.expense
+                                : AppColors.income),
+                    ),
                   ),
-                  style: TextStyle(
-                    fontSize: SheepTypeScale.bodyLarge,
-                    fontWeight: FontWeight.bold,
-                    color: typeIndex == 2
-                        ? AppColors.savings
-                        : (typeIndex == 0
-                              ? AppColors.expense
-                              : AppColors.income),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Chi\u1EBFm $shareText% t\u1ED5ng $shareTargetLabel',
+                    textAlign: TextAlign.right,
+                    style: SheepTextStyles.itemMeta(
+                      context,
+                    ).copyWith(fontSize: SheepTypeScale.micro),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Chiếm ${share.toStringAsFixed(share >= 10 ? 0 : 1)}% tổng $shareTargetLabel',
-                  textAlign: TextAlign.right,
-                  style: SheepTextStyles.itemMeta(
-                    context,
-                  ).copyWith(fontSize: SheepTypeScale.micro),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ),
       ),
@@ -267,7 +268,7 @@ class TransactionHistorySheet extends StatelessWidget {
             'EEEE, dd/MM/yyyy',
             settings.languageCode == 'vi' ? 'vi_VN' : 'en_US',
           ).format(DateTime.parse(dayKey)),
-          style: SheepTextStyles.itemTitle(context),
+          style: SheepTextStyles.dateHeader(context),
         ),
       ),
       for (int i = 0; i < dayTxs.length; i++)
@@ -296,7 +297,6 @@ class TransactionHistorySheet extends StatelessWidget {
     bool isLastInDay,
     bool isLastDay,
   ) {
-    final titleText = tx.note.isNotEmpty ? tx.note : category.name;
     final amountText = settings.hideAmounts
         ? CurrencyUtil.formatMaskedByCurrency(settings.currencyCode)
         : '${isExpense
@@ -305,24 +305,83 @@ class TransactionHistorySheet extends StatelessWidget {
               ? ''
               : '+'}${CurrencyUtil.formatMoney(tx.amount)}';
 
-    return SheepTransactionCard(
+    final brightness = Theme.of(context).brightness;
+    final noteText = tx.note.trim().isNotEmpty ? tx.note.trim() : category.name;
+
+    return Container(
       margin: EdgeInsets.only(
         bottom: !isLastInDay || !isLastDay ? SheepSpacing.itemGap : 0,
       ),
-      onTap: () => showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        isDismissible: true,
-        enableDrag: true,
-        builder: (_) => TransactionForm(transaction: tx),
+      decoration: BoxDecoration(
+        color: AppColors.getSurface(brightness),
+        borderRadius: BorderRadius.circular(SheepRadius.lg),
+        border: Border.all(color: AppColors.getBorder(brightness)),
       ),
-      icon: category.iconData,
-      iconColor: catColor,
-      title: titleText,
-      dateText: '',
-      amountText: amountText,
-      amountColor: amountColor,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(SheepRadius.lg),
+        onTap: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          isDismissible: true,
+          enableDrag: true,
+          builder: (_) => TransactionForm(transaction: tx),
+        ),
+        child: SizedBox(
+          height: 54,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: catColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(SheepRadius.md),
+                    border: Border.all(color: catColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Icon(category.iconData, size: 17, color: catColor),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    noteText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: SheepTextStyles.itemTitle(context).copyWith(
+                      fontSize: SheepTypeScale.item,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 128),
+                  child: Text(
+                    amountText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: SheepTypeScale.item,
+                      fontWeight: FontWeight.w700,
+                      color: amountColor,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
+  }
+
+  String _formatSharePercent(double share) {
+    if (share <= 0) return '0';
+    if (share >= 10) return share.round().toString();
+    return share.toStringAsFixed(1);
   }
 
   Widget _buildGoalDashboard(

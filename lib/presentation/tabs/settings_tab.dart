@@ -129,13 +129,6 @@ class SettingsTab extends StatelessWidget {
                     _buildCardSectionTitle(context, l10n.get('app_section')),
                     _buildSettingsRow(
                       context,
-                      title: l10n.currency,
-                      value: _currencyLabel(settings.currencyCode),
-                      onTap: () => _showCurrencyPicker(context, settings),
-                    ),
-                    _buildDivider(),
-                    _buildSettingsRow(
-                      context,
                       title: l10n.language,
                       value: _languageLabel(settings.languageCode, l10n),
                       onTap: () => _showLanguagePicker(context, settings),
@@ -253,17 +246,6 @@ class SettingsTab extends StatelessWidget {
         return l10n.get('palette_purple');
       default:
         return paletteName;
-    }
-  }
-
-  String _currencyLabel(String currencyCode) {
-    switch (currencyCode) {
-      case 'USD':
-        return 'USD (\$)';
-      case 'EUR':
-        return 'EUR (€)';
-      default:
-        return 'VND (đ)';
     }
   }
 
@@ -503,23 +485,6 @@ class SettingsTab extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Future<void> _showCurrencyPicker(BuildContext context, AppSettings settings) {
-    return _showChoiceSheet(
-      context,
-      title: L10n.of(context).currency,
-      items: const [
-        ('VND', 'VND (đ)'),
-        ('USD', 'USD (\$)'),
-        ('EUR', 'EUR (€)'),
-      ],
-      selectedValue: settings.currencyCode,
-      onSelected: (value) {
-        settings.currencyCode = value;
-        settings.save();
-      },
     );
   }
 

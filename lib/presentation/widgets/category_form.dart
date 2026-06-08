@@ -294,7 +294,6 @@ class _CategoryFormState extends State<CategoryForm> {
                         hint: l10n.get('budget_monthly'),
                         icon: LineIcons.coins,
                         isNumber: true,
-                        suffix: 'đ',
                       ),
                     ],
                     if (_selectedTypeIndex == 2) ...[
@@ -307,7 +306,6 @@ class _CategoryFormState extends State<CategoryForm> {
                             : l10n.get('target_amount'),
                         icon: Icons.flag_outlined,
                         isNumber: true,
-                        suffix: 'đ',
                       ),
                       const SizedBox(height: SheepSpacing.lg),
                       if (_selectedGoalTypeIndex == 1)

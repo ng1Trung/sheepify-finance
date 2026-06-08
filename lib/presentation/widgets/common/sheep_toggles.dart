@@ -108,11 +108,11 @@ class SheepTypeToggle extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalWidth = constraints.maxWidth;
-        final itemWidth = (totalWidth - 8) / 2;
+        final itemWidth = (totalWidth - 6) / 2;
 
         return Container(
-          height: 48,
-          padding: const EdgeInsets.all(4),
+          height: 40,
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             color: AppColors.getSubtleSurface(Theme.of(context).brightness),
             borderRadius: BorderRadius.circular(SheepRadius.lg),
@@ -222,11 +222,11 @@ class SheepTripleToggle extends StatelessWidget {
             labels ??
             [l10n.get('expense'), l10n.get('income'), l10n.get('savings')];
         final totalWidth = constraints.maxWidth;
-        final itemWidth = (totalWidth - 8) / currentLabels.length;
+        final itemWidth = (totalWidth - 6) / currentLabels.length;
 
         return Container(
-          height: 48,
-          padding: const EdgeInsets.all(4),
+          height: 40,
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             color: AppColors.getSubtleSurface(Theme.of(context).brightness),
             borderRadius: BorderRadius.circular(SheepRadius.lg),

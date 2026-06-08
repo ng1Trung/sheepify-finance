@@ -89,7 +89,9 @@ class _DiaryTabState extends State<DiaryTab> {
 
             // 3. Apply each content filter only to its own tab.
             final displayTxs = filterTransactions(_selectedListTypeIndexes);
-            final timelineTxs = filterTransactions(_selectedTimelineTypeIndexes);
+            final timelineTxs = filterTransactions(
+              _selectedTimelineTypeIndexes,
+            );
 
             // 4. Group by date
             Map<String, List<Transaction>> grouped = {};
@@ -103,23 +105,23 @@ class _DiaryTabState extends State<DiaryTab> {
               ..sort((a, b) => b.compareTo(a));
             Widget buildViewModeSelector() {
               final options = [
-                (1, l10n.get('list_view'), Icons.view_list_rounded),
-                (3, l10n.get('timeline'), Icons.calendar_month_rounded),
+                (1, l10n.get('list_view')),
+                (3, l10n.get('timeline')),
               ];
 
               return Padding(
                 padding: const EdgeInsets.fromLTRB(
                   SheepSpacing.page,
-                  4,
+                  12,
                   SheepSpacing.page,
                   12,
                 ),
                 child: Container(
-                  height: 48,
-                  padding: const EdgeInsets.all(4),
+                  height: 38,
+                  padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     color: AppColors.getSubtleSurface(theme.brightness),
-                    borderRadius: BorderRadius.circular(SheepRadius.lg),
+                    borderRadius: BorderRadius.circular(SheepRadius.md),
                     border: Border.all(
                       color: AppColors.getBorder(theme.brightness),
                     ),
@@ -135,35 +137,20 @@ class _DiaryTabState extends State<DiaryTab> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 2),
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(SheepRadius.md),
+                            borderRadius: BorderRadius.circular(SheepRadius.sm),
                             onTap: () => widget.onViewModeChanged(option.$1),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: isSelected
-                                    ? accent
-                                    : Colors.transparent,
+                                color: isSelected ? accent : Colors.transparent,
                                 borderRadius: BorderRadius.circular(
-                                  SheepRadius.md,
+                                  SheepRadius.sm,
                                 ),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    option.$3,
-                                    size: 16,
-                                    color: isSelected
-                                        ? AppColors.getOnAccent(
-                                            theme.brightness,
-                                            accent,
-                                          )
-                                        : AppColors.getTextSecondary(
-                                            theme.brightness,
-                                          ),
-                                  ),
-                                  const SizedBox(width: 5),
                                   Flexible(
                                     child: Text(
                                       option.$2,
@@ -232,9 +219,7 @@ class _DiaryTabState extends State<DiaryTab> {
               String selectedLabel() {
                 if (selectedTypeIndexes.isEmpty) return l10n.get('all');
                 final sortedIndexes = selectedTypeIndexes.toList()..sort();
-                return sortedIndexes
-                    .map((index) => labels[index])
-                    .join(', ');
+                return sortedIndexes.map((index) => labels[index]).join(', ');
               }
 
               return PopupMenuTheme(
@@ -255,9 +240,7 @@ class _DiaryTabState extends State<DiaryTab> {
                   menuPadding: EdgeInsets.zero,
                   padding: const EdgeInsets.all(4),
                   itemBuilder: (context) {
-                    var menuSelectedTypeIndexes = <int>{
-                      ...selectedTypeIndexes,
-                    };
+                    var menuSelectedTypeIndexes = <int>{...selectedTypeIndexes};
                     final indexes = [
                       -1,
                       ...List<int>.generate(labels.length, (index) => index),
@@ -292,7 +275,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                         };
                                         if (index == -1) {
                                           nextIndexes.clear();
-                                        } else if (nextIndexes.contains(index)) {
+                                        } else if (nextIndexes.contains(
+                                          index,
+                                        )) {
                                           nextIndexes.remove(index);
                                         } else {
                                           nextIndexes.add(index);
@@ -319,18 +304,20 @@ class _DiaryTabState extends State<DiaryTab> {
                                               index == -1
                                                   ? l10n.get('all')
                                                   : labels[index],
-                                              style: SheepTextStyles.itemMeta(
-                                                context,
-                                              ).copyWith(
-                                                color:
-                                                    AppColors.getTextPrimary(
-                                                      theme.brightness,
-                                                    ),
-                                                fontSize: SheepTypeScale.label,
-                                                fontWeight: isSelected
-                                                    ? FontWeight.w700
-                                                    : FontWeight.w500,
-                                              ),
+                                              style:
+                                                  SheepTextStyles.itemMeta(
+                                                    context,
+                                                  ).copyWith(
+                                                    color:
+                                                        AppColors.getTextPrimary(
+                                                          theme.brightness,
+                                                        ),
+                                                    fontSize:
+                                                        SheepTypeScale.label,
+                                                    fontWeight: isSelected
+                                                        ? FontWeight.w700
+                                                        : FontWeight.w500,
+                                                  ),
                                             ),
                                             const SizedBox(width: 8),
                                             if (isSelected)
@@ -540,7 +527,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                                     DateTime.parse(dKey),
                                                   ),
                                                   style:
-                                                      SheepTextStyles.itemTitle(
+                                                      SheepTextStyles.dateHeader(
                                                         context,
                                                       ),
                                                 ),
@@ -852,13 +839,8 @@ class _DiaryTabState extends State<DiaryTab> {
       builder: (context, constraints) {
         return InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _showTimelineDayGallery(
-            context,
-            date,
-            dayTxs,
-            catBox,
-            settings,
-          ),
+          onTap: () =>
+              _showTimelineDayGallery(context, date, dayTxs, catBox, settings),
           child: Column(
             children: [
               SizedBox(
@@ -886,9 +868,9 @@ class _DiaryTabState extends State<DiaryTab> {
                 '${date.day}',
                 textAlign: TextAlign.center,
                 style: SheepTextStyles.itemTitle(context).copyWith(
-                  color: AppColors.getTextPrimary(theme.brightness).withOpacity(
-                    hasTx ? 0.94 : 0.42,
-                  ),
+                  color: AppColors.getTextPrimary(
+                    theme.brightness,
+                  ).withOpacity(hasTx ? 0.94 : 0.42),
                   fontSize: SheepTypeScale.micro,
                   fontWeight: FontWeight.w800,
                   height: 1,
@@ -946,7 +928,7 @@ class _DiaryTabState extends State<DiaryTab> {
                         Expanded(
                           child: Text(
                             DateFormat('EEEE, dd/MM/yyyy', locale).format(date),
-                            style: SheepTextStyles.itemTitle(context),
+                            style: SheepTextStyles.dateHeader(context),
                           ),
                         ),
                         Text(
@@ -996,9 +978,9 @@ class _DiaryTabState extends State<DiaryTab> {
           width: 18,
           height: 18,
           decoration: BoxDecoration(
-            color: AppColors.getTextSecondary(theme.brightness).withOpacity(
-              theme.brightness == Brightness.dark ? 0.18 : 0.16,
-            ),
+            color: AppColors.getTextSecondary(
+              theme.brightness,
+            ).withOpacity(theme.brightness == Brightness.dark ? 0.18 : 0.16),
             shape: BoxShape.circle,
           ),
         ),
@@ -1029,12 +1011,11 @@ class _DiaryTabState extends State<DiaryTab> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color:
-                        _timelineImageBorderColor(
-                          visibleTxs[i],
-                          catBox,
-                          borderColor,
-                        ).withOpacity(0.2),
+                    color: _timelineImageBorderColor(
+                      visibleTxs[i],
+                      catBox,
+                      borderColor,
+                    ).withOpacity(0.2),
                     blurRadius: 10,
                     spreadRadius: 1,
                   ),
@@ -1061,23 +1042,31 @@ class _DiaryTabState extends State<DiaryTab> {
             top: -6,
             right: -6,
             child: Container(
-              constraints: const BoxConstraints(minWidth: 22, minHeight: 20),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.getSurface(theme.brightness).withValues(
+                  alpha: theme.brightness == Brightness.dark ? 0.62 : 0.54,
+                ),
                 borderRadius: BorderRadius.circular(SheepRadius.pill),
+                border: Border.all(
+                  color: AppColors.getBorder(
+                    theme.brightness,
+                  ).withValues(alpha: 0.45),
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.18),
-                    blurRadius: 4,
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Text(
                 extraCount > 9 ? '+9' : '+$extraCount',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.black,
+                style: TextStyle(
+                  color: AppColors.getTextPrimary(theme.brightness),
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   height: 1,
@@ -1213,7 +1202,6 @@ class _DiaryTabState extends State<DiaryTab> {
       },
     );
   }
-
 }
 
 class _TransactionImageTile extends StatelessWidget {
@@ -1258,9 +1246,7 @@ class _TransactionImageTile extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color: AppColors.getBorder(theme.brightness),
-            ),
+            border: Border.all(color: AppColors.getBorder(theme.brightness)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(radius),
