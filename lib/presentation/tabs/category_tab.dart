@@ -151,9 +151,9 @@ class _CategoryTabState extends State<CategoryTab> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: EdgeInsets.zero,
                 color: isOverBudget
-                    ? AppColors.expense.withOpacity(0.05)
+                    ? AppColors.expense.withValues(alpha: 0.05)
                     : isGoalDone
-                    ? AppColors.savings.withOpacity(0.05)
+                    ? AppColors.savings.withValues(alpha: 0.05)
                     : null,
                 child: InkWell(
                   onTap: () => _showCategoryForm(context, cat),
@@ -163,12 +163,12 @@ class _CategoryTabState extends State<CategoryTab> {
                       borderRadius: BorderRadius.circular(SheepRadius.lg),
                       border: isOverBudget
                           ? Border.all(
-                              color: AppColors.expense.withOpacity(0.5),
+                              color: AppColors.expense.withValues(alpha: 0.5),
                               width: 1.5,
                             )
                           : isGoalDone
                           ? Border.all(
-                              color: AppColors.savings.withOpacity(0.5),
+                              color: AppColors.savings.withValues(alpha: 0.5),
                               width: 1.5,
                             )
                           : null,
@@ -206,8 +206,8 @@ class _CategoryTabState extends State<CategoryTab> {
                               decoration: BoxDecoration(
                                 color: AppColors.expense,
                                 borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(14),
-                                  bottomLeft: Radius.circular(10),
+                                  topRight: Radius.circular(SheepRadius.md),
+                                  bottomLeft: Radius.circular(SheepRadius.md),
                                 ),
                               ),
                               child: Text(
@@ -232,8 +232,8 @@ class _CategoryTabState extends State<CategoryTab> {
                               decoration: BoxDecoration(
                                 color: AppColors.savings,
                                 borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(12),
-                                  bottomLeft: Radius.circular(12),
+                                  topRight: Radius.circular(SheepRadius.md),
+                                  bottomLeft: Radius.circular(SheepRadius.md),
                                 ),
                               ),
                               child: Text(
@@ -406,7 +406,7 @@ class _CategoryTabState extends State<CategoryTab> {
       child: LinearProgressIndicator(
         value: progress,
         minHeight: 6,
-        backgroundColor: barColor.withOpacity(0.1),
+        backgroundColor: barColor.withValues(alpha: 0.1),
         valueColor: AlwaysStoppedAnimation<Color>(barColor),
       ),
     );
@@ -415,7 +415,7 @@ class _CategoryTabState extends State<CategoryTab> {
   Widget _buildDeleteBackground() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.expense.withOpacity(0.1),
+        color: AppColors.expense.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
       ),
       alignment: Alignment.centerRight,

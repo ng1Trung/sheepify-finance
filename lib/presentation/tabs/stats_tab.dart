@@ -305,13 +305,17 @@ class _StatsTabState extends State<StatsTab> {
       final val = stat.amount < total * 0.02 ? total * 0.02 : stat.amount;
       sectionValues.add(val);
     }
-    final double sectionValuesSum = sectionValues.fold(0.0, (sum, val) => sum + val);
+    final double sectionValuesSum = sectionValues.fold(
+      0.0,
+      (sum, val) => sum + val,
+    );
 
     final List<double> midAngles = [];
     if (hasTotal && sectionValuesSum > 0) {
       double currentSum = 0.0;
       for (final val in sectionValues) {
-        final double startAngle = 270.0 + (currentSum / sectionValuesSum) * 360.0;
+        final double startAngle =
+            270.0 + (currentSum / sectionValuesSum) * 360.0;
         final double sweepAngle = (val / sectionValuesSum) * 360.0;
         final double midAngle = startAngle + sweepAngle / 2.0;
         midAngles.add(midAngle);
@@ -322,10 +326,12 @@ class _StatsTabState extends State<StatsTab> {
     const double centerSpaceRadius = 65.0;
     const double normalRadius = 32.0;
     const double touchedRadius = 40.0;
-    const double badgeDistance = 107.0; // Optimized spacing to prevent clipping on the sides and make leader lines shorter
+    const double badgeDistance =
+        107.0; // Optimized spacing to prevent clipping on the sides and make leader lines shorter
 
     return SizedBox(
-      height: 230, // Optimized height to balance top and bottom spacing inside parent card
+      height:
+          230, // Optimized height to balance top and bottom spacing inside parent card
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -358,7 +364,9 @@ class _StatsTabState extends State<StatsTab> {
                   final exactPercent = (stat.amount / total) * 100;
                   if (exactPercent >= 5.0) {
                     final percentLabels = _buildPercentLabels(stats, total);
-                    final percentText = percentLabels[stat.category.id] ?? exactPercent.toStringAsFixed(0);
+                    final percentText =
+                        percentLabels[stat.category.id] ??
+                        exactPercent.toStringAsFixed(0);
                     final midAngleDeg = midAngles[index];
                     final midAngleRad = midAngleDeg * math.pi / 180.0;
                     final isLeft = math.cos(midAngleRad) < 0;
@@ -386,7 +394,8 @@ class _StatsTabState extends State<StatsTab> {
                       : stat.amount,
                   title: '',
                   radius: radius,
-                  cornerRadius: 8, // Smoother rounded corner (prevents distortion on small segments)
+                  cornerRadius:
+                      8, // Smoother rounded corner (prevents distortion on small segments)
                   borderSide: BorderSide(
                     color: Theme.of(context).cardColor,
                     width: 2.0,
@@ -414,7 +423,9 @@ class _StatsTabState extends State<StatsTab> {
               children: [
                 Text(
                   touchedIndex == -1
-                      ? L10n.of(context).get(_selectedTypeIndex == 0 ? 'expense' : 'income')
+                      ? L10n.of(
+                          context,
+                        ).get(_selectedTypeIndex == 0 ? 'expense' : 'income')
                       : stats[touchedIndex].category.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -677,7 +688,7 @@ class LeaderLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(0.8)
+      ..color = color.withValues(alpha: 0.8)
       ..strokeWidth = 1.2
       ..style = PaintingStyle.stroke;
 
@@ -763,8 +774,9 @@ class PieChartLabelWidget extends StatelessWidget {
               alignment: isLeft ? Alignment.centerRight : Alignment.centerLeft,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment:
-                    isLeft ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment: isLeft
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
                 children: [
                   Text(
                     categoryName,

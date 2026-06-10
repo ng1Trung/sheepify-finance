@@ -118,11 +118,11 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
               vertical: SheepSpacing.md,
             ),
             decoration: BoxDecoration(
-              color: widget.backgroundColor.withOpacity(0.95),
+              color: widget.backgroundColor.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(SheepRadius.xl),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
