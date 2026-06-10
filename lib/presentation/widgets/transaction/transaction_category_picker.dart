@@ -126,19 +126,22 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                   return GestureDetector(
                     onTap: () => widget.onCategorySelected(c.id),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? selectedColor
                             : (categoryColor != null
-                                  ? categoryColor.withOpacity(0.12)
+                                  ? categoryColor.withValues(alpha: 0.12)
                                   : theme.cardColor),
                         borderRadius: BorderRadius.circular(SheepRadius.lg),
                         border: Border.all(
                           color: isSelected
                               ? selectedColor
                               : (categoryColor != null
-                                    ? categoryColor.withOpacity(0.3)
+                                    ? categoryColor.withValues(alpha: 0.3)
                                     : AppColors.getBorder(theme.brightness)),
                           width: 1,
                         ),
@@ -162,9 +165,8 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                                 fontSize: SheepTypeScale.meta,
                                 color: isSelected
                                     ? selectedTextColor
-                                    : (categoryColor != null
-                                          ? categoryColor
-                                          : theme.textTheme.bodyLarge?.color),
+                                    : (categoryColor ??
+                                          theme.textTheme.bodyLarge?.color),
                                 fontWeight: isSelected
                                     ? FontWeight.bold
                                     : FontWeight.w500,

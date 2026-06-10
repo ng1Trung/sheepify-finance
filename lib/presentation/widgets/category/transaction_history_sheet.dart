@@ -515,14 +515,14 @@ class TransactionHistorySheet extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppColors.savings.withOpacity(0.05),
-              AppColors.savings.withOpacity(0.1),
+              AppColors.savings.withValues(alpha: 0.05),
+              AppColors.savings.withValues(alpha: 0.1),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(SheepRadius.sheet),
-          border: Border.all(color: AppColors.savings.withOpacity(0.1)),
+          border: Border.all(color: AppColors.savings.withValues(alpha: 0.1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -562,7 +562,7 @@ class TransactionHistorySheet extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 8,
-                backgroundColor: AppColors.savings.withOpacity(0.1),
+                backgroundColor: AppColors.savings.withValues(alpha: 0.1),
                 valueColor: const AlwaysStoppedAnimation<Color>(
                   AppColors.savings,
                 ),

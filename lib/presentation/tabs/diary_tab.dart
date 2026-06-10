@@ -721,7 +721,9 @@ class _DiaryTabState extends State<DiaryTab> {
             color: calendarBackground,
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: AppColors.getBorder(theme.brightness).withOpacity(0.55),
+              color: AppColors.getBorder(
+                theme.brightness,
+              ).withValues(alpha: 0.55),
             ),
           ),
           child: Column(
@@ -736,7 +738,7 @@ class _DiaryTabState extends State<DiaryTab> {
                           style: SheepTextStyles.itemMeta(context).copyWith(
                             color: AppColors.getTextSecondary(
                               theme.brightness,
-                            ).withOpacity(0.74),
+                            ).withValues(alpha: 0.74),
                             fontSize: SheepTypeScale.label,
                             fontWeight: FontWeight.w800,
                           ),
@@ -768,7 +770,7 @@ class _DiaryTabState extends State<DiaryTab> {
                               height: constraints.maxWidth,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                  color: mutedCell.withOpacity(0.38),
+                                  color: mutedCell.withValues(alpha: 0.38),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
@@ -870,7 +872,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 style: SheepTextStyles.itemTitle(context).copyWith(
                   color: AppColors.getTextPrimary(
                     theme.brightness,
-                  ).withOpacity(hasTx ? 0.94 : 0.42),
+                  ).withValues(alpha: hasTx ? 0.94 : 0.42),
                   fontSize: SheepTypeScale.micro,
                   fontWeight: FontWeight.w800,
                   height: 1,
@@ -978,9 +980,9 @@ class _DiaryTabState extends State<DiaryTab> {
           width: 18,
           height: 18,
           decoration: BoxDecoration(
-            color: AppColors.getTextSecondary(
-              theme.brightness,
-            ).withOpacity(theme.brightness == Brightness.dark ? 0.18 : 0.16),
+            color: AppColors.getTextSecondary(theme.brightness).withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.18 : 0.16,
+            ),
             shape: BoxShape.circle,
           ),
         ),
@@ -1015,12 +1017,12 @@ class _DiaryTabState extends State<DiaryTab> {
                       visibleTxs[i],
                       catBox,
                       borderColor,
-                    ).withOpacity(0.2),
+                    ).withValues(alpha: 0.2),
                     blurRadius: 10,
                     spreadRadius: 1,
                   ),
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.24),
+                    color: Colors.black.withValues(alpha: 0.24),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -1272,7 +1274,7 @@ class _TransactionImageTile extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.68),
+                      color: Colors.black.withValues(alpha: 0.68),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -1296,7 +1298,7 @@ class _TransactionImageTile extends StatelessWidget {
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.55),
+                      color: Colors.black.withValues(alpha: 0.55),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -1327,7 +1329,9 @@ class _TransactionImageTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.getBorder(theme.brightness).withOpacity(0.52),
+            color: AppColors.getBorder(
+              theme.brightness,
+            ).withValues(alpha: 0.52),
             shape: BoxShape.circle,
           ),
           child: Icon(Icons.image_outlined, size: 26, color: theme.hintColor),

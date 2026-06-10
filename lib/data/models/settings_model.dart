@@ -37,6 +37,9 @@ class AppSettings extends HiveObject {
   @HiveField(10)
   int? _weekStartDay;
 
+  @HiveField(11)
+  DateTime? lastBackupAt;
+
   bool get hideAmounts => _hideAmounts ?? false;
 
   set hideAmounts(bool value) => _hideAmounts = value;
@@ -61,6 +64,7 @@ class AppSettings extends HiveObject {
     String themeMode = 'system',
     bool hideAmounts = false,
     int weekStartDay = DateTime.monday,
+    this.lastBackupAt,
   }) : _themeMode = themeMode,
        _hideAmounts = hideAmounts,
        _weekStartDay = weekStartDay;

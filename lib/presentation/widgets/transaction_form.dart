@@ -271,6 +271,7 @@ class _TransactionFormState extends State<TransactionForm>
       } else {
         // Create and add new transaction to Hive
         final newTx = Transaction(
+          id: Transaction.createId(),
           note: _noteController.text,
           amount: enteredAmount,
           date: _selectedDate,
@@ -331,7 +332,12 @@ class _TransactionFormState extends State<TransactionForm>
         Navigator.of(context).pop(_selectedDate);
       }
     } catch (e) {
-      SheepNotifications.showError(context, '${l10n.get('error_prefix')}: $e');
+      if (mounted) {
+        SheepNotifications.showError(
+          context,
+          '${l10n.get('error_prefix')}: $e',
+        );
+      }
     }
   }
 
@@ -533,9 +539,13 @@ class _TransactionFormState extends State<TransactionForm>
   Widget _buildActionButtons() {
     final theme = Theme.of(context);
     final enteredAmount = CurrencyParsing.parseAmount(_amountController.text);
-    final isAmountValid = _amountController.text.isNotEmpty && enteredAmount > 0;
+    final isAmountValid =
+        _amountController.text.isNotEmpty && enteredAmount > 0;
     final isCategoryValid = _selectedCategoryId != null;
-    final canSubmit = isAmountValid && isCategoryValid && (widget.transaction == null || _hasChanges);
+    final canSubmit =
+        isAmountValid &&
+        isCategoryValid &&
+        (widget.transaction == null || _hasChanges);
     final accent = AppColors.getInteractiveAccent(
       theme.brightness,
       theme.colorScheme.primary,
@@ -559,7 +569,9 @@ class _TransactionFormState extends State<TransactionForm>
               ),
               const SizedBox(width: 40),
               const SizedBox(width: 78), // Placeholder for primary button
-              const SizedBox(width: 102), // Balance: 40 (gap) + 62 (photo button size)
+              const SizedBox(
+                width: 102,
+              ), // Balance: 40 (gap) + 62 (photo button size)
             ],
           ),
           _buildCircleActionButton(
@@ -626,10 +638,7 @@ class _TransactionFormState extends State<TransactionForm>
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(
-            color: color.withValues(alpha: 0.38),
-            width: 3.0,
-          ),
+          border: Border.all(color: color.withValues(alpha: 0.38), width: 3.0),
         ),
         child: buttonContent,
       );

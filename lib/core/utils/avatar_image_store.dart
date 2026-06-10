@@ -40,6 +40,17 @@ class AvatarImageStore {
     return path.join(_directoryName, fileName);
   }
 
+  static Future<String> saveBytesFromBackup(
+    String preferredFileName,
+    List<int> bytes,
+  ) async {
+    await initialize();
+    final fileName = await _availableFileName(preferredFileName);
+    final target = File(path.join(_imageDirectory!.path, fileName));
+    await target.writeAsBytes(bytes, flush: true);
+    return path.join(_directoryName, fileName);
+  }
+
   static File? resolve(String? storedRef) {
     if (storedRef == null || storedRef.isEmpty) return null;
     final documentsDirectory = _documentsDirectory;
@@ -69,5 +80,24 @@ class AvatarImageStore {
     if (await file.exists()) {
       await file.delete();
     }
+  }
+
+  static Future<String> _availableFileName(String preferredFileName) async {
+    final sanitized = _sanitizeFileName(preferredFileName);
+    final candidate = File(path.join(_imageDirectory!.path, sanitized));
+    if (!await candidate.exists()) return sanitized;
+
+    final extension = path.extension(sanitized);
+    final basename = path.basenameWithoutExtension(sanitized);
+    return '${basename}_${DateTime.now().microsecondsSinceEpoch}$extension';
+  }
+
+  static String _sanitizeFileName(String preferredFileName) {
+    final normalized = preferredFileName.replaceAll('\\', '/');
+    final basename = path.basename(normalized).trim();
+    final safeName = basename.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    return safeName.isEmpty
+        ? '${DateTime.now().microsecondsSinceEpoch}.jpg'
+        : safeName;
   }
 }

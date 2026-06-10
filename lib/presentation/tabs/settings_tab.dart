@@ -1,12 +1,20 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/settings_model.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/l10n.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/transaction.dart';
+import '../../data/services/data_portability_service.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../widgets/common/sheep_toggles.dart';
@@ -101,6 +109,29 @@ class SettingsTab extends StatelessWidget {
                           settings.save();
                         },
                       ),
+                    ),
+                    _buildDivider(),
+                    _buildSettingsActionRow(
+                      context,
+                      title: l10n.get('backup_data'),
+                      subtitle:
+                          '${l10n.get('backup_data_description')}\n'
+                          '${_lastBackupLabel(settings, l10n)}',
+                      onTap: () => _backupData(context, settings),
+                    ),
+                    _buildDivider(),
+                    _buildSettingsActionRow(
+                      context,
+                      title: l10n.get('restore_backup'),
+                      subtitle: l10n.get('restore_backup_description'),
+                      onTap: () => _restoreBackup(context),
+                    ),
+                    _buildDivider(),
+                    _buildSettingsActionRow(
+                      context,
+                      title: l10n.get('export_data'),
+                      subtitle: l10n.get('export_data_description'),
+                      onTap: () => _showExportFormatSheet(context),
                     ),
                     _buildDivider(),
                     ListTile(
@@ -268,6 +299,18 @@ class SettingsTab extends StatelessWidget {
     return l10n.get('day_of_month', params: {'day': day.toString()});
   }
 
+  String _lastBackupLabel(AppSettings settings, L10n l10n) {
+    final lastBackupAt = settings.lastBackupAt;
+    if (lastBackupAt == null) return l10n.get('last_backup_never');
+
+    return l10n.get(
+      'last_backup_at',
+      params: {
+        'time': DateFormat('dd/MM/yyyy HH:mm').format(lastBackupAt.toLocal()),
+      },
+    );
+  }
+
   String _weekdayLabel(int weekday, L10n l10n) {
     switch (weekday) {
       case DateTime.tuesday:
@@ -367,6 +410,30 @@ class SettingsTab extends StatelessWidget {
             const Icon(Icons.chevron_right_rounded, size: 20),
           ],
         ],
+      ),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildSettingsActionRow(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      minVerticalPadding: 14,
+      title: Text(title, style: _settingsRowTitleStyle(context)),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.35,
+            color: Theme.of(context).textTheme.labelSmall?.color,
+          ),
+        ),
       ),
       onTap: onTap,
     );
@@ -670,6 +737,259 @@ class SettingsTab extends StatelessWidget {
                     onSelected(item.$1);
                     Navigator.of(context).pop();
                   },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _backupData(BuildContext context, AppSettings settings) {
+    return _shareGeneratedFile(
+      context,
+      createFile: DataBackupService().createBackupFile,
+      subject: L10n.of(context).get('backup_share_subject'),
+      successMessage: L10n.of(context).get('backup_created'),
+      onFileCreated: () async {
+        settings.lastBackupAt = DateTime.now();
+        await settings.save();
+      },
+    );
+  }
+
+  Future<void> _showExportFormatSheet(BuildContext context) {
+    final l10n = L10n.of(context);
+    return showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            SheepSpacing.page,
+            18,
+            SheepSpacing.page,
+            24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.get('choose_export_format'),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                title: Text(l10n.get('export_csv_format')),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _exportCsv(context);
+                },
+              ),
+              _buildDivider(),
+              ListTile(
+                title: Text(l10n.get('export_excel_format')),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _exportExcel(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportCsv(BuildContext context) {
+    return _shareGeneratedFile(
+      context,
+      createFile: DataExportService().exportCsvArchive,
+      subject: L10n.of(context).get('csv_share_subject'),
+      successMessage: L10n.of(context).get('csv_export_created'),
+    );
+  }
+
+  Future<void> _exportExcel(BuildContext context) {
+    return _shareGeneratedFile(
+      context,
+      createFile: DataExportService().exportExcelWorkbook,
+      subject: L10n.of(context).get('excel_share_subject'),
+      successMessage: L10n.of(context).get('excel_export_created'),
+    );
+  }
+
+  Future<void> _shareGeneratedFile(
+    BuildContext context, {
+    required Future<File> Function() createFile,
+    required String subject,
+    required String successMessage,
+    Future<void> Function()? onFileCreated,
+  }) async {
+    final l10n = L10n.of(context);
+    try {
+      final file = await createFile();
+      await onFileCreated?.call();
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: subject,
+          text: l10n.get('data_share_text'),
+        ),
+      );
+      if (context.mounted) {
+        SheepNotifications.showSuccess(context, successMessage);
+      }
+    } catch (error) {
+      if (context.mounted) {
+        SheepNotifications.showError(
+          context,
+          '${l10n.get('error_prefix')}: $error',
+        );
+      }
+    }
+  }
+
+  Future<void> _restoreBackup(BuildContext context) async {
+    final l10n = L10n.of(context);
+    try {
+      final file = await _pickBackupFile();
+      if (file == null || !context.mounted) return;
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => SheepConfirmDialog(
+          title: l10n.get('restore_backup_title'),
+          content: l10n.get('restore_backup_message'),
+          confirmLabel: l10n.get('restore'),
+          confirmColor: Theme.of(context).colorScheme.primary,
+          icon: Icons.restore_rounded,
+          onConfirm: () {},
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+
+      final summary = await DataRestoreService().restoreBackupFile(file);
+      if (context.mounted) {
+        await _showRestoreSummary(context, summary);
+      }
+    } catch (error) {
+      if (context.mounted) {
+        SheepNotifications.showError(
+          context,
+          '${l10n.get('error_prefix')}: $error',
+        );
+      }
+    }
+  }
+
+  Future<File?> _pickBackupFile() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['sheepify-backup', 'zip'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return null;
+
+    final picked = result.files.single;
+    if (picked.path != null) return File(picked.path!);
+
+    final bytes = picked.bytes;
+    if (bytes == null) return null;
+
+    final directory = await getTemporaryDirectory();
+    final fileName = picked.name.isEmpty
+        ? 'sheepify_restore.sheepify-backup'
+        : picked.name;
+    final file = File(path.join(directory.path, fileName));
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  Future<void> _showRestoreSummary(
+    BuildContext context,
+    RestoreSummary summary,
+  ) {
+    final l10n = L10n.of(context);
+    final brightness = Theme.of(context).brightness;
+    final accent = Theme.of(context).colorScheme.primary;
+
+    return showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SheepRadius.sheet),
+        ),
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(SheepSpacing.xl),
+          decoration: BoxDecoration(
+            color: AppColors.getSurface(brightness),
+            borderRadius: BorderRadius.circular(SheepRadius.sheet),
+            boxShadow: AppColors.getSoftShadow(brightness),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check_rounded, color: accent, size: 32),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                l10n.get('restore_complete'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: SheepTypeScale.title,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.getTextPrimary(brightness),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.get(
+                  'restore_summary',
+                  params: {
+                    'categoriesAdded': summary.categoriesAdded.toString(),
+                    'categoriesSkipped': summary.categoriesSkipped.toString(),
+                    'transactionsAdded': summary.transactionsAdded.toString(),
+                    'transactionsSkipped': summary.transactionsSkipped
+                        .toString(),
+                    'imagesRestored': summary.imagesRestored.toString(),
+                  },
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: SheepTypeScale.body,
+                  color: AppColors.getTextSecondary(brightness),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: AppColors.getOnAccent(brightness, accent),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(SheepRadius.lg),
+                    ),
+                  ),
+                  child: Text(
+                    l10n.get('done'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],

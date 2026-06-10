@@ -145,9 +145,9 @@ class SheepCategoryIcon extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(SheepRadius.md),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Icon(icon, color: color, size: size * 0.5),
     );
@@ -385,11 +385,13 @@ class SheepTransactionCard extends StatelessWidget {
                   height: 34,
                   decoration: BoxDecoration(
                     color:
-                        iconBackground ?? resolvedIconColor.withOpacity(0.12),
+                        iconBackground ??
+                        resolvedIconColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(SheepRadius.md),
                     border: Border.all(
                       color:
-                          iconBorderColor ?? resolvedIconColor.withOpacity(0.3),
+                          iconBorderColor ??
+                          resolvedIconColor.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Icon(icon, size: 17, color: resolvedIconColor),
@@ -418,7 +420,11 @@ class SheepTransactionCard extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 if (amountIcon != null) ...[
-                                  Icon(amountIcon, size: 16, color: amountColor),
+                                  Icon(
+                                    amountIcon,
+                                    size: 16,
+                                    color: amountColor,
+                                  ),
                                   const SizedBox(width: 3),
                                 ],
                                 ConstrainedBox(
@@ -467,7 +473,11 @@ class SheepTransactionCard extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     if (amountIcon != null) ...[
-                                      Icon(amountIcon, size: 16, color: amountColor),
+                                      Icon(
+                                        amountIcon,
+                                        size: 16,
+                                        color: amountColor,
+                                      ),
                                       const SizedBox(width: 3),
                                     ],
                                     ConstrainedBox(
@@ -544,9 +554,9 @@ class SheepTransactionTypeVisuals {
     );
   }
 
-  Color get backgroundColor => color.withOpacity(0.1);
+  Color get backgroundColor => color.withValues(alpha: 0.1);
 
-  Color get borderColor => color.withOpacity(0.22);
+  Color get borderColor => color.withValues(alpha: 0.22);
 }
 
 class SheepDatePill extends StatelessWidget {
@@ -582,7 +592,7 @@ class SheepDatePill extends StatelessWidget {
             border: border,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -694,7 +704,9 @@ class SheepDatePicker {
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? theme.primaryColor
-                                    : theme.primaryColor.withOpacity(0.05),
+                                    : theme.primaryColor.withValues(
+                                        alpha: 0.05,
+                                      ),
                                 borderRadius: BorderRadius.circular(
                                   SheepRadius.md,
                                 ),

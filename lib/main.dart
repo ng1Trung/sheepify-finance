@@ -41,8 +41,18 @@ void main() async {
   }
 
   await _migrateLegacyTransactionImages(moneyBox);
+  await _migrateLegacyTransactionIds(moneyBox);
 
   runApp(const SheepifyApp());
+}
+
+Future<void> _migrateLegacyTransactionIds(Box<Transaction> moneyBox) async {
+  for (final tx in moneyBox.values) {
+    if (tx.id.isEmpty) {
+      tx.id = 'legacy_tx_${tx.key}';
+      await tx.save();
+    }
+  }
 }
 
 Future<void> _migrateLegacyTransactionImages(Box<Transaction> moneyBox) async {

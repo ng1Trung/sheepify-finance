@@ -38,7 +38,6 @@ class _CategoryFormState extends State<CategoryForm> {
   int _selectedTargetYear = DateTime.now().year + 1;
   String? _activePicker;
 
-  DateTime? _selectedTargetDate;
   late int _selectedIcon;
   late Color _selectedColor;
 
@@ -129,7 +128,6 @@ class _CategoryFormState extends State<CategoryForm> {
       _goalAmountController.text = cat.targetAmount != null
           ? CurrencyUtil.formatNumber(cat.targetAmount!)
           : '';
-      _selectedTargetDate = cat.targetDate;
       // Merge 2 (short-term) and 3 (long-term) into 2 (Goal)
       int gType = cat.goalTypeIndex ?? 1;
       _selectedGoalTypeIndex = (gType == 3) ? 2 : (gType == 0 ? 1 : gType);
@@ -206,7 +204,7 @@ class _CategoryFormState extends State<CategoryForm> {
         cat.targetDate = null;
       }
 
-      cat.colorValue = _selectedColor.value;
+      cat.colorValue = _selectedColor.toARGB32();
       cat.save();
 
       SheepNotifications.showSuccess(context, l10n.get('tx_updated'));
@@ -233,7 +231,7 @@ class _CategoryFormState extends State<CategoryForm> {
         targetDate: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 2)
             ? DateTime(_selectedTargetYear, _selectedTargetMonth + 1, 0)
             : null,
-        colorValue: _selectedColor.value,
+        colorValue: _selectedColor.toARGB32(),
       );
       _catBox.add(newCat);
 
@@ -255,7 +253,7 @@ class _CategoryFormState extends State<CategoryForm> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -350,7 +348,7 @@ class _CategoryFormState extends State<CategoryForm> {
         color: AppColors.getSurface(Theme.of(context).brightness),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -391,7 +389,7 @@ class _CategoryFormState extends State<CategoryForm> {
           onTap: _showIconPicker,
           borderRadius: BorderRadius.circular(SheepRadius.md),
           child: SheepCategoryIcon(
-            icon: IconData(_selectedIcon, fontFamily: 'MaterialIcons'),
+            icon: resolveCategoryIcon(_selectedIcon),
             color: accent,
             size: 48,
           ),
@@ -542,7 +540,7 @@ class _CategoryFormState extends State<CategoryForm> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: AppColors.getSurface(theme.brightness).withOpacity(0.5),
+          color: AppColors.getSurface(theme.brightness).withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(SheepRadius.xl),
           border: Border.all(
             color: isActive ? accent : AppColors.getBorder(theme.brightness),
@@ -716,7 +714,7 @@ class _CategoryFormState extends State<CategoryForm> {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.savings.withOpacity(0.1),
+                    color: AppColors.savings.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(SheepRadius.lg),
                   ),
                   child: Text(
@@ -745,17 +743,6 @@ class _CategoryFormState extends State<CategoryForm> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    final theme = Theme.of(context);
-    return Text(
-      title.toUpperCase(),
-      style: theme.textTheme.labelSmall?.copyWith(
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1,
-      ),
-    );
-  }
-
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
@@ -768,7 +755,7 @@ class _CategoryFormState extends State<CategoryForm> {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AppColors.getSurface(theme.brightness).withOpacity(0.5),
+        color: AppColors.getSurface(theme.brightness).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(SheepRadius.xl),
         border: Border.all(color: AppColors.getBorder(theme.brightness)),
       ),
@@ -783,11 +770,11 @@ class _CategoryFormState extends State<CategoryForm> {
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.hintColor.withOpacity(0.4),
+            color: theme.hintColor.withValues(alpha: 0.4),
           ),
           prefixIcon: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Icon(icon, color: accent.withOpacity(0.8), size: 20),
+            child: Icon(icon, color: accent.withValues(alpha: 0.8), size: 20),
           ),
           prefixIconConstraints: const BoxConstraints(minWidth: 40),
           suffixText: suffix,
@@ -819,7 +806,7 @@ class _CategoryFormState extends State<CategoryForm> {
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
         children: _vibrantColors.map((color) {
-          final isSelected = _selectedColor.value == color.value;
+          final isSelected = _selectedColor.toARGB32() == color.toARGB32();
           return GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
