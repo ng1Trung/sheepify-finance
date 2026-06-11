@@ -158,16 +158,34 @@ class SheepCategoryIcon extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor ?? color.withValues(alpha: 0.12),
         borderRadius: radius,
-        border: Border.all(color: borderColor ?? color.withValues(alpha: 0.3)),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: hasReadableImage
-          ? Image.file(
-              imageFile!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => _fallbackIcon(),
-            )
-          : _fallbackIcon(),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: radius,
+            child: hasReadableImage
+                ? Image.file(
+                    imageFile!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => _fallbackIcon(),
+                  )
+                : _fallbackIcon(),
+          ),
+          IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                border: Border.all(
+                  color: borderColor ??
+                      (hasReadableImage ? color : color.withValues(alpha: 0.3)),
+                  width: hasReadableImage ? 1.5 : 1.0,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

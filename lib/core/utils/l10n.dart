@@ -97,6 +97,10 @@ class L10n {
       'new_category': 'Danh mục mới',
       'new_savings': 'Tích luỹ mới',
       'budget_monthly': 'Ngân sách',
+      'budget_spending': 'Ngân sách chi tiêu',
+      'view_category_image': 'Xem ảnh danh mục',
+      'change_image': 'Đổi ảnh',
+      'delete_image': 'Xoá ảnh',
       'goal_amount': 'Số tiền tích luỹ',
       'goal_type': 'HÌNH THỨC',
       'recurring_monthly': 'Định kỳ',
@@ -300,6 +304,10 @@ class L10n {
       'new_category': 'New Category',
       'new_savings': 'New Savings',
       'budget_monthly': 'Budget',
+      'budget_spending': 'Spending budget',
+      'view_category_image': 'View category image',
+      'change_image': 'Change image',
+      'delete_image': 'Delete image',
       'goal_amount': 'Savings goal',
       'goal_type': 'GOAL TYPE',
       'recurring_monthly': 'Periodic',
@@ -465,6 +473,10 @@ class L10n {
   String get recurringMonthly => get('recurring_monthly');
   String get goal => get('goal');
   String get balance => get('balance');
+  String get budgetSpending => get('budget_spending');
+  String get viewCategoryImage => get('view_category_image');
+  String get changeImage => get('change_image');
+  String get deleteImage => get('delete_image');
 }
 
 class L10nDelegate extends LocalizationsDelegate<L10n> {

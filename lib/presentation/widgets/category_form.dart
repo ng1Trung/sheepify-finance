@@ -16,6 +16,7 @@ import '../../core/utils/currency_util.dart';
 import 'common/sheep_toggles.dart';
 import 'common/sheep_widgets.dart';
 import 'common/sheep_notifications.dart';
+import 'common/sheep_dialogs.dart';
 import '../../core/utils/l10n.dart';
 
 class CategoryForm extends StatefulWidget {
@@ -54,7 +55,7 @@ class _CategoryFormState extends State<CategoryForm> {
     const Color(0xFF94A3B8),
     const Color(0xFF8B5E3C),
     const Color(0xFFB91C1C),
-    const Color(0xFFEF4444),
+    const Color(0xFFEE6055), // AppColors.expense
     const Color(0xFFFB7185),
     const Color(0xFFF97316),
     const Color(0xFFFB923C),
@@ -63,11 +64,11 @@ class _CategoryFormState extends State<CategoryForm> {
     const Color(0xFFA3E635),
     const Color(0xFF65A30D),
     const Color(0xFF22C55E),
-    const Color(0xFF10B981),
+    const Color(0xFF20C997), // AppColors.income
     const Color(0xFF0F766E),
     const Color(0xFF14B8A6),
     const Color(0xFF06B6D4),
-    const Color(0xFF0EA5E9),
+    const Color(0xFF4EA8DE), // AppColors.savings
     const Color(0xFF3B82F6),
     const Color(0xFF1D4ED8),
     const Color(0xFF6366F1),
@@ -319,6 +320,16 @@ class _CategoryFormState extends State<CategoryForm> {
                       const SizedBox(height: SheepSpacing.xl),
                     ],
                     if (_selectedTypeIndex == 0) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text(
+                          l10n.get('budget_spending'),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.getTextSecondary(theme.brightness),
+                          ),
+                        ),
+                      ),
                       _buildTextField(
                         controller: _budgetController,
                         hint: l10n.get('budget_monthly'),
@@ -418,7 +429,7 @@ class _CategoryFormState extends State<CategoryForm> {
     return Row(
       children: [
         InkWell(
-          onTap: _showVisualPicker,
+          onTap: _handleImageTap,
           borderRadius: BorderRadius.circular(SheepRadius.md),
           child: SheepCategoryIcon(
             icon: resolveCategoryIcon(_selectedIcon),
@@ -822,6 +833,15 @@ class _CategoryFormState extends State<CategoryForm> {
     );
   }
 
+  List<Color> get _displayColors {
+    final list = List<Color>.from(_vibrantColors);
+    final hasSelected = list.any((c) => c.toARGB32() == _selectedColor.toARGB32());
+    if (!hasSelected) {
+      list.add(_selectedColor);
+    }
+    return list;
+  }
+
   Widget _buildColorPicker() {
     final theme = Theme.of(context);
     return Container(
@@ -838,7 +858,7 @@ class _CategoryFormState extends State<CategoryForm> {
         crossAxisCount: 6,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        children: _vibrantColors.map((color) {
+        children: _displayColors.map((color) {
           final isSelected = _selectedColor.toARGB32() == color.toARGB32();
           return GestureDetector(
             onTap: () {
@@ -847,16 +867,27 @@ class _CategoryFormState extends State<CategoryForm> {
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              transform: isSelected
+                  ? Matrix4.diagonal3Values(0.85, 0.85, 1.0)
+                  : Matrix4.identity(),
+              transformAlignment: Alignment.center,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
-                border:
-                    color == Colors.black && theme.brightness == Brightness.dark
+                border: (color == Colors.black && theme.brightness == Brightness.dark)
                     ? Border.all(color: AppColors.getBorder(theme.brightness))
                     : null,
               ),
               child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 18)
+                  ? Icon(
+                      Icons.check,
+                      color: ThemeData.estimateBrightnessForColor(color) == Brightness.light
+                          ? Colors.black87
+                          : Colors.white,
+                      size: 16,
+                    )
                   : null,
             ),
           );
@@ -907,20 +938,6 @@ class _CategoryFormState extends State<CategoryForm> {
                         },
                       ),
                     ),
-                    if (_selectedImagePath != null) ...[
-                      const SizedBox(width: SheepSpacing.md),
-                      Expanded(
-                        child: _buildVisualActionButton(
-                          icon: Icons.delete_outline_rounded,
-                          label: L10n.of(context).delete,
-                          color: AppColors.expense,
-                          onTap: () async {
-                            await _clearSelectedImage();
-                            setPickerState(() {});
-                          },
-                        ),
-                      ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: SheepSpacing.xl),
@@ -950,8 +967,31 @@ class _CategoryFormState extends State<CategoryForm> {
                       );
                       return GestureDetector(
                         onTap: () {
-                          setState(() => _selectedIcon = icon.codePoint);
-                          Navigator.pop(ctx);
+                          if (_selectedImagePath != null) {
+                            showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => SheepConfirmDialog(
+                                title: 'Thay đổi bằng biểu tượng?',
+                                content: 'Sau khi đổi qua biểu tượng thì ảnh hiện tại sẽ bị mất, bạn vẫn muốn thay đổi chứ?',
+                                confirmLabel: 'Thay đổi',
+                                confirmColor: accent,
+                                icon: Icons.warning_amber_rounded,
+                                onConfirm: () {
+                                  setState(() {
+                                    _selectedIcon = icon.codePoint;
+                                    _selectedImagePath = null;
+                                  });
+                                  Navigator.pop(ctx);
+                                },
+                              ),
+                            );
+                          } else {
+                            setState(() {
+                              _selectedIcon = icon.codePoint;
+                              _selectedImagePath = null;
+                            });
+                            Navigator.pop(ctx);
+                          }
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
@@ -962,6 +1002,7 @@ class _CategoryFormState extends State<CategoryForm> {
                                 ? null
                                 : Border.all(color: theme.dividerColor),
                           ),
+                          alignment: Alignment.center,
                           child: Icon(
                             icon,
                             color: isSelected
@@ -1112,6 +1153,175 @@ class _CategoryFormState extends State<CategoryForm> {
     return AppColors.getInteractiveAccent(
       Theme.of(context).brightness,
       _selectedColor,
+    );
+  }
+
+  Future<void> _handleImageTap() async {
+    if (_selectedImagePath == null) {
+      await _showVisualPicker();
+    } else {
+      await _showCategoryImageActions();
+    }
+  }
+
+  Future<void> _showCategoryImageActions() async {
+    final imageFile = CategoryImageStore.resolve(_selectedImagePath);
+    final hasImage = imageFile != null && imageFile.existsSync();
+    final theme = Theme.of(context);
+    final l10n = L10n.of(context);
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7DDE1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _CategoryImageActionTile(
+                  icon: Icons.image_outlined,
+                  label: l10n.viewCategoryImage,
+                  enabled: hasImage,
+                  color: theme.primaryColor,
+                  onTap: () => Navigator.pop(sheetContext, 'preview'),
+                ),
+                _CategoryImageActionTile(
+                  icon: Icons.photo_library_rounded,
+                  label: l10n.changeImage,
+                  color: theme.primaryColor,
+                  onTap: () => Navigator.pop(sheetContext, 'change'),
+                ),
+                _CategoryImageActionTile(
+                  icon: Icons.delete_outline_rounded,
+                  label: l10n.deleteImage,
+                  enabled: hasImage,
+                  color: AppColors.expense,
+                  onTap: () => Navigator.pop(sheetContext, 'delete'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case 'preview':
+        _previewCategoryImage();
+        break;
+      case 'change':
+        await _showVisualPicker();
+        break;
+      case 'delete':
+        _confirmDeleteCategoryImage();
+        break;
+    }
+  }
+
+  void _previewCategoryImage() {
+    final imageFile = CategoryImageStore.resolve(_selectedImagePath);
+    if (imageFile == null || !imageFile.existsSync()) return;
+
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black,
+      builder: (dialogContext) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 4,
+                    child: Image.file(imageFile, fit: BoxFit.contain),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteCategoryImage() {
+    showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => SheepConfirmDialog(
+        title: 'Xoá ảnh danh mục?',
+        content: 'Ảnh danh mục hiện tại sẽ bị xoá khỏi biểu mẫu.',
+        confirmLabel: 'Xoá ảnh',
+        confirmColor: AppColors.expense,
+        icon: Icons.delete_outline_rounded,
+        onConfirm: () => _clearSelectedImage(),
+      ),
+    );
+  }
+}
+
+class _CategoryImageActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _CategoryImageActionTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = enabled ? color : const Color(0xFFB8AEB3);
+    return ListTile(
+      enabled: enabled,
+      minVerticalPadding: 10,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      leading: Icon(icon, color: foreground, size: 24),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: enabled ? const Color(0xFF4D4449) : const Color(0xFFB8AEB3),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0,
+        ),
+      ),
+      onTap: enabled ? onTap : null,
     );
   }
 }
