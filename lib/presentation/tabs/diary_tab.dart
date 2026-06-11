@@ -629,6 +629,8 @@ class _DiaryTabState extends State<DiaryTab> {
                                                       cat.iconCode,
                                                     ),
                                                     iconColor: catColor,
+                                                    iconImagePath:
+                                                        cat.imagePath,
                                                     title: cat.name,
                                                     dateText: tx.note,
                                                     amountText:
@@ -1301,12 +1303,15 @@ class _TransactionImageTile extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.55),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      resolveCategoryIcon(category.iconCode),
-                      size: 14,
+                    child: SheepCategoryIcon(
+                      icon: category.iconData,
                       color: category.colorValue != null
                           ? Color(category.colorValue!)
                           : Colors.white,
+                      size: 24,
+                      imagePath: category.imagePath,
+                      backgroundColor: Colors.transparent,
+                      borderColor: Colors.transparent,
                     ),
                   ),
                 ),

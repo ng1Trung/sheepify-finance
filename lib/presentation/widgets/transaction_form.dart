@@ -468,6 +468,7 @@ class _TransactionFormState extends State<TransactionForm>
             icon: selectedCategory.iconData,
             color: accent,
             size: 24,
+            imagePath: selectedCategory.imagePath,
           ),
           const SizedBox(width: 8),
           Expanded(

@@ -13,6 +13,7 @@ import 'core/theme/app_colors.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/utils/l10n.dart';
 import 'core/utils/avatar_image_store.dart';
+import 'core/utils/category_image_store.dart';
 import 'core/utils/transaction_image_store.dart';
 
 void main() async {
@@ -20,6 +21,7 @@ void main() async {
   await initializeDateFormatting('vi_VN', null);
   await Hive.initFlutter();
   await AvatarImageStore.initialize();
+  await CategoryImageStore.initialize();
   await TransactionImageStore.initialize();
 
   // Register Adapters

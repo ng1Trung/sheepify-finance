@@ -1239,6 +1239,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           bestOverage = overPercent.toDouble();
           bestOverBudget = _DrawerOverviewStatus(
             icon: category.iconData,
+            imagePath: category.imagePath,
             title: category.name,
             message: 'vượt ngân sách $overPercent%',
             color: const Color(0xFFFF5F75),
@@ -1249,6 +1250,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         bestProgress = progressPercent.toDouble();
         bestUnderBudget = _DrawerOverviewStatus(
           icon: category.iconData,
+          imagePath: category.imagePath,
           title: category.name,
           message: 'đã tiêu $progressPercent% ngân sách',
         );
@@ -1350,6 +1352,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       if (saved >= target) {
         bestStatus = _DrawerOverviewStatus(
           icon: category.iconData,
+          imagePath: category.imagePath,
           title: 'Mục tiêu ${category.name}',
           message: 'đã hoàn thành 🎉',
           color: const Color(0xFF37D58A),
@@ -1358,6 +1361,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       } else if (progress >= 0.5) {
         bestStatus = _DrawerOverviewStatus(
           icon: category.iconData,
+          imagePath: category.imagePath,
           title: 'Mục tiêu ${category.name}',
           message: 'đã đạt ${(progress * 100).round()}%',
         );
@@ -1365,6 +1369,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         final remaining = _formatCompactAmount(target - saved, settings);
         bestStatus = _DrawerOverviewStatus(
           icon: category.iconData,
+          imagePath: category.imagePath,
           title: 'Mục tiêu ${category.name}',
           message: 'còn $remaining nữa là hoàn thành',
         );
@@ -1449,6 +1454,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
 class _DrawerOverviewStatus {
   final IconData icon;
+  final String? imagePath;
   final String title;
   final String message;
   final Color color;
@@ -1456,6 +1462,7 @@ class _DrawerOverviewStatus {
 
   const _DrawerOverviewStatus({
     required this.icon,
+    this.imagePath,
     required this.title,
     required this.message,
     this.color = const Color(0xFF1F7AE0),
@@ -1482,7 +1489,14 @@ class _DrawerOverviewCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 1),
-            child: Icon(status.icon, size: 14, color: status.color),
+            child: SheepCategoryIcon(
+              icon: status.icon,
+              color: status.color,
+              size: 18,
+              imagePath: status.imagePath,
+              backgroundColor: status.color.withValues(alpha: 0.1),
+              borderColor: status.color.withValues(alpha: 0.16),
+            ),
           ),
           const SizedBox(width: 5),
           Expanded(

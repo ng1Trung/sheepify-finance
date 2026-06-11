@@ -11,12 +11,13 @@ import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
 
 import '../../core/constants/constants.dart';
 import '../../core/utils/avatar_image_store.dart';
+import '../../core/utils/category_image_store.dart';
 import '../../core/utils/transaction_image_store.dart';
 import '../models/category_model.dart';
 import '../models/settings_model.dart';
 import '../models/transaction.dart';
 
-const int kBackupSchemaVersion = 1;
+const int kBackupSchemaVersion = 2;
 const String kBackupAppVersion = '1.0.0+1';
 
 class BackupManifest {
@@ -202,6 +203,7 @@ class CategoryBackupDto {
   final int? reminderDay;
   final int? targetYear;
   final int? targetMonth;
+  final String? imagePath;
 
   const CategoryBackupDto({
     required this.id,
@@ -217,6 +219,7 @@ class CategoryBackupDto {
     this.reminderDay,
     this.targetYear,
     this.targetMonth,
+    this.imagePath,
   });
 
   factory CategoryBackupDto.fromModel(CategoryModel category) {
@@ -234,6 +237,7 @@ class CategoryBackupDto {
       reminderDay: category.reminderDay,
       targetYear: category.targetYear,
       targetMonth: category.targetMonth,
+      imagePath: category.imagePath,
     );
   }
 
@@ -252,10 +256,11 @@ class CategoryBackupDto {
       reminderDay: _asInt(json['reminderDay']),
       targetYear: _asInt(json['targetYear']),
       targetMonth: _asInt(json['targetMonth']),
+      imagePath: _nullableString(json['imagePath']),
     );
   }
 
-  CategoryModel toModel() {
+  CategoryModel toModel({String? restoredImagePath}) {
     return CategoryModel(
       id: id,
       name: name,
@@ -270,6 +275,7 @@ class CategoryBackupDto {
       reminderDay: reminderDay,
       targetYear: targetYear,
       targetMonth: targetMonth,
+      imagePath: restoredImagePath ?? imagePath,
     );
   }
 
@@ -288,6 +294,7 @@ class CategoryBackupDto {
       'reminderDay': reminderDay,
       'targetYear': targetYear,
       'targetMonth': targetMonth,
+      'imagePath': imagePath,
     };
   }
 }
@@ -463,6 +470,16 @@ class DataBackupService {
       resolve: AvatarImageStore.resolve,
     );
 
+    for (final category in payload.categories) {
+      await _addImageRef(
+        archive: archive,
+        addedPaths: addedPaths,
+        storedRef: category.imagePath,
+        fallbackDirectory: CategoryImageStore.directoryName,
+        resolve: CategoryImageStore.resolve,
+      );
+    }
+
     for (final tx in payload.transactions) {
       await _addImageRef(
         archive: archive,
@@ -520,7 +537,11 @@ class DataRestoreService {
     };
 
     var imagesRestored = 0;
-    final categoryResult = await _restoreCategories(payload);
+    final categoryResult = await _restoreCategories(
+      payload,
+      archiveImages,
+      onImageRestored: () => imagesRestored++,
+    );
     final settingsRestored = await _restoreSettings(
       payload,
       archiveImages,
@@ -545,7 +566,11 @@ class DataRestoreService {
     );
   }
 
-  Future<_MergeResult> _restoreCategories(BackupPayload payload) async {
+  Future<_MergeResult> _restoreCategories(
+    BackupPayload payload,
+    Map<String, ArchiveFile> archiveImages, {
+    required VoidCallback onImageRestored,
+  }) async {
     final box = Hive.box<CategoryModel>(kCatBox);
     final existingIds = box.values.map((category) => category.id).toSet();
     var added = 0;
@@ -557,7 +582,12 @@ class DataRestoreService {
         continue;
       }
 
-      await box.add(category.toModel());
+      final imagePath = await _restoreCategoryImage(
+        category.imagePath,
+        archiveImages,
+        onImageRestored: onImageRestored,
+      );
+      await box.add(category.toModel(restoredImagePath: imagePath));
       existingIds.add(category.id);
       added++;
     }
@@ -653,6 +683,26 @@ class DataRestoreService {
     if (bytes == null || bytes.isEmpty) return storedRef;
 
     final restoredRef = await TransactionImageStore.saveBytesFromBackup(
+      _basenameFromStoredRef(storedRef),
+      bytes,
+    );
+    onImageRestored();
+    return restoredRef;
+  }
+
+  Future<String?> _restoreCategoryImage(
+    String? storedRef,
+    Map<String, ArchiveFile> archiveImages, {
+    required VoidCallback onImageRestored,
+  }) async {
+    if (storedRef == null || storedRef.isEmpty) return storedRef;
+
+    final imageEntry =
+        archiveImages[_archiveImagePath(storedRef, CategoryImageStore.directoryName)];
+    final bytes = imageEntry?.content;
+    if (bytes == null || bytes.isEmpty) return storedRef;
+
+    final restoredRef = await CategoryImageStore.saveBytesFromBackup(
       _basenameFromStoredRef(storedRef),
       bytes,
     );
@@ -786,6 +836,7 @@ class DataExportService {
         'reminder_day',
         'target_year',
         'target_month',
+        'image_path',
       ],
       for (final category in payload.categories)
         [
@@ -802,6 +853,7 @@ class DataExportService {
           category.reminderDay ?? '',
           category.targetYear ?? '',
           category.targetMonth ?? '',
+          category.imagePath ?? '',
         ],
     ];
   }

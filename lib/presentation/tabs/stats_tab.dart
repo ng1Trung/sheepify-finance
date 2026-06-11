@@ -504,7 +504,11 @@ class _StatsTabState extends State<StatsTab> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SheepCategoryIcon(icon: stat.category.iconData, color: color),
+              SheepCategoryIcon(
+                icon: stat.category.iconData,
+                color: color,
+                imagePath: stat.category.imagePath,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(

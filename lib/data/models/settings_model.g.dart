@@ -17,21 +17,19 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return AppSettings(
-      accumulateBalance: fields[0] as bool? ?? true,
-      themePresetName: fields[1] as String? ?? 'Sheep Green',
-      languageCode: fields[2] as String? ?? 'vi',
-      currencyCode: fields[3] as String? ?? 'VND',
-      fontFamily: fields[4] as String? ?? 'Quicksand',
-      isDarkMode: fields[5] as bool? ?? false,
-      hideAmounts: fields[6] as bool? ?? false,
-      themeMode:
-          fields[7] as String? ??
-          ((fields[5] as bool? ?? false) ? 'dark' : 'light'),
+      accumulateBalance: fields[0] as bool,
+      themePresetName: fields[1] as String,
+      languageCode: fields[2] as String,
+      currencyCode: fields[3] as String,
+      fontFamily: fields[4] as String,
+      isDarkMode: fields[5] as bool,
       avatarImageRef: fields[8] as String?,
-      financialCycleStartDay: fields[9] as int? ?? 1,
-      weekStartDay: fields[10] as int? ?? DateTime.monday,
+      financialCycleStartDay: fields[9] as int,
       lastBackupAt: fields[11] as DateTime?,
-    );
+    )
+      .._hideAmounts = fields[6] as bool?
+      .._themeMode = fields[7] as String?
+      .._weekStartDay = fields[10] as int?;
   }
 
   @override

@@ -110,7 +110,11 @@ class TransactionHistorySheet extends StatelessWidget {
         ),
         child: Row(
           children: [
-            SheepCategoryIcon(icon: category.iconData, color: catColor),
+            SheepCategoryIcon(
+              icon: category.iconData,
+              color: catColor,
+              imagePath: category.imagePath,
+            ),
             const SizedBox(width: SheepSpacing.md),
             Expanded(
               child: Column(
@@ -332,15 +336,11 @@ class TransactionHistorySheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: catColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(SheepRadius.md),
-                    border: Border.all(color: catColor.withValues(alpha: 0.3)),
-                  ),
-                  child: Icon(category.iconData, size: 17, color: catColor),
+                SheepCategoryIcon(
+                  icon: category.iconData,
+                  color: catColor,
+                  size: 34,
+                  imagePath: category.imagePath,
                 ),
                 const SizedBox(width: 10),
                 Expanded(

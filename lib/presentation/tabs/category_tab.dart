@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:line_icons/line_icons.dart';
 
 import '../../core/constants/constants.dart';
+import '../../core/utils/category_image_store.dart';
 import '../../core/utils/category_util.dart';
 import '../../core/utils/currency_util.dart';
 import '../../data/models/category_model.dart';
@@ -139,9 +140,12 @@ class _CategoryTabState extends State<CategoryTab> {
               direction: DismissDirection.endToStart,
               background: _buildDeleteBackground(),
               confirmDismiss: (_) => _confirmDelete(context, cat),
-              onDismissed: (_) {
+              onDismissed: (_) async {
                 final name = cat.name;
-                cat.delete();
+                final imagePath = cat.imagePath;
+                await cat.delete();
+                await CategoryImageStore.deleteStoredRef(imagePath);
+                if (!context.mounted) return;
                 SheepNotifications.showSuccess(
                   context,
                   l10n.get('delete_cat_success', params: {'name': name}),
@@ -294,7 +298,11 @@ class _CategoryTabState extends State<CategoryTab> {
 
     if (cat.colorValue != null) color = Color(cat.colorValue!);
 
-    return SheepCategoryIcon(icon: cat.iconData, color: color);
+    return SheepCategoryIcon(
+      icon: cat.iconData,
+      color: color,
+      imagePath: cat.imagePath,
+    );
   }
 
   Widget _buildInfo(CategoryModel cat, double spent, int typeIndex) {

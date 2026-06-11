@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:sheepify/core/utils/category_image_store.dart';
 import 'package:sheepify/core/constants/constants.dart';
 import 'package:sheepify/data/models/category_model.dart';
 import 'package:sheepify/data/models/settings_model.dart';
@@ -18,6 +20,10 @@ void main() {
       'sheepify_restore_test_',
     );
     Hive.init(hiveDirectory.path);
+    PathProviderPlatform.instance = _FakePathProviderPlatform(
+      hiveDirectory.path,
+    );
+    await CategoryImageStore.initialize();
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(TransactionAdapter());
     }
@@ -85,6 +91,7 @@ void main() {
         reminderDay: 15,
         targetYear: 2026,
         targetMonth: 12,
+        imagePath: 'category_images/travel.jpg',
       );
 
       final dto = CategoryBackupDto.fromJson(
@@ -105,6 +112,7 @@ void main() {
       expect(restored.reminderDay, category.reminderDay);
       expect(restored.targetYear, category.targetYear);
       expect(restored.targetMonth, category.targetMonth);
+      expect(restored.imagePath, category.imagePath);
     });
 
     test('settings mapper roundtrips privacy and theme fields', () {
@@ -237,6 +245,53 @@ void main() {
         await backupFile.delete();
       }
     });
+
+    test('backs up and restores category images', () async {
+      final categoryBox = Hive.box<CategoryModel>(kCatBox);
+      final imageBytes = [1, 2, 3, 4, 5];
+      final imageRef = await CategoryImageStore.saveBytesFromBackup(
+        'goal.jpg',
+        imageBytes,
+      );
+
+      await categoryBox.add(
+        CategoryModel(
+          id: 'cat_goal',
+          name: 'Goal',
+          iconCode: 3,
+          isExpense: false,
+          typeIndex: 2,
+          imagePath: imageRef,
+        ),
+      );
+
+      final backupFile = await DataBackupService().createBackupFile();
+      final backupArchive = ZipDecoder().decodeBytes(
+        await backupFile.readAsBytes(),
+      );
+      final portableImageRef = imageRef.replaceAll('\\', '/');
+      expect(backupArchive.find('images/$portableImageRef'), isNotNull);
+
+      await categoryBox.clear();
+      await CategoryImageStore.deleteAll();
+
+      final summary = await DataRestoreService().restoreBackupFile(backupFile);
+
+      expect(summary.categoriesAdded, 1);
+      expect(summary.imagesRestored, 1);
+      final restored = categoryBox.values.single;
+      expect(
+        restored.imagePath?.replaceAll('\\', '/'),
+        startsWith('category_images/'),
+      );
+      final restoredFile = CategoryImageStore.resolve(restored.imagePath);
+      expect(restoredFile, isNotNull);
+      expect(await restoredFile!.readAsBytes(), imageBytes);
+
+      if (await backupFile.exists()) {
+        await backupFile.delete();
+      }
+    });
   });
 }
 
@@ -250,6 +305,7 @@ Future<void> _resetHiveBoxes() async {
   await categoryBox.clear();
   await settingsBox.clear();
   await streakBox.clear();
+  await CategoryImageStore.deleteAll();
 }
 
 Future<Box<T>> _openBox<T>(String name) async {
@@ -272,4 +328,16 @@ Future<File> _createBackupFile(BackupPayload payload) async {
   );
   await file.writeAsBytes(ZipEncoder().encodeBytes(archive), flush: true);
   return file;
+}
+
+class _FakePathProviderPlatform extends PathProviderPlatform {
+  final String rootPath;
+
+  _FakePathProviderPlatform(this.rootPath);
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => rootPath;
+
+  @override
+  Future<String?> getTemporaryPath() async => rootPath;
 }

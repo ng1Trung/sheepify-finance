@@ -145,6 +145,7 @@ class TransactionImageArea extends StatelessWidget {
                   icon: selectedCategory!.iconData,
                   color: Colors.white,
                   size: 64,
+                  imagePath: selectedCategory!.imagePath,
                 )
               : const Icon(LineIcons.image, size: 46, color: Colors.white),
         ),

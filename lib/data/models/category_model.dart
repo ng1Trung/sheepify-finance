@@ -46,6 +46,9 @@ class CategoryModel extends HiveObject {
   @HiveField(13)
   int? targetMonth; // For short-term goals
 
+  @HiveField(14)
+  String? imagePath;
+
   CategoryModel({
     required this.id,
     required this.name,
@@ -60,6 +63,7 @@ class CategoryModel extends HiveObject {
     this.reminderDay,
     this.targetYear,
     this.targetMonth,
+    this.imagePath,
   });
 
   int get effectiveTypeIndex => typeIndex ?? (isExpense ? 0 : 1);

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:image_cropper/image_cropper.dart' as cropper;
+import 'package:image_picker/image_picker.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:line_icons/line_icons.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/category_image_store.dart';
 import '../../core/utils/category_icon_resolver.dart';
 import '../../core/utils/currency_util.dart';
 import 'common/sheep_toggles.dart';
@@ -40,6 +43,9 @@ class _CategoryFormState extends State<CategoryForm> {
 
   late int _selectedIcon;
   late Color _selectedColor;
+  String? _selectedImagePath;
+  final Set<String> _createdImageRefs = {};
+  bool _didSubmit = false;
 
   final List<Color> _vibrantColors = [
     Colors.black, // Màu đen hệ thống làm mặc định
@@ -121,6 +127,7 @@ class _CategoryFormState extends State<CategoryForm> {
       _nameController.text = cat.name;
       _selectedTypeIndex = widget.fixedTypeIndex ?? cat.effectiveTypeIndex;
       _selectedIcon = cat.iconCode;
+      _selectedImagePath = cat.imagePath;
       final budget = cat.budget;
       _budgetController.text = budget != null && budget > 0
           ? CurrencyUtil.formatNumber(budget)
@@ -145,6 +152,7 @@ class _CategoryFormState extends State<CategoryForm> {
       _nameController.text = '';
       _selectedTypeIndex = widget.fixedTypeIndex ?? 0; // Default Expense
       _selectedIcon = _iconList[0].codePoint;
+      _selectedImagePath = null;
       _selectedColor = _vibrantColors[0];
 
       // Default for goals
@@ -153,7 +161,7 @@ class _CategoryFormState extends State<CategoryForm> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final l10n = L10n.of(context);
     if (_nameController.text.isEmpty) {
       SheepNotifications.showError(
@@ -171,11 +179,14 @@ class _CategoryFormState extends State<CategoryForm> {
         : null;
     final enteredGoal = CurrencyParsing.parseAmount(_goalAmountController.text);
     HapticFeedback.mediumImpact();
+    _didSubmit = true;
 
     if (widget.category != null) {
       final cat = widget.category!;
+      final oldImagePath = cat.imagePath;
       cat.name = _nameController.text;
       cat.iconCode = _selectedIcon;
+      cat.imagePath = _selectedImagePath;
       cat.isExpense = _selectedTypeIndex == 0;
       cat.typeIndex = _selectedTypeIndex;
       cat.budget = _selectedTypeIndex == 0 ? enteredBudget : null;
@@ -205,8 +216,13 @@ class _CategoryFormState extends State<CategoryForm> {
       }
 
       cat.colorValue = _selectedColor.toARGB32();
-      cat.save();
+      await cat.save();
+      if (oldImagePath != _selectedImagePath) {
+        await CategoryImageStore.deleteStoredRef(oldImagePath);
+      }
+      await _deleteUnusedCreatedImages();
 
+      if (!mounted) return;
       SheepNotifications.showSuccess(context, l10n.get('tx_updated'));
     } else {
       final catName = _nameController.text;
@@ -232,12 +248,28 @@ class _CategoryFormState extends State<CategoryForm> {
             ? DateTime(_selectedTargetYear, _selectedTargetMonth + 1, 0)
             : null,
         colorValue: _selectedColor.toARGB32(),
+        imagePath: _selectedImagePath,
       );
-      _catBox.add(newCat);
+      await _catBox.add(newCat);
+      await _deleteUnusedCreatedImages();
 
+      if (!mounted) return;
       SheepNotifications.showSuccess(context, l10n.get('tx_added'));
     }
-    Navigator.pop(context);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    if (!_didSubmit) {
+      for (final imageRef in _createdImageRefs) {
+        CategoryImageStore.deleteStoredRef(imageRef);
+      }
+    }
+    _nameController.dispose();
+    _budgetController.dispose();
+    _goalAmountController.dispose();
+    super.dispose();
   }
 
   @override
@@ -386,12 +418,13 @@ class _CategoryFormState extends State<CategoryForm> {
     return Row(
       children: [
         InkWell(
-          onTap: _showIconPicker,
+          onTap: _showVisualPicker,
           borderRadius: BorderRadius.circular(SheepRadius.md),
           child: SheepCategoryIcon(
             icon: resolveCategoryIcon(_selectedIcon),
             color: accent,
             size: 48,
+            imagePath: _selectedImagePath,
           ),
         ),
         const SizedBox(width: SheepSpacing.xl),
@@ -832,70 +865,247 @@ class _CategoryFormState extends State<CategoryForm> {
     );
   }
 
-  void _showIconPicker() {
+  Future<void> _showVisualPicker() async {
     final theme = Theme.of(context);
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: 360,
-        padding: const EdgeInsets.all(SheepSpacing.xl),
-        decoration: BoxDecoration(
-          color: AppColors.getSurface(theme.brightness),
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(SheepRadius.sheet),
-          ),
-        ),
-        child: Column(
-          children: [
-            _buildDragHandle(),
-            const SizedBox(height: SheepSpacing.xl),
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 6,
-                  crossAxisSpacing: SheepSpacing.md,
-                  mainAxisSpacing: SheepSpacing.md,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setPickerState) {
+          final accent = _effectiveSelectedColor(context);
+          return Container(
+            height: 520,
+            padding: const EdgeInsets.all(SheepSpacing.xl),
+            decoration: BoxDecoration(
+              color: AppColors.getSurface(theme.brightness),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(SheepRadius.sheet),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: _buildDragHandle()),
+                const SizedBox(height: SheepSpacing.xl),
+                Text(
+                  L10n.of(context).get('upload_image'),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                itemCount: _iconList.length,
-                itemBuilder: (context, index) {
-                  final icon = _iconList[index];
-                  final isSelected = _selectedIcon == icon.codePoint;
-                  final accent = _effectiveSelectedColor(context);
-                  final onAccent = AppColors.getOnAccent(
-                    theme.brightness,
-                    accent,
-                  );
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedIcon = icon.codePoint);
-                      Navigator.pop(ctx);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        color: isSelected ? accent : theme.cardColor,
-                        shape: BoxShape.circle,
-                        border: isSelected
-                            ? null
-                            : Border.all(color: theme.dividerColor),
-                      ),
-                      child: Icon(
-                        icon,
-                        color: isSelected
-                            ? onAccent
-                            : theme.textTheme.labelSmall?.color,
-                        size: 18,
+                const SizedBox(height: SheepSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildVisualActionButton(
+                        icon: Icons.image_outlined,
+                        label: L10n.of(context).get('choose_gallery'),
+                        onTap: () async {
+                          Navigator.pop(ctx);
+                          await _pickCategoryImage();
+                        },
                       ),
                     ),
-                  );
-                },
+                    if (_selectedImagePath != null) ...[
+                      const SizedBox(width: SheepSpacing.md),
+                      Expanded(
+                        child: _buildVisualActionButton(
+                          icon: Icons.delete_outline_rounded,
+                          label: L10n.of(context).delete,
+                          color: AppColors.expense,
+                          onTap: () async {
+                            await _clearSelectedImage();
+                            setPickerState(() {});
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: SheepSpacing.xl),
+                Text(
+                  L10n.of(context).get('icons'),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: SheepSpacing.md),
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 6,
+                          crossAxisSpacing: SheepSpacing.md,
+                          mainAxisSpacing: SheepSpacing.md,
+                        ),
+                    itemCount: _iconList.length,
+                    itemBuilder: (context, index) {
+                      final icon = _iconList[index];
+                      final isSelected = _selectedIcon == icon.codePoint;
+                      final onAccent = AppColors.getOnAccent(
+                        theme.brightness,
+                        accent,
+                      );
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() => _selectedIcon = icon.codePoint);
+                          Navigator.pop(ctx);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color: isSelected ? accent : theme.cardColor,
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? null
+                                : Border.all(color: theme.dividerColor),
+                          ),
+                          child: Icon(
+                            icon,
+                            color: isSelected
+                                ? onAccent
+                                : theme.textTheme.labelSmall?.color,
+                            size: 18,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildVisualActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    final theme = Theme.of(context);
+    final accent = color ?? _effectiveSelectedColor(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SheepRadius.lg),
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(SheepRadius.lg),
+          border: Border.all(color: accent.withValues(alpha: 0.24)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: accent, size: 18),
+            const SizedBox(width: SheepSpacing.sm),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: SheepTextStyles.itemMeta(context).copyWith(
+                  color: AppColors.getTextPrimary(theme.brightness),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _pickCategoryImage() async {
+    String? newImageRef;
+    try {
+      final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (picked == null) return;
+
+      if (!mounted) return;
+      final themeColor = _effectiveSelectedColor(context);
+      final cropped = await cropper.ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const cropper.CropAspectRatio(ratioX: 1, ratioY: 1),
+        maxWidth: 512,
+        maxHeight: 512,
+        compressFormat: cropper.ImageCompressFormat.jpg,
+        compressQuality: 80,
+        uiSettings: [
+          cropper.AndroidUiSettings(
+            toolbarTitle: L10n.of(context).get('upload_image'),
+            toolbarColor: themeColor,
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: themeColor,
+            initAspectRatio: cropper.CropAspectRatioPreset.square,
+            aspectRatioPresets: const [cropper.CropAspectRatioPreset.square],
+            lockAspectRatio: true,
+          ),
+          cropper.IOSUiSettings(
+            title: L10n.of(context).get('upload_image'),
+            doneButtonTitle: L10n.of(context).save,
+            cancelButtonTitle: L10n.of(context).cancel,
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            aspectRatioPickerButtonHidden: true,
+            aspectRatioPresets: const [cropper.CropAspectRatioPreset.square],
+          ),
+        ],
+      );
+      if (cropped == null) return;
+
+      newImageRef = await CategoryImageStore.saveFromSourcePath(cropped.path);
+      if (!mounted) {
+        await CategoryImageStore.deleteStoredRef(newImageRef);
+        return;
+      }
+
+      final previousImageRef = _selectedImagePath;
+      setState(() {
+        _selectedImagePath = newImageRef;
+        _createdImageRefs.add(newImageRef!);
+      });
+
+      if (previousImageRef != null &&
+          _createdImageRefs.remove(previousImageRef)) {
+        await CategoryImageStore.deleteStoredRef(previousImageRef);
+      }
+    } catch (_) {
+      await CategoryImageStore.deleteStoredRef(newImageRef);
+      if (!mounted) return;
+      SheepNotifications.showError(
+        context,
+        L10n.of(context).get('error_prefix'),
+      );
+    }
+  }
+
+  Future<void> _clearSelectedImage() async {
+    final selectedImageRef = _selectedImagePath;
+    setState(() => _selectedImagePath = null);
+    if (selectedImageRef != null && _createdImageRefs.remove(selectedImageRef)) {
+      await CategoryImageStore.deleteStoredRef(selectedImageRef);
+    }
+  }
+
+  Future<void> _deleteUnusedCreatedImages() async {
+    final refsToDelete = _createdImageRefs
+        .where((imageRef) => imageRef != _selectedImagePath)
+        .toList();
+    for (final imageRef in refsToDelete) {
+      await CategoryImageStore.deleteStoredRef(imageRef);
+      _createdImageRefs.remove(imageRef);
+    }
+    if (_selectedImagePath != null) {
+      _createdImageRefs.remove(_selectedImagePath);
+    }
   }
 
   Color _effectiveSelectedColor(BuildContext context) {

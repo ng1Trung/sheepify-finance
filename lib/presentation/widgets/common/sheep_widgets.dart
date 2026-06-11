@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/category_image_store.dart';
 import '../../../core/utils/l10n.dart';
 
 class SheepSpacing {
@@ -131,26 +132,47 @@ class SheepCategoryIcon extends StatelessWidget {
   final IconData icon;
   final Color color;
   final double size;
+  final String? imagePath;
+  final Color? backgroundColor;
+  final Color? borderColor;
 
   const SheepCategoryIcon({
     super.key,
     required this.icon,
     required this.color,
     this.size = 40,
+    this.imagePath,
+    this.backgroundColor,
+    this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final imageFile = CategoryImageStore.resolve(imagePath);
+    final hasReadableImage = imageFile?.existsSync() ?? false;
+    final radius = BorderRadius.circular(SheepRadius.md);
+
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(SheepRadius.md),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: backgroundColor ?? color.withValues(alpha: 0.12),
+        borderRadius: radius,
+        border: Border.all(color: borderColor ?? color.withValues(alpha: 0.3)),
       ),
-      child: Icon(icon, color: color, size: size * 0.5),
+      clipBehavior: Clip.antiAlias,
+      child: hasReadableImage
+          ? Image.file(
+              imageFile!,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => _fallbackIcon(),
+            )
+          : _fallbackIcon(),
     );
+  }
+
+  Widget _fallbackIcon() {
+    return Icon(icon, color: color, size: size * 0.5);
   }
 }
 
@@ -339,6 +361,7 @@ class SheepTransactionCard extends StatelessWidget {
   final Color? iconColor;
   final Color? iconBackground;
   final Color? iconBorderColor;
+  final String? iconImagePath;
 
   const SheepTransactionCard({
     super.key,
@@ -354,6 +377,7 @@ class SheepTransactionCard extends StatelessWidget {
     this.iconColor,
     this.iconBackground,
     this.iconBorderColor,
+    this.iconImagePath,
   });
 
   @override
@@ -380,21 +404,13 @@ class SheepTransactionCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color:
-                        iconBackground ??
-                        resolvedIconColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(SheepRadius.md),
-                    border: Border.all(
-                      color:
-                          iconBorderColor ??
-                          resolvedIconColor.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Icon(icon, size: 17, color: resolvedIconColor),
+                SheepCategoryIcon(
+                  icon: icon,
+                  color: resolvedIconColor,
+                  size: 34,
+                  imagePath: iconImagePath,
+                  backgroundColor: iconBackground,
+                  borderColor: iconBorderColor,
                 ),
                 const SizedBox(width: 10),
                 Expanded(

@@ -154,6 +154,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                                 ? selectedTextColor
                                 : selectedColor,
                             size: 28,
+                            imagePath: c.imagePath,
                           ),
                           const SizedBox(width: SheepSpacing.sm),
                           Expanded(

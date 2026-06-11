@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/settings_model.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/category_image_store.dart';
 import '../../core/utils/l10n.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/transaction.dart';
@@ -1011,6 +1012,7 @@ class SettingsTab extends StatelessWidget {
         onConfirm: () async {
           await Hive.box<Transaction>(kMoneyBox).clear();
           await Hive.box<CategoryModel>(kCatBox).clear();
+          await CategoryImageStore.deleteAll();
           if (context.mounted) {
             SheepNotifications.showSuccess(
               context,
