@@ -24,8 +24,14 @@ import '../../core/utils/transaction_image_store.dart';
 class TransactionForm extends StatefulWidget {
   final Transaction? transaction;
   final DateTime? initialDate;
+  final List<Transaction>? dayTransactions;
 
-  const TransactionForm({super.key, this.transaction, this.initialDate});
+  const TransactionForm({
+    super.key,
+    this.transaction,
+    this.initialDate,
+    this.dayTransactions,
+  });
 
   @override
   State<TransactionForm> createState() => _TransactionFormState();
@@ -44,12 +50,31 @@ class _TransactionFormState extends State<TransactionForm>
 
   String? _selectedCategoryId;
   String? _imagePath;
-  late final double? _initialAmount;
-  late final String? _initialNote;
-  late final DateTime? _initialDate;
-  late final int? _initialTypeIndex;
-  late final String? _initialCategoryId;
-  late final String? _initialImagePath;
+  double? _initialAmount;
+  String? _initialNote;
+  DateTime? _initialDate;
+  int? _initialTypeIndex;
+  String? _initialCategoryId;
+  String? _initialImagePath;
+
+  Transaction? _activeTransaction;
+  List<Transaction> _imageTransactions = [];
+  PageController? _pageController;
+
+  PageController get _effectivePageController {
+    if (_pageController == null) {
+      int initialPageIndex = 0;
+      if (_activeTransaction != null) {
+        initialPageIndex = _imageTransactions.indexWhere((tx) => tx.key == _activeTransaction!.key);
+        if (initialPageIndex == -1) initialPageIndex = 0;
+      }
+      _pageController = PageController(
+        viewportFraction: 0.82,
+        initialPage: initialPageIndex,
+      );
+    }
+    return _pageController!;
+  }
 
   final _box = Hive.box<Transaction>(kMoneyBox);
   final _catBox = Hive.box<CategoryModel>(kCatBox);
@@ -71,9 +96,19 @@ class _TransactionFormState extends State<TransactionForm>
         ]).animate(
           CurvedAnimation(parent: _noteShakeController, curve: Curves.easeOut),
         );
-    if (widget.transaction != null) {
+
+    _activeTransaction = widget.transaction;
+    if (widget.dayTransactions != null) {
+      _imageTransactions = widget.dayTransactions!.where((tx) {
+        final imageFile = TransactionImageStore.resolve(tx.imagePath);
+        return imageFile?.existsSync() ?? false;
+      }).toList();
+    }
+
+
+    if (_activeTransaction != null) {
       // Initialize state with existing transaction data
-      final tx = widget.transaction!;
+      final tx = _activeTransaction!;
       _amountController.text = CurrencyUtil.formatNumber(tx.amount);
       _noteController.text = tx.note;
       _selectedDate = tx.date;
@@ -122,6 +157,7 @@ class _TransactionFormState extends State<TransactionForm>
 
   @override
   void dispose() {
+    _pageController?.dispose();
     _noteShakeController.dispose();
     _noteController.dispose();
     _amountController.dispose();
@@ -134,7 +170,7 @@ class _TransactionFormState extends State<TransactionForm>
   }
 
   bool get _hasChanges {
-    if (widget.transaction == null) return true;
+    if (_activeTransaction == null) return true;
 
     return CurrencyParsing.parseAmount(_amountController.text) !=
             _initialAmount ||
@@ -257,9 +293,9 @@ class _TransactionFormState extends State<TransactionForm>
     HapticFeedback.mediumImpact();
 
     try {
-      if (widget.transaction != null) {
+      if (_activeTransaction != null) {
         // Update existing transaction in Hive
-        final tx = widget.transaction!;
+        final tx = _activeTransaction!;
         tx.amount = enteredAmount;
         tx.note = _noteController.text;
         tx.date = _selectedDate;
@@ -396,20 +432,71 @@ class _TransactionFormState extends State<TransactionForm>
           children: [
             _buildDragHandle(),
             const SizedBox(height: SheepSpacing.xl),
-            TransactionImageArea(
-              imagePath: _imagePath,
-              selectedIndex: _selectedTypeIndex,
-              selectedCategory: selectedCategory,
-              categoryColor: selectedCategory?.colorValue != null
-                  ? Color(selectedCategory!.colorValue!)
-                  : null,
-              amountController: _amountController,
-              noteController: _noteController,
-              onRemoveImage: _confirmRemoveImage,
-              noteShakeAnimation: _noteShakeAnimation,
-              noteMaxLength: _noteMaxLength,
-              onNoteLimitExceeded: _shakeNoteField,
-            ),
+            if (_imageTransactions.length > 1) ...[
+              AspectRatio(
+                aspectRatio: 1,
+                child: PageView.builder(
+                  controller: _effectivePageController,
+                  itemCount: _imageTransactions.length,
+                  clipBehavior: Clip.none,
+                  onPageChanged: (index) {
+                    _setActiveTransaction(_imageTransactions[index], fromPageSwipe: true);
+                  },
+                  itemBuilder: (context, index) {
+                    final tx = _imageTransactions[index];
+                    final isCurrent = tx.key == _activeTransaction?.key;
+
+                    CategoryModel? txCategory;
+                    if (isCurrent) {
+                      txCategory = selectedCategory;
+                    } else {
+                      try {
+                        txCategory = _catBox.values.firstWhere((c) => c.id == tx.categoryId);
+                      } catch (_) {}
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: TransactionImageArea(
+                        imagePath: tx.imagePath,
+                        selectedIndex: isCurrent ? _selectedTypeIndex : (tx.isExpense ? 0 : 1),
+                        selectedCategory: txCategory,
+                        categoryColor: (txCategory != null && txCategory.colorValue != null)
+                            ? Color(txCategory.colorValue!)
+                            : null,
+                        amountController: _amountController,
+                        noteController: _noteController,
+                        onRemoveImage: _confirmRemoveImage,
+                        noteShakeAnimation: _noteShakeAnimation,
+                        noteMaxLength: _noteMaxLength,
+                        onNoteLimitExceeded: _shakeNoteField,
+                        date: tx.date,
+                        isActive: isCurrent,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: SheepSpacing.md),
+              _buildMiniPreviews(),
+            ] else ...[
+              TransactionImageArea(
+                imagePath: _imagePath,
+                selectedIndex: _selectedTypeIndex,
+                selectedCategory: selectedCategory,
+                categoryColor: selectedCategory?.colorValue != null
+                    ? Color(selectedCategory!.colorValue!)
+                    : null,
+                amountController: _amountController,
+                noteController: _noteController,
+                onRemoveImage: _confirmRemoveImage,
+                noteShakeAnimation: _noteShakeAnimation,
+                noteMaxLength: _noteMaxLength,
+                onNoteLimitExceeded: _shakeNoteField,
+                date: _selectedDate,
+                isActive: true,
+              ),
+            ],
             const SizedBox(height: SheepSpacing.lg),
             _buildMetaControls(selectedCategory),
             const SizedBox(height: SheepSpacing.xl),
@@ -443,7 +530,7 @@ class _TransactionFormState extends State<TransactionForm>
                 ))
         : AppColors.getTextSecondary(theme.brightness);
 
-    final showArrow = hasCategory || widget.transaction != null;
+    final showArrow = hasCategory || _activeTransaction != null;
 
     Widget content;
     if (!hasCategory) {
@@ -546,7 +633,7 @@ class _TransactionFormState extends State<TransactionForm>
     final canSubmit =
         isAmountValid &&
         isCategoryValid &&
-        (widget.transaction == null || _hasChanges);
+        (_activeTransaction == null || _hasChanges);
     final accent = AppColors.getInteractiveAccent(
       theme.brightness,
       theme.colorScheme.primary,
@@ -577,7 +664,7 @@ class _TransactionFormState extends State<TransactionForm>
           ),
           _buildCircleActionButton(
             icon: Icons.check_rounded,
-            label: widget.transaction == null
+            label: _activeTransaction == null
                 ? L10n.of(context).get('create')
                 : L10n.of(context).save,
             color: accent,
@@ -656,6 +743,101 @@ class _TransactionFormState extends State<TransactionForm>
           opacity: isEnabled ? 1 : 0.45,
           child: buttonContent,
         ),
+      ),
+    );
+  }
+
+  void _setActiveTransaction(Transaction tx, {bool fromPageSwipe = false}) {
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    setState(() {
+      _activeTransaction = tx;
+      _amountController.text = CurrencyUtil.formatNumber(
+        tx.amount,
+        locale: settings.languageCode == 'vi' ? 'vi_VN' : 'en_US',
+      );
+      _noteController.text = tx.note;
+      _selectedDate = tx.date;
+      _selectedTypeIndex = tx.isExpense ? 0 : 1;
+      try {
+        final cat = _catBox.values.firstWhere((c) => c.id == tx.categoryId);
+        _selectedTypeIndex = cat.effectiveTypeIndex;
+      } catch (_) {}
+      _selectedCategoryId = tx.categoryId;
+      _imagePath = tx.imagePath;
+
+      // Reset initial values for change detection
+      _initialAmount = tx.amount;
+      _initialNote = tx.note;
+      _initialDate = tx.date;
+      _initialTypeIndex = _selectedTypeIndex;
+      _initialCategoryId = tx.categoryId;
+      _initialImagePath = tx.imagePath;
+    });
+
+    if (!fromPageSwipe) {
+      final index = _imageTransactions.indexWhere((t) => t.key == tx.key);
+      if (index != -1 && _effectivePageController.hasClients) {
+        _effectivePageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
+  }
+
+  Widget _buildMiniPreviews() {
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 68,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: _imageTransactions.length,
+        itemBuilder: (context, index) {
+          final tx = _imageTransactions[index];
+          final isSelected = _activeTransaction?.key == tx.key;
+          final imageFile = TransactionImageStore.resolve(tx.imagePath);
+          if (imageFile == null || !imageFile.existsSync()) {
+            return const SizedBox.shrink();
+          }
+
+          return GestureDetector(
+            onTap: () {
+              if (tx.key != _activeTransaction?.key) {
+                _setActiveTransaction(tx);
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected
+                        ? (theme.brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black87)
+                        : Colors.transparent,
+                    width: 2.5,
+                  ),
+                ),
+                padding: const EdgeInsets.all(2),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    imageFile,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

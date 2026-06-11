@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:line_icons/line_icons.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_util.dart';
@@ -20,6 +21,8 @@ class TransactionImageArea extends StatelessWidget {
   final Animation<double> noteShakeAnimation;
   final int noteMaxLength;
   final VoidCallback onNoteLimitExceeded;
+  final DateTime? date;
+  final bool isActive;
 
   const TransactionImageArea({
     super.key,
@@ -33,6 +36,8 @@ class TransactionImageArea extends StatelessWidget {
     required this.noteShakeAnimation,
     required this.noteMaxLength,
     required this.onNoteLimitExceeded,
+    this.date,
+    this.isActive = true,
   });
 
   @override
@@ -68,46 +73,48 @@ class TransactionImageArea extends StatelessWidget {
                         _buildPlaceholder(hasCategory),
                   )
                 : _buildPlaceholder(hasCategory),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.03),
-                      Colors.black.withValues(alpha: 0.34),
-                    ],
+            if (isActive) ...[
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.03),
+                        Colors.black.withValues(alpha: 0.34),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              bottom: SheepSpacing.xl,
-              left: SheepSpacing.xl,
-              right: SheepSpacing.xl,
-              child: _buildActionBlock(context, l10n),
-            ),
-            if (hasReadableImage)
               Positioned(
-                top: SheepSpacing.lg,
-                right: SheepSpacing.lg,
-                child: GestureDetector(
-                  onTap: onRemoveImage,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.42),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 20,
-                      color: AppColors.expense,
+                bottom: SheepSpacing.xl,
+                left: SheepSpacing.xl,
+                right: SheepSpacing.xl,
+                child: _buildActionBlock(context, l10n),
+              ),
+              if (hasReadableImage)
+                Positioned(
+                  top: SheepSpacing.lg,
+                  right: SheepSpacing.lg,
+                  child: GestureDetector(
+                    onTap: onRemoveImage,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.42),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 20,
+                        color: AppColors.expense,
+                      ),
                     ),
                   ),
                 ),
-              ),
+            ],
           ],
         ),
       ),
@@ -178,6 +185,19 @@ class TransactionImageArea extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (date != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              DateFormat('HH:mm').format(date!),
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
           Padding(
             padding: EdgeInsets.zero,
             child: Stack(

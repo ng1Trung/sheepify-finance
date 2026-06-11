@@ -1199,7 +1199,10 @@ class _DiaryTabState extends State<DiaryTab> {
               isScrollControlled: true,
               isDismissible: true,
               enableDrag: true,
-              builder: (_) => TransactionForm(transaction: tx),
+              builder: (_) => TransactionForm(
+                transaction: tx,
+                dayTransactions: transactions,
+              ),
             );
           },
         );
