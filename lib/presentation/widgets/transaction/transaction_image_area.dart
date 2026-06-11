@@ -1,7 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:line_icons/line_icons.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_util.dart';
@@ -89,9 +89,9 @@ class TransactionImageArea extends StatelessWidget {
                 ),
               ),
               Positioned(
-                bottom: SheepSpacing.xl,
-                left: SheepSpacing.xl,
-                right: SheepSpacing.xl,
+                bottom: 10,
+                left: 10,
+                right: 10,
                 child: _buildActionBlock(context, l10n),
               ),
               if (hasReadableImage)
@@ -175,79 +175,74 @@ class TransactionImageArea extends StatelessWidget {
       contentColor = isZeroValue ? typeColor.withValues(alpha: 0.5) : typeColor;
     }
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(SheepRadius.sheet),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-      ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(SheepRadius.sheet),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(SheepRadius.sheet),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (date != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              DateFormat('HH:mm').format(date!),
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-          ],
           Padding(
             padding: EdgeInsets.zero,
-            child: Stack(
-              alignment: Alignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (hasCategory) ...[
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Icon(
-                      typeVisuals.icon,
-                      color: contentColor,
-                      size: 30,
-                    ),
+                  Icon(
+                    typeVisuals.icon,
+                    color: contentColor,
+                    size: 22,
                   ),
+                  const SizedBox(width: 6),
                 ],
-                Center(
-                  child: IntrinsicWidth(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 220),
-                      child: TextField(
-                        controller: amountController,
-                        autofocus: false,
-                        showCursor: false,
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: contentColor,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                          filled: false,
-                          fillColor: Colors.transparent,
-                          hintText: '0',
-                          hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.white38,
-                            fontSize: 32,
+                Expanded(
+                  child: Center(
+                    child: IntrinsicWidth(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 170),
+                        child: TextField(
+                          controller: amountController,
+                          autofocus: false,
+                          showCursor: false,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: contentColor,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                            filled: false,
+                            fillColor: Colors.transparent,
+                            hintText: '0',
+                            hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: Colors.white38,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          inputFormatters: [CurrencyInputFormatter()],
                         ),
-                        inputFormatters: [CurrencyInputFormatter()],
                       ),
                     ),
                   ),
                 ),
+                if (hasCategory) ...[
+                  const SizedBox(width: 28),
+                ],
               ],
             ),
           ),
@@ -301,7 +296,9 @@ class TransactionImageArea extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 }
 

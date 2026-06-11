@@ -60,6 +60,9 @@ class _TransactionFormState extends State<TransactionForm>
   Transaction? _activeTransaction;
   List<Transaction> _imageTransactions = [];
   PageController? _pageController;
+  static const int _loopFactor = 10000;
+
+  int get _loopItemCount => _imageTransactions.length * _loopFactor;
 
   PageController get _effectivePageController {
     if (_pageController == null) {
@@ -68,9 +71,10 @@ class _TransactionFormState extends State<TransactionForm>
         initialPageIndex = _imageTransactions.indexWhere((tx) => tx.key == _activeTransaction!.key);
         if (initialPageIndex == -1) initialPageIndex = 0;
       }
+      final int middlePage = (_loopFactor ~/ 2) * _imageTransactions.length + initialPageIndex;
       _pageController = PageController(
         viewportFraction: 0.82,
-        initialPage: initialPageIndex,
+        initialPage: middlePage,
       );
     }
     return _pageController!;
@@ -434,16 +438,18 @@ class _TransactionFormState extends State<TransactionForm>
             const SizedBox(height: SheepSpacing.xl),
             if (_imageTransactions.length > 1) ...[
               AspectRatio(
-                aspectRatio: 1,
+                aspectRatio: 1 / 0.82,
                 child: PageView.builder(
                   controller: _effectivePageController,
-                  itemCount: _imageTransactions.length,
+                  itemCount: _loopItemCount,
                   clipBehavior: Clip.none,
                   onPageChanged: (index) {
-                    _setActiveTransaction(_imageTransactions[index], fromPageSwipe: true);
+                    final realIndex = index % _imageTransactions.length;
+                    _setActiveTransaction(_imageTransactions[realIndex], fromPageSwipe: true);
                   },
                   itemBuilder: (context, index) {
-                    final tx = _imageTransactions[index];
+                    final realIndex = index % _imageTransactions.length;
+                    final tx = _imageTransactions[realIndex];
                     final isCurrent = tx.key == _activeTransaction?.key;
 
                     CategoryModel? txCategory;
@@ -455,29 +461,31 @@ class _TransactionFormState extends State<TransactionForm>
                       } catch (_) {}
                     }
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: TransactionImageArea(
-                        imagePath: tx.imagePath,
-                        selectedIndex: isCurrent ? _selectedTypeIndex : (tx.isExpense ? 0 : 1),
-                        selectedCategory: txCategory,
-                        categoryColor: (txCategory != null && txCategory.colorValue != null)
-                            ? Color(txCategory.colorValue!)
-                            : null,
-                        amountController: _amountController,
-                        noteController: _noteController,
-                        onRemoveImage: _confirmRemoveImage,
-                        noteShakeAnimation: _noteShakeAnimation,
-                        noteMaxLength: _noteMaxLength,
-                        onNoteLimitExceeded: _shakeNoteField,
-                        date: tx.date,
-                        isActive: isCurrent,
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: TransactionImageArea(
+                          imagePath: tx.imagePath,
+                          selectedIndex: isCurrent ? _selectedTypeIndex : (tx.isExpense ? 0 : 1),
+                          selectedCategory: txCategory,
+                          categoryColor: (txCategory != null && txCategory.colorValue != null)
+                              ? Color(txCategory.colorValue!)
+                              : null,
+                          amountController: _amountController,
+                          noteController: _noteController,
+                          onRemoveImage: _confirmRemoveImage,
+                          noteShakeAnimation: _noteShakeAnimation,
+                          noteMaxLength: _noteMaxLength,
+                          onNoteLimitExceeded: _shakeNoteField,
+                          date: tx.date,
+                          isActive: isCurrent,
+                        ),
                       ),
                     );
                   },
                 ),
               ),
-              const SizedBox(height: SheepSpacing.md),
+              const SizedBox(height: SheepSpacing.xs),
               _buildMiniPreviews(),
             ] else ...[
               TransactionImageArea(
@@ -778,8 +786,21 @@ class _TransactionFormState extends State<TransactionForm>
     if (!fromPageSwipe) {
       final index = _imageTransactions.indexWhere((t) => t.key == tx.key);
       if (index != -1 && _effectivePageController.hasClients) {
+        final currentPage = _effectivePageController.page?.round() ?? 0;
+        final currentRealIndex = currentPage % _imageTransactions.length;
+        
+        final int n = _imageTransactions.length;
+        int diff = index - currentRealIndex;
+        while (diff < -n / 2) {
+          diff += n;
+        }
+        while (diff > n / 2) {
+          diff -= n;
+        }
+        final targetPage = currentPage + diff;
+
         _effectivePageController.animateToPage(
-          index,
+          targetPage,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );
@@ -791,53 +812,56 @@ class _TransactionFormState extends State<TransactionForm>
     final theme = Theme.of(context);
     return SizedBox(
       height: 68,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: _imageTransactions.length,
-        itemBuilder: (context, index) {
-          final tx = _imageTransactions[index];
-          final isSelected = _activeTransaction?.key == tx.key;
-          final imageFile = TransactionImageStore.resolve(tx.imagePath);
-          if (imageFile == null || !imageFile.existsSync()) {
-            return const SizedBox.shrink();
-          }
-
-          return GestureDetector(
-            onTap: () {
-              if (tx.key != _activeTransaction?.key) {
-                _setActiveTransaction(tx);
+      child: Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_imageTransactions.length, (index) {
+              final tx = _imageTransactions[index];
+              final isSelected = _activeTransaction?.key == tx.key;
+              final imageFile = TransactionImageStore.resolve(tx.imagePath);
+              if (imageFile == null || !imageFile.existsSync()) {
+                return const SizedBox.shrink();
               }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected
-                        ? (theme.brightness == Brightness.dark
-                            ? Colors.white
-                            : Colors.black87)
-                        : Colors.transparent,
-                    width: 2.5,
+
+              return GestureDetector(
+                onTap: () {
+                  if (tx.key != _activeTransaction?.key) {
+                    _setActiveTransaction(tx);
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : AppColors.getBorder(theme.brightness),
+                        width: isSelected ? 2.5 : 1.5,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(2),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        imageFile,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
                 ),
-                padding: const EdgeInsets.all(2),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    imageFile,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
