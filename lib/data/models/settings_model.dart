@@ -32,7 +32,7 @@ class AppSettings extends HiveObject {
   String? avatarImageRef;
 
   @HiveField(9)
-  int financialCycleStartDay;
+  int? _financialCycleStartDay;
 
   @HiveField(10)
   int? _weekStartDay;
@@ -52,6 +52,10 @@ class AppSettings extends HiveObject {
 
   set weekStartDay(int value) => _weekStartDay = value;
 
+  int get financialCycleStartDay => _financialCycleStartDay ?? 1;
+
+  set financialCycleStartDay(int value) => _financialCycleStartDay = value;
+
   AppSettings({
     this.accumulateBalance = true,
     this.themePresetName = 'Midnight Black',
@@ -60,12 +64,13 @@ class AppSettings extends HiveObject {
     this.fontFamily = 'Inter',
     this.isDarkMode = false,
     this.avatarImageRef,
-    this.financialCycleStartDay = 1,
+    int financialCycleStartDay = 1,
     String themeMode = 'system',
     bool hideAmounts = false,
     int weekStartDay = DateTime.monday,
     this.lastBackupAt,
   }) : _themeMode = themeMode,
        _hideAmounts = hideAmounts,
-       _weekStartDay = weekStartDay;
+       _weekStartDay = weekStartDay,
+       _financialCycleStartDay = financialCycleStartDay;
 }
