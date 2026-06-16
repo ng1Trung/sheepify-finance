@@ -819,6 +819,11 @@ class _DiaryTabState extends State<DiaryTab> {
       fallback: AppColors.getBorder(theme.brightness),
     );
 
+    final now = DateTime.now();
+    final isToday = date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return InkWell(
@@ -852,11 +857,13 @@ class _DiaryTabState extends State<DiaryTab> {
                 '${date.day}',
                 textAlign: TextAlign.center,
                 style: SheepTextStyles.itemTitle(context).copyWith(
-                  color: AppColors.getTextPrimary(
-                    theme.brightness,
-                  ).withValues(alpha: hasTx ? 0.94 : 0.42),
-                  fontSize: SheepTypeScale.micro,
-                  fontWeight: FontWeight.w800,
+                  color: isToday
+                      ? theme.primaryColor
+                      : AppColors.getTextPrimary(
+                          theme.brightness,
+                        ).withValues(alpha: hasTx ? 0.94 : 0.42),
+                  fontSize: isToday ? SheepTypeScale.micro + 1 : SheepTypeScale.micro,
+                  fontWeight: isToday ? FontWeight.w900 : FontWeight.w600,
                   height: 1,
                 ),
               ),

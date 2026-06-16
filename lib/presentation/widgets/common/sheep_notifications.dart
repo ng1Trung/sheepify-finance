@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'sheep_widgets.dart';
 import '../../../core/theme/app_colors.dart';
@@ -102,8 +103,45 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
     super.dispose();
   }
 
+  List<InlineSpan> _parseHtmlToSpans(
+    String text,
+    TextStyle normalStyle,
+    TextStyle boldStyle,
+  ) {
+    final List<InlineSpan> spans = [];
+    final RegExp regExp = RegExp(r'<b>(.*?)</b>');
+    int lastIndex = 0;
+
+    for (final RegExpMatch match in regExp.allMatches(text)) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: normalStyle,
+        ));
+      }
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: boldStyle,
+      ));
+      lastIndex = match.end;
+    }
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: normalStyle,
+      ));
+    }
+    if (spans.isEmpty && text.isNotEmpty) {
+      spans.add(TextSpan(text: text, style: normalStyle));
+    }
+    return spans;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Positioned(
       top: MediaQuery.of(context).padding.top + SheepSpacing.sm,
       left: SheepSpacing.lg,
@@ -112,45 +150,74 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
         position: _offsetAnimation,
         child: Material(
           color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: SheepSpacing.lg,
-              vertical: SheepSpacing.md,
-            ),
-            decoration: BoxDecoration(
-              color: widget.backgroundColor.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(SheepRadius.xl),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(SheepRadius.xl),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: SheepSpacing.lg,
+                  vertical: SheepSpacing.md,
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(widget.icon, color: Colors.white, size: 24),
-                const SizedBox(width: SheepSpacing.md),
-                Expanded(
-                  child: Text(
-                    widget.message,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: SheepTypeScale.body,
+                decoration: BoxDecoration(
+                  color: widget.backgroundColor.withValues(alpha: isDark ? 0.85 : 0.92),
+                  borderRadius: BorderRadius.circular(SheepRadius.xl),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.25),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
                     ),
-                  ),
+                  ],
                 ),
-                GestureDetector(
-                  onTap: widget.onDismiss,
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white70,
-                    size: 20,
-                  ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(widget.icon, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          children: _parseHtmlToSpans(
+                            widget.message,
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 15,
+                              height: 1.3,
+                            ),
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      color: Colors.white70,
+                      iconSize: 18,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: widget.onDismiss,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

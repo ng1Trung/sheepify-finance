@@ -12,7 +12,6 @@ import '../../core/theme/app_colors.dart';
 import '../models/category_model.dart';
 import '../models/settings_model.dart';
 import '../models/transaction.dart';
-import '../../presentation/widgets/common/sheep_notifications.dart';
 import '../../presentation/widgets/common/sheep_dialogs.dart';
 
 class NotificationService {
@@ -174,8 +173,8 @@ class NotificationService {
       final cycleRange = FinancialCycleUtil.cycleRangeFor(txDate, settings.financialCycleStartDay);
       final cycleStart = cycleRange.start;
 
-      // 1. Exceeded (100%)
-      if (spentPercent >= 1.0) {
+      // 1. Exceeded (> 100%)
+      if (spentPercent > 1.0) {
         final threshold = 1.0;
         if (!_hasBeenTriggered(
           categoryId: cat.id,
@@ -195,10 +194,7 @@ class NotificationService {
             cycleStart: cycleStart,
           );
 
-          // Show Toast
-          if (context.mounted) {
-            SheepNotifications.showError(context, content);
-          }
+
 
           // Show dialog with sad wallet Lottie
           if (context.mounted) {
@@ -214,11 +210,11 @@ class NotificationService {
             );
           }
         }
-        return; // Trigger only the highest threshold
+        return;
       }
 
-      // 2. Thresholds (90%, 80%, 50%)
-      final List<double> thresholds = [0.9, 0.8, 0.5];
+      // 2. Thresholds (100%, 90%, 80%, 50%)
+      final List<double> thresholds = [1.0, 0.9, 0.8, 0.5];
       for (final threshold in thresholds) {
         if (spentPercent >= threshold) {
           if (!_hasBeenTriggered(
@@ -231,7 +227,10 @@ class NotificationService {
             final title = l10n.get('budget_threshold_title', params: {'name': cat.name});
             final content = l10n.get(
               'budget_threshold_body',
-              params: {'percent': percentText.toString()},
+              params: {
+                'percent': percentText.toString(),
+                'name': cat.name,
+              },
             );
 
             await _createInAppNotification(
@@ -243,10 +242,7 @@ class NotificationService {
               cycleStart: cycleStart,
             );
 
-            // Show Toast
-            if (context.mounted) {
-              SheepNotifications.showSuccess(context, content);
-            }
+
           }
           break; // Notify only the highest reached threshold
         }
@@ -267,7 +263,7 @@ class NotificationService {
         cycleStart = DateTime.fromMillisecondsSinceEpoch(0); // Epoch start for long-term goal
       }
 
-      // 1. Completed (100%)
+      // 1. Completed (100%) - Only triggered once
       if (progressPercent >= 1.0) {
         final threshold = 1.0;
         if (!_hasBeenTriggered(
@@ -288,10 +284,7 @@ class NotificationService {
             cycleStart: cycleStart,
           );
 
-          // Show Toast
-          if (context.mounted) {
-            SheepNotifications.showSuccess(context, content);
-          }
+
 
           // Show congrats dialog with fireworks Lottie
           if (context.mounted) {
@@ -310,31 +303,38 @@ class NotificationService {
         return;
       }
 
-      // 2. Halfway (50%)
-      if (progressPercent >= 0.5) {
-        final threshold = 0.5;
-        if (!_hasBeenTriggered(
-          categoryId: cat.id,
-          type: 'savings_halfway',
-          threshold: threshold,
-          cycleStart: cycleStart,
-        )) {
-          final title = l10n.get('savings_halfway_title');
-          final content = l10n.get('savings_halfway_body', params: {'name': cat.name});
-
-          await _createInAppNotification(
-            title: title,
-            content: content,
-            type: 'savings_halfway',
+      // 2. Milestones (90%, 80%, 50%)
+      final List<double> milestones = [0.9, 0.8, 0.5];
+      for (final threshold in milestones) {
+        if (progressPercent >= threshold) {
+          if (!_hasBeenTriggered(
             categoryId: cat.id,
+            type: 'savings_halfway',
             threshold: threshold,
             cycleStart: cycleStart,
-          );
+          )) {
+            final int percentText = (threshold * 100).round();
+            final title = l10n.get('savings_halfway_title');
+            final content = l10n.get(
+              'savings_halfway_body',
+              params: {
+                'percent': percentText.toString(),
+                'name': cat.name,
+              },
+            );
 
-          // Show Toast
-          if (context.mounted) {
-            SheepNotifications.showSuccess(context, content);
+            await _createInAppNotification(
+              title: title,
+              content: content,
+              type: 'savings_halfway',
+              categoryId: cat.id,
+              threshold: threshold,
+              cycleStart: cycleStart,
+            );
+
+
           }
+          break; // Notify only the highest reached milestone
         }
       }
     }

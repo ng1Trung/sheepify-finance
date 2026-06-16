@@ -200,14 +200,24 @@ class SheepGoalDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: SheepTypeScale.item,
-                color: AppColors.getTextSecondary(brightness),
-                height: 1.5,
+            Text.rich(
+              TextSpan(
+                children: _parseHtmlToSpans(
+                  message,
+                  TextStyle(
+                    fontSize: SheepTypeScale.item,
+                    color: AppColors.getTextSecondary(brightness),
+                    height: 1.5,
+                  ),
+                  TextStyle(
+                    fontSize: SheepTypeScale.item,
+                    color: AppColors.getTextPrimary(brightness),
+                    fontWeight: FontWeight.bold,
+                    height: 1.5,
+                  ),
+                ),
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -236,5 +246,39 @@ class SheepGoalDialog extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<InlineSpan> _parseHtmlToSpans(
+    String text,
+    TextStyle normalStyle,
+    TextStyle boldStyle,
+  ) {
+    final List<InlineSpan> spans = [];
+    final RegExp regExp = RegExp(r'<b>(.*?)</b>');
+    int lastIndex = 0;
+
+    for (final RegExpMatch match in regExp.allMatches(text)) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: normalStyle,
+        ));
+      }
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: boldStyle,
+      ));
+      lastIndex = match.end;
+    }
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: normalStyle,
+      ));
+    }
+    if (spans.isEmpty && text.isNotEmpty) {
+      spans.add(TextSpan(text: text, style: normalStyle));
+    }
+    return spans;
   }
 }
