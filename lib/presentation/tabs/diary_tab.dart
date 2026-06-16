@@ -16,6 +16,7 @@ import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
+import '../../data/services/notification_service.dart';
 
 class DiaryTab extends StatefulWidget {
   final DateTimeRange selectedRange;
@@ -598,6 +599,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                                   },
                                                   onDismissed: (_) {
                                                     tx.delete();
+                                                    NotificationService.checkDailyReminderReschedule();
                                                     SheepNotifications.showSuccess(
                                                       context,
                                                       l10n.get(
@@ -704,9 +706,6 @@ class _DiaryTabState extends State<DiaryTab> {
     final calendarBackground = isDark
         ? const Color(0xFF1E1D23)
         : const Color(0xFFF4F0EA);
-    final mutedCell = isDark
-        ? const Color(0xFF2A2930)
-        : const Color(0xFFE8E2D9);
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -763,26 +762,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 itemBuilder: (context, index) {
                   final dayNumber = index - leadingDays + 1;
                   if (dayNumber < 1 || dayNumber > daysInMonth) {
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Column(
-                          children: [
-                            SizedBox(
-                              width: constraints.maxWidth,
-                              height: constraints.maxWidth,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: mutedCell.withValues(alpha: 0.38),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const SizedBox(height: 10),
-                          ],
-                        );
-                      },
-                    );
+                    return const SizedBox.shrink();
                   }
 
                   final date = DateTime(month.year, month.month, dayNumber);

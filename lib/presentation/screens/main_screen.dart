@@ -28,6 +28,8 @@ import '../../core/utils/l10n.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_widgets.dart';
+import '../../data/services/notification_service.dart';
+import 'notifications_screen.dart';
 
 enum _DrawerInsightType { budget, cycle, savings, today, streak }
 
@@ -93,6 +95,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _seedParentCategories();
     _activeInsightType = _pickRandomInsightType();
     unawaited(_prepareStreakTracking());
+    unawaited(NotificationService.initialize());
   }
 
   @override
@@ -107,6 +110,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _startForegroundTracking();
+      unawaited(NotificationService.checkDailyReminderReschedule());
       return;
     }
     if (state == AppLifecycleState.inactive ||
@@ -395,7 +399,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   bool get _usesDateRange => _tabUsesDateRange(_currentIndex);
 
-  bool _tabUsesDateRange(int index) => index == 0 || index == 2;
+  bool _tabUsesDateRange(int index) => index == 0 || index == 1;
 
   bool get _isDiaryTimeline => _currentIndex == 0 && _diaryViewMode == 3;
 
@@ -417,7 +421,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
     // PREMIUM APPBAR NAVIGATOR
     Widget buildAppBarTitle() {
-      if (_currentIndex == 1) {
+      if (_currentIndex == 2) {
         return Text(
           l10n.savings,
           style: theme.textTheme.titleLarge?.copyWith(
@@ -518,13 +522,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             },
           );
         case 1:
+          return StatsTab(selectedRange: _diaryRange);
+        case 2:
           return const CategoryTab(
             key: ValueKey('savings-tab'),
             initialTypeIndex: 2,
             showTypeToggle: false,
           );
-        case 2:
-          return StatsTab(selectedRange: _diaryRange);
         case 3:
           return const CategoryTab(key: ValueKey('categories-tab'));
         case 4:
@@ -577,9 +581,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         ),
         title: buildAppBarTitle(),
         actions: [
+          _buildNotificationBell(context, headerForeground),
           if (_usesDateRange)
-            const SizedBox(width: kToolbarHeight)
-          else if (_currentIndex == 1 || _currentIndex == 3)
+            const SizedBox(width: 8)
+          else if (_currentIndex == 2 || _currentIndex == 3)
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: IconButton(
@@ -597,13 +602,76 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         ],
       ),
       body: buildBody(),
-      floatingActionButton: _currentIndex == 0 || _currentIndex == 2
+      floatingActionButton: _currentIndex == 0 || _currentIndex == 1
           ? FloatingActionButton(
               onPressed: _showAddTransactionForm,
               child: const Icon(Icons.add_rounded, size: 28),
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  Widget _buildNotificationBell(BuildContext context, Color color) {
+    return ValueListenableBuilder(
+      valueListenable: Hive.box('notifications').listenable(),
+      builder: (context, Box box, _) {
+        final unreadCount = box.values
+            .where((item) => item is Map && item['isRead'] == false)
+            .length;
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            IconButton(
+              icon: Icon(
+                Icons.notifications_rounded,
+                color: AppColors.getInteractiveAccent(
+                  Theme.of(context).brightness,
+                  color,
+                ),
+                size: 26,
+              ),
+              onPressed: () async {
+                final result = await Navigator.push<int>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsScreen(),
+                  ),
+                );
+                if (result != null && mounted) {
+                  _selectTab(result);
+                }
+              },
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 14,
+                    minHeight: 14,
+                  ),
+                  child: Text(
+                    '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -776,14 +844,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                               _buildDrawerItem(
                                 context,
                                 index: 1,
-                                icon: Icons.savings_rounded,
-                                label: l10n.savings,
+                                icon: Icons.pie_chart_rounded,
+                                label: l10n.stats,
                               ),
                               _buildDrawerItem(
                                 context,
                                 index: 2,
-                                icon: Icons.pie_chart_rounded,
-                                label: l10n.stats,
+                                icon: Icons.savings_rounded,
+                                label: l10n.savings,
                               ),
                               _buildDrawerItem(
                                 context,
@@ -846,7 +914,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       setState(() {
         _selectedDate = resultDate;
         _diaryRange = _currentCycleRange(date: resultDate);
-        _currentIndex = sourceIndex == 2 ? 2 : 0;
+        _currentIndex = sourceIndex == 1 ? 1 : 0;
       });
     }
   }
@@ -862,7 +930,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       ),
       builder: (ctx) => CategoryForm(
         category: null,
-        fixedTypeIndex: _currentIndex == 1 ? 2 : null,
+        fixedTypeIndex: _currentIndex == 2 ? 2 : null,
       ),
     );
   }
@@ -1423,7 +1491,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   String _formatCompactAmount(double amount, AppSettings settings) {
-    if (settings.hideAmounts) return '****';
     return CurrencyUtil.formatCompact(amount);
   }
 
