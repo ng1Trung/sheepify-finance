@@ -24,11 +24,11 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       fontFamily: fields[4] as String,
       isDarkMode: fields[5] as bool,
       avatarImageRef: fields[8] as String?,
-      financialCycleStartDay: fields[9] as int,
       lastBackupAt: fields[11] as DateTime?,
     )
       .._hideAmounts = fields[6] as bool?
       .._themeMode = fields[7] as String?
+      .._financialCycleStartDay = fields[9] as int?
       .._weekStartDay = fields[10] as int?;
   }
 
@@ -55,7 +55,7 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(8)
       ..write(obj.avatarImageRef)
       ..writeByte(9)
-      ..write(obj.financialCycleStartDay)
+      ..write(obj._financialCycleStartDay)
       ..writeByte(10)
       ..write(obj._weekStartDay)
       ..writeByte(11)

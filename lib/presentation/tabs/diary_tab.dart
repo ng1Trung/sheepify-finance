@@ -16,6 +16,7 @@ import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
+import '../../data/services/notification_service.dart';
 
 class DiaryTab extends StatefulWidget {
   final DateTimeRange selectedRange;
@@ -598,6 +599,7 @@ class _DiaryTabState extends State<DiaryTab> {
                                                   },
                                                   onDismissed: (_) {
                                                     tx.delete();
+                                                    NotificationService.checkDailyReminderReschedule();
                                                     SheepNotifications.showSuccess(
                                                       context,
                                                       l10n.get(
@@ -607,11 +609,11 @@ class _DiaryTabState extends State<DiaryTab> {
                                                   },
                                                   child: SheepTransactionCard(
                                                     margin: EdgeInsets.only(
-                                                      bottom:
-                                                          !isLastInDay ||
-                                                              !isLastDay
-                                                          ? SheepSpacing.itemGap
-                                                          : 0,
+                                                      bottom: !isLastInDay
+                                                          ? 8.0
+                                                          : (!isLastDay
+                                                              ? SheepSpacing.itemGap
+                                                              : 0.0),
                                                     ),
                                                     onTap: () =>
                                                         showModalBottomSheet(
@@ -704,9 +706,6 @@ class _DiaryTabState extends State<DiaryTab> {
     final calendarBackground = isDark
         ? const Color(0xFF1E1D23)
         : const Color(0xFFF4F0EA);
-    final mutedCell = isDark
-        ? const Color(0xFF2A2930)
-        : const Color(0xFFE8E2D9);
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -763,26 +762,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 itemBuilder: (context, index) {
                   final dayNumber = index - leadingDays + 1;
                   if (dayNumber < 1 || dayNumber > daysInMonth) {
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Column(
-                          children: [
-                            SizedBox(
-                              width: constraints.maxWidth,
-                              height: constraints.maxWidth,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: mutedCell.withValues(alpha: 0.38),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const SizedBox(height: 10),
-                          ],
-                        );
-                      },
-                    );
+                    return const SizedBox.shrink();
                   }
 
                   final date = DateTime(month.year, month.month, dayNumber);
@@ -839,6 +819,11 @@ class _DiaryTabState extends State<DiaryTab> {
       fallback: AppColors.getBorder(theme.brightness),
     );
 
+    final now = DateTime.now();
+    final isToday = date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return InkWell(
@@ -872,11 +857,13 @@ class _DiaryTabState extends State<DiaryTab> {
                 '${date.day}',
                 textAlign: TextAlign.center,
                 style: SheepTextStyles.itemTitle(context).copyWith(
-                  color: AppColors.getTextPrimary(
-                    theme.brightness,
-                  ).withValues(alpha: hasTx ? 0.94 : 0.42),
-                  fontSize: SheepTypeScale.micro,
-                  fontWeight: FontWeight.w800,
+                  color: isToday
+                      ? theme.primaryColor
+                      : AppColors.getTextPrimary(
+                          theme.brightness,
+                        ).withValues(alpha: hasTx ? 0.94 : 0.42),
+                  fontSize: isToday ? SheepTypeScale.micro + 1 : SheepTypeScale.micro,
+                  fontWeight: isToday ? FontWeight.w900 : FontWeight.w600,
                   height: 1,
                 ),
               ),
@@ -973,7 +960,7 @@ class _DiaryTabState extends State<DiaryTab> {
     required Color borderColor,
   }) {
     final theme = Theme.of(context);
-    final imageTxs = _transactionsWithImages(dayTxs)
+    final imageTxs = List<Transaction>.from(dayTxs)
       ..sort((a, b) => b.date.compareTo(a.date));
 
     if (imageTxs.isEmpty) {
@@ -1032,11 +1019,21 @@ class _DiaryTabState extends State<DiaryTab> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  TransactionImageStore.resolve(visibleTxs[i].imagePath)!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
+                child: Builder(
+                  builder: (context) {
+                    final imageFile = TransactionImageStore.resolve(visibleTxs[i].imagePath);
+                    final hasImage = imageFile != null && imageFile.existsSync();
+                    if (hasImage) {
+                      return Image.file(
+                        imageFile,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildCategoryPlaceholderForTimeline(visibleTxs[i], catBox),
+                      );
+                    } else {
+                      return _buildCategoryPlaceholderForTimeline(visibleTxs[i], catBox);
+                    }
+                  },
                 ),
               ),
             ),
@@ -1049,14 +1046,11 @@ class _DiaryTabState extends State<DiaryTab> {
               constraints: const BoxConstraints(minWidth: 20, minHeight: 16),
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.getSurface(theme.brightness).withValues(
-                  alpha: theme.brightness == Brightness.dark ? 0.62 : 0.54,
-                ),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(SheepRadius.pill),
                 border: Border.all(
-                  color: AppColors.getBorder(
-                    theme.brightness,
-                  ).withValues(alpha: 0.45),
+                  color: Colors.black12,
+                  width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -1069,8 +1063,8 @@ class _DiaryTabState extends State<DiaryTab> {
               child: Text(
                 extraCount > 9 ? '+9' : '+$extraCount',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.getTextPrimary(theme.brightness),
+                style: const TextStyle(
+                  color: Colors.black,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   height: 1,
@@ -1082,11 +1076,48 @@ class _DiaryTabState extends State<DiaryTab> {
     );
   }
 
-  List<Transaction> _transactionsWithImages(List<Transaction> transactions) {
-    return transactions.where((tx) {
-      final imageFile = TransactionImageStore.resolve(tx.imagePath);
-      return imageFile?.existsSync() ?? false;
-    }).toList();
+  Widget _buildCategoryPlaceholderForTimeline(Transaction tx, Box<CategoryModel> catBox) {
+    final category = catBox.values.firstWhere(
+      (c) => c.id == tx.categoryId,
+      orElse: () => CategoryModel(
+        id: '',
+        name: '?',
+        iconCode: Icons.help.codePoint,
+        isExpense: tx.isExpense,
+        typeIndex: tx.isExpense ? 0 : 1,
+      ),
+    );
+
+    final Color categoryColor = category.colorValue != null
+        ? Color(category.colorValue!)
+        : (category.effectiveTypeIndex == 0
+            ? AppColors.expense
+            : (category.effectiveTypeIndex == 1
+                ? AppColors.income
+                : AppColors.savings));
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            categoryColor,
+            categoryColor.withValues(alpha: 0.72),
+          ],
+        ),
+      ),
+      child: Center(
+        child: SheepCategoryIcon(
+          icon: category.iconData,
+          color: Colors.white,
+          size: 20,
+          imagePath: category.imagePath,
+          backgroundColor: Colors.transparent,
+          borderColor: Colors.transparent,
+        ),
+      ),
+    );
   }
 
   Color _timelineImageBorderColor(
@@ -1327,22 +1358,33 @@ class _TransactionImageTile extends StatelessWidget {
   }
 
   Widget _buildPlaceholder(ThemeData theme) {
-    final placeholderBackground = theme.brightness == Brightness.dark
-        ? const Color(0xFF252525)
-        : const Color(0xFFF1F2F4);
+    final Color categoryColor = category.colorValue != null
+        ? Color(category.colorValue!)
+        : (category.effectiveTypeIndex == 0
+            ? AppColors.expense
+            : (category.effectiveTypeIndex == 1
+                ? AppColors.income
+                : AppColors.savings));
 
-    return DecoratedBox(
-      decoration: BoxDecoration(color: placeholderBackground),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            categoryColor,
+            categoryColor.withValues(alpha: 0.72),
+          ],
+        ),
+      ),
       child: Center(
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.getBorder(
-              theme.brightness,
-            ).withValues(alpha: 0.52),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.image_outlined, size: 26, color: theme.hintColor),
+        child: SheepCategoryIcon(
+          icon: category.iconData,
+          color: Colors.white,
+          size: 40,
+          imagePath: category.imagePath,
+          backgroundColor: Colors.transparent,
+          borderColor: Colors.transparent,
         ),
       ),
     );

@@ -31,6 +31,13 @@ class _StatEntry {
   _StatEntry(this.category, this.amount, {this.count = 0});
 }
 
+class _StatsPercentGroup {
+  final double amount;
+  final List<String> categoryIds;
+  final double exact;
+  _StatsPercentGroup(this.amount, this.categoryIds, this.exact);
+}
+
 class _StatsTabState extends State<StatsTab> {
   int _selectedTypeIndex = 0;
   int _touchedIndex = -1;
@@ -299,6 +306,8 @@ class _StatsTabState extends State<StatsTab> {
         ? transactionCount
         : stats[touchedIndex].count;
 
+    final percentLabels = _buildPercentLabels(stats, total);
+
     // Calculate angles of sections to place labels outside
     final List<double> sectionValues = [];
     for (final stat in stats) {
@@ -363,7 +372,6 @@ class _StatsTabState extends State<StatsTab> {
                 if (hasTotal && index < 4) {
                   final exactPercent = (stat.amount / total) * 100;
                   if (exactPercent >= 5.0) {
-                    final percentLabels = _buildPercentLabels(stats, total);
                     final percentText =
                         percentLabels[stat.category.id] ??
                         exactPercent.toStringAsFixed(0);
@@ -643,28 +651,129 @@ class _StatsTabState extends State<StatsTab> {
     final activeStats = stats.where((stat) => stat.amount > 0).toList();
     if (total <= 0 || activeStats.isEmpty) return const {};
 
-    final floors = <String, int>{};
-    final remainders = <({String id, double remainder})>[];
-    var floorSum = 0;
-
+    // Group by amount
+    final amountToIds = <double, List<String>>{};
     for (final stat in activeStats) {
-      final exact = stat.amount / total * 100;
-      final floorValue = exact.floor();
-      floors[stat.category.id] = floorValue;
-      floorSum += floorValue;
-      remainders.add((id: stat.category.id, remainder: exact - floorValue));
+      amountToIds.putIfAbsent(stat.amount, () => []).add(stat.category.id);
     }
 
-    var remaining = 100 - floorSum;
-    remainders.sort((a, b) => b.remainder.compareTo(a.remainder));
-    for (var i = 0; i < remainders.length && remaining > 0; i++, remaining--) {
-      final id = remainders[i].id;
-      floors[id] = (floors[id] ?? 0) + 1;
+    final groups = <_StatsPercentGroup>[];
+    for (final entry in amountToIds.entries) {
+      final amount = entry.key;
+      final ids = entry.value;
+      final exactPercent = (amount / total) * 100;
+      groups.add(_StatsPercentGroup(amount, ids, exactPercent));
     }
 
-    return {
-      for (final entry in floors.entries) entry.key: entry.value.toString(),
-    };
+    int gcd(int a, int b) {
+      while (b != 0) {
+        final t = b;
+        b = a % b;
+        a = t;
+      }
+      return a;
+    }
+
+    int overallGcd = groups[0].categoryIds.length;
+    for (int i = 1; i < groups.length; i++) {
+      overallGcd = gcd(overallGcd, groups[i].categoryIds.length);
+    }
+
+    int target = 100;
+    if (100 % overallGcd != 0) {
+      final lower = (100 ~/ overallGcd) * overallGcd;
+      final upper = lower + overallGcd;
+      if ((100 - lower).abs() <= (upper - 100).abs()) {
+        target = lower;
+      } else {
+        target = upper;
+      }
+      if (target == 0) {
+        target = overallGcd;
+      }
+    }
+
+    double bestError = double.infinity;
+    List<int> bestP = [];
+
+    void search(int index, int remainingSum, List<int> currentP, double currentError) {
+      if (currentError >= bestError) return;
+      if (index == groups.length) {
+        if (remainingSum == 0) {
+          bestError = currentError;
+          bestP = List.from(currentP);
+        }
+        return;
+      }
+
+      final group = groups[index];
+      final s = group.categoryIds.length;
+      final e = group.exact;
+
+      final rounded = e.round();
+      final minP = math.max(0, rounded - 5);
+      final maxP = math.min(remainingSum ~/ s, rounded + 5);
+
+      final candidates = List.generate(maxP - minP + 1, (i) => minP + i);
+      candidates.sort((a, b) => ((a - e).abs()).compareTo((b - e).abs()));
+
+      for (final p in candidates) {
+        final err = s * (p - e) * (p - e);
+        currentP.add(p);
+        search(index + 1, remainingSum - s * p, currentP, currentError + err);
+        currentP.removeLast();
+      }
+    }
+
+    search(0, target, [], 0.0);
+
+    if (bestP.isEmpty) {
+      void searchFallback(int index, int remainingSum, List<int> currentP, double currentError) {
+        if (currentError >= bestError) return;
+        if (index == groups.length) {
+          if (remainingSum == 0) {
+            bestError = currentError;
+            bestP = List.from(currentP);
+          }
+          return;
+        }
+
+        final group = groups[index];
+        final s = group.categoryIds.length;
+        final e = group.exact;
+
+        final minP = 0;
+        final maxP = remainingSum ~/ s;
+
+        final candidates = List.generate(maxP - minP + 1, (i) => minP + i);
+        candidates.sort((a, b) => ((a - e).abs()).compareTo((b - e).abs()));
+
+        for (final p in candidates) {
+          final err = s * (p - e) * (p - e);
+          currentP.add(p);
+          searchFallback(index + 1, remainingSum - s * p, currentP, currentError + err);
+          currentP.removeLast();
+        }
+      }
+      searchFallback(0, target, [], 0.0);
+    }
+
+    final labels = <String, String>{};
+    if (bestP.isNotEmpty) {
+      for (int i = 0; i < groups.length; i++) {
+        final group = groups[i];
+        final p = bestP[i];
+        for (final id in group.categoryIds) {
+          labels[id] = p.toString();
+        }
+      }
+    } else {
+      for (final stat in activeStats) {
+        labels[stat.category.id] = (stat.amount / total * 100).round().toString();
+      }
+    }
+
+    return labels;
   }
 
   Color _categoryColor(CategoryModel category) {

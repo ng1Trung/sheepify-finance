@@ -843,7 +843,9 @@ class SheepDatePicker {
                           childAspectRatio: 1,
                         ),
                     itemBuilder: (context, index) {
-                      if (index < leadingDays) return const SizedBox.shrink();
+                      if (index < leadingDays || index >= leadingDays + daysInMonth) {
+                        return const SizedBox.shrink();
+                      }
                       final date = DateTime(
                         visibleMonth.year,
                         visibleMonth.month,
@@ -1104,7 +1106,9 @@ class SheepDateRangePicker {
                             childAspectRatio: 1,
                           ),
                       itemBuilder: (context, index) {
-                        if (index < leadingDays) return const SizedBox.shrink();
+                        if (index < leadingDays || index >= leadingDays + daysInMonth) {
+                          return const SizedBox.shrink();
+                        }
                         final date = DateTime(
                           visibleMonth.year,
                           visibleMonth.month,

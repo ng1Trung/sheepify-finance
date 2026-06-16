@@ -36,10 +36,22 @@ void main() async {
   await Hive.openBox<CategoryModel>(kCatBox);
   final settingsBox = await Hive.openBox<AppSettings>(kSettingsBox);
   await Hive.openBox(kStreakBox);
+  await Hive.openBox('notifications');
 
   // Initialize Default Settings if empty
   if (settingsBox.isEmpty) {
-    await settingsBox.put('current', AppSettings());
+    await settingsBox.put('current', AppSettings(hideAmounts: true));
+  } else {
+    final s = settingsBox.get('current');
+    if (s != null) {
+      s.hideAmounts = true;
+      if (s.themePresetName == 'Midnight Black' && s.fontFamily == 'Inter') {
+        s.themePresetName = 'Rose Petal';
+        s.fontFamily = 'Quicksand';
+        s.themeMode = 'light';
+      }
+      await s.save();
+    }
   }
 
   await _migrateLegacyTransactionImages(moneyBox);

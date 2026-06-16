@@ -277,7 +277,10 @@ class _CategoryFormState extends State<CategoryForm> {
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
         color: AppColors.getSurface(theme.brightness),
@@ -367,8 +370,9 @@ class _CategoryFormState extends State<CategoryForm> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStickyHeader() {
     return Container(
@@ -613,6 +617,7 @@ class _CategoryFormState extends State<CategoryForm> {
     String pickerId,
     Future<void> Function() openPicker,
   ) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _activePicker = pickerId);
     await openPicker();
     if (mounted) setState(() => _activePicker = null);
@@ -897,6 +902,7 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Future<void> _showVisualPicker() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final theme = Theme.of(context);
     await showModalBottomSheet(
       context: context,
@@ -1165,6 +1171,7 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Future<void> _showCategoryImageActions() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final imageFile = CategoryImageStore.resolve(_selectedImagePath);
     final hasImage = imageFile != null && imageFile.existsSync();
     final theme = Theme.of(context);
