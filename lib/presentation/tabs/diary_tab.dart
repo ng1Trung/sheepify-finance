@@ -609,11 +609,11 @@ class _DiaryTabState extends State<DiaryTab> {
                                                   },
                                                   child: SheepTransactionCard(
                                                     margin: EdgeInsets.only(
-                                                      bottom:
-                                                          !isLastInDay ||
-                                                              !isLastDay
-                                                          ? SheepSpacing.itemGap
-                                                          : 0,
+                                                      bottom: !isLastInDay
+                                                          ? 8.0
+                                                          : (!isLastDay
+                                                              ? SheepSpacing.itemGap
+                                                              : 0.0),
                                                     ),
                                                     onTap: () =>
                                                         showModalBottomSheet(

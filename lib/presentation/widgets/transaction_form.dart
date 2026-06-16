@@ -159,6 +159,7 @@ class _TransactionFormState extends State<TransactionForm>
 
   // Select transaction date
   Future<void> _pickDate() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final picked = await SheepDatePicker.show(
       context: context,
       initialDate: _selectedDate,
@@ -172,6 +173,7 @@ class _TransactionFormState extends State<TransactionForm>
 
   // Upload image from camera or gallery
   Future<void> _pickImage() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final picker = ImagePicker();
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
@@ -323,6 +325,7 @@ class _TransactionFormState extends State<TransactionForm>
 
   // Open the custom category picker dialog
   void _showCategoryPicker() {
+    FocusManager.instance.primaryFocus?.unfocus();
     final cats = _catBox.values
         .where((c) => c.effectiveTypeIndex == _selectedTypeIndex)
         .toList();
@@ -357,7 +360,10 @@ class _TransactionFormState extends State<TransactionForm>
     }
 
     final theme = Theme.of(context);
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Container(
       decoration: BoxDecoration(
         color: AppColors.getSurface(theme.brightness),
         borderRadius: const BorderRadius.vertical(
@@ -452,8 +458,9 @@ class _TransactionFormState extends State<TransactionForm>
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildMetaControls(CategoryModel? selectedCategory) {
     return Row(
