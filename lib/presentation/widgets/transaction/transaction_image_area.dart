@@ -204,40 +204,33 @@ class TransactionImageArea extends StatelessWidget {
                   const SizedBox(width: 6),
                 ],
                 Expanded(
-                  child: Center(
-                    child: IntrinsicWidth(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 170),
-                        child: TextField(
-                          controller: amountController,
-                          autofocus: false,
-                          showCursor: false,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: contentColor,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          decoration: InputDecoration(
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                            filled: false,
-                            fillColor: Colors.transparent,
-                            hintText: '0',
-                            hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: Colors.white38,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          inputFormatters: [CurrencyInputFormatter()],
-                        ),
+                  child: TextField(
+                    controller: amountController,
+                    autofocus: false,
+                    showCursor: false,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: contentColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      hintText: '0',
+                      hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.white38,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    inputFormatters: [CurrencyInputFormatter()],
                   ),
                 ),
                 if (hasCategory) ...[

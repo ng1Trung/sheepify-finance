@@ -1327,29 +1327,28 @@ class _TransactionImageTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (hasImage)
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.55),
-                        shape: BoxShape.circle,
-                      ),
-                      child: SheepCategoryIcon(
-                        icon: category.iconData,
-                        color: category.colorValue != null
-                            ? Color(category.colorValue!)
-                            : Colors.white,
-                        size: 24,
-                        imagePath: category.imagePath,
-                        backgroundColor: Colors.transparent,
-                        borderColor: Colors.transparent,
-                      ),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: SheepCategoryIcon(
+                      icon: category.iconData,
+                      color: category.colorValue != null
+                          ? Color(category.colorValue!)
+                          : Colors.white,
+                      size: 24,
+                      imagePath: category.imagePath,
+                      backgroundColor: Colors.transparent,
+                      borderColor: Colors.transparent,
                     ),
                   ),
+                ),
               ],
             ),
           ),
