@@ -960,7 +960,7 @@ class _DiaryTabState extends State<DiaryTab> {
     required Color borderColor,
   }) {
     final theme = Theme.of(context);
-    final imageTxs = _transactionsWithImages(dayTxs)
+    final imageTxs = List<Transaction>.from(dayTxs)
       ..sort((a, b) => b.date.compareTo(a.date));
 
     if (imageTxs.isEmpty) {
@@ -1019,11 +1019,21 @@ class _DiaryTabState extends State<DiaryTab> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  TransactionImageStore.resolve(visibleTxs[i].imagePath)!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
+                child: Builder(
+                  builder: (context) {
+                    final imageFile = TransactionImageStore.resolve(visibleTxs[i].imagePath);
+                    final hasImage = imageFile != null && imageFile.existsSync();
+                    if (hasImage) {
+                      return Image.file(
+                        imageFile,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildCategoryPlaceholderForTimeline(visibleTxs[i], catBox),
+                      );
+                    } else {
+                      return _buildCategoryPlaceholderForTimeline(visibleTxs[i], catBox);
+                    }
+                  },
                 ),
               ),
             ),
@@ -1036,14 +1046,11 @@ class _DiaryTabState extends State<DiaryTab> {
               constraints: const BoxConstraints(minWidth: 20, minHeight: 16),
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.getSurface(theme.brightness).withValues(
-                  alpha: theme.brightness == Brightness.dark ? 0.62 : 0.54,
-                ),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(SheepRadius.pill),
                 border: Border.all(
-                  color: AppColors.getBorder(
-                    theme.brightness,
-                  ).withValues(alpha: 0.45),
+                  color: Colors.black12,
+                  width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -1056,8 +1063,8 @@ class _DiaryTabState extends State<DiaryTab> {
               child: Text(
                 extraCount > 9 ? '+9' : '+$extraCount',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.getTextPrimary(theme.brightness),
+                style: const TextStyle(
+                  color: Colors.black,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   height: 1,
@@ -1069,11 +1076,48 @@ class _DiaryTabState extends State<DiaryTab> {
     );
   }
 
-  List<Transaction> _transactionsWithImages(List<Transaction> transactions) {
-    return transactions.where((tx) {
-      final imageFile = TransactionImageStore.resolve(tx.imagePath);
-      return imageFile?.existsSync() ?? false;
-    }).toList();
+  Widget _buildCategoryPlaceholderForTimeline(Transaction tx, Box<CategoryModel> catBox) {
+    final category = catBox.values.firstWhere(
+      (c) => c.id == tx.categoryId,
+      orElse: () => CategoryModel(
+        id: '',
+        name: '?',
+        iconCode: Icons.help.codePoint,
+        isExpense: tx.isExpense,
+        typeIndex: tx.isExpense ? 0 : 1,
+      ),
+    );
+
+    final Color categoryColor = category.colorValue != null
+        ? Color(category.colorValue!)
+        : (category.effectiveTypeIndex == 0
+            ? AppColors.expense
+            : (category.effectiveTypeIndex == 1
+                ? AppColors.income
+                : AppColors.savings));
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            categoryColor,
+            categoryColor.withValues(alpha: 0.72),
+          ],
+        ),
+      ),
+      child: Center(
+        child: SheepCategoryIcon(
+          icon: category.iconData,
+          color: Colors.white,
+          size: 20,
+          imagePath: category.imagePath,
+          backgroundColor: Colors.transparent,
+          borderColor: Colors.transparent,
+        ),
+      ),
+    );
   }
 
   Color _timelineImageBorderColor(
@@ -1283,28 +1327,29 @@ class _TransactionImageTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      shape: BoxShape.circle,
-                    ),
-                    child: SheepCategoryIcon(
-                      icon: category.iconData,
-                      color: category.colorValue != null
-                          ? Color(category.colorValue!)
-                          : Colors.white,
-                      size: 24,
-                      imagePath: category.imagePath,
-                      backgroundColor: Colors.transparent,
-                      borderColor: Colors.transparent,
+                if (hasImage)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        shape: BoxShape.circle,
+                      ),
+                      child: SheepCategoryIcon(
+                        icon: category.iconData,
+                        color: category.colorValue != null
+                            ? Color(category.colorValue!)
+                            : Colors.white,
+                        size: 24,
+                        imagePath: category.imagePath,
+                        backgroundColor: Colors.transparent,
+                        borderColor: Colors.transparent,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -1314,22 +1359,33 @@ class _TransactionImageTile extends StatelessWidget {
   }
 
   Widget _buildPlaceholder(ThemeData theme) {
-    final placeholderBackground = theme.brightness == Brightness.dark
-        ? const Color(0xFF252525)
-        : const Color(0xFFF1F2F4);
+    final Color categoryColor = category.colorValue != null
+        ? Color(category.colorValue!)
+        : (category.effectiveTypeIndex == 0
+            ? AppColors.expense
+            : (category.effectiveTypeIndex == 1
+                ? AppColors.income
+                : AppColors.savings));
 
-    return DecoratedBox(
-      decoration: BoxDecoration(color: placeholderBackground),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            categoryColor,
+            categoryColor.withValues(alpha: 0.72),
+          ],
+        ),
+      ),
       child: Center(
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.getBorder(
-              theme.brightness,
-            ).withValues(alpha: 0.52),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.image_outlined, size: 26, color: theme.hintColor),
+        child: SheepCategoryIcon(
+          icon: category.iconData,
+          color: Colors.white,
+          size: 40,
+          imagePath: category.imagePath,
+          backgroundColor: Colors.transparent,
+          borderColor: Colors.transparent,
         ),
       ),
     );
