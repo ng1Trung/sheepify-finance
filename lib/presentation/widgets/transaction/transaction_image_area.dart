@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -44,7 +45,7 @@ class TransactionImageArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasCategory = selectedCategory != null;
     final imageFile = TransactionImageStore.resolve(imagePath);
-    final hasReadableImage = imageFile?.existsSync() ?? false;
+    final validImageFile = (imageFile != null && imageFile.existsSync()) ? imageFile : null;
     final l10n = L10n.of(context);
 
     return AspectRatio(
@@ -65,25 +66,30 @@ class TransactionImageArea extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            hasReadableImage
-                ? Image.file(
-                    imageFile!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _buildPlaceholder(hasCategory),
+            validImageFile != null
+                ? GestureDetector(
+                    onTap: () => _showFullScreenImage(context, validImageFile),
+                    child: Image.file(
+                      validImageFile,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildPlaceholder(hasCategory),
+                    ),
                   )
                 : _buildPlaceholder(hasCategory),
             if (isActive) ...[
               Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.03),
-                        Colors.black.withValues(alpha: 0.34),
-                      ],
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.03),
+                          Colors.black.withValues(alpha: 0.34),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -94,7 +100,7 @@ class TransactionImageArea extends StatelessWidget {
                 right: 10,
                 child: _buildActionBlock(context, l10n),
               ),
-              if (hasReadableImage)
+              if (validImageFile != null)
                 Positioned(
                   top: SheepSpacing.lg,
                   right: SheepSpacing.lg,
@@ -292,6 +298,38 @@ class TransactionImageArea extends StatelessWidget {
     ),
   ),
 );
+  }
+
+  void _showFullScreenImage(BuildContext context, File file) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Image.file(file),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

@@ -13,7 +13,7 @@ import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
 import '../../data/models/transaction.dart';
-import '../widgets/transaction_form.dart';
+import '../widgets/transaction/add_transaction_suggest_sheet.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
 import '../tabs/stats_tab.dart';
@@ -905,7 +905,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       isScrollControlled: true,
       isDismissible: true,
       enableDrag: true,
-      builder: (_) => TransactionForm(
+      backgroundColor: Colors.transparent,
+      builder: (_) => AddTransactionSuggestSheet(
         initialDate: DateTime.now(),
       ),
     );

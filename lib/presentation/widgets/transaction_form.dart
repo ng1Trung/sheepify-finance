@@ -20,17 +20,22 @@ import 'common/sheep_notifications.dart';
 import 'common/sheep_dialogs.dart';
 import '../../core/utils/transaction_image_store.dart';
 import '../../data/services/notification_service.dart';
+import '../../data/services/sheepify_scan_ai_service.dart';
 
 class TransactionForm extends StatefulWidget {
   final Transaction? transaction;
   final DateTime? initialDate;
   final List<Transaction>? dayTransactions;
+  final ScannedTransactionModel? scannedData;
+  final String? scannedImagePath;
 
   const TransactionForm({
     super.key,
     this.transaction,
     this.initialDate,
     this.dayTransactions,
+    this.scannedData,
+    this.scannedImagePath,
   });
 
   @override
@@ -128,6 +133,62 @@ class _TransactionFormState extends State<TransactionForm>
         final cat = _catBox.values.firstWhere((c) => c.id == tx.categoryId);
         _selectedTypeIndex = cat.effectiveTypeIndex;
       } catch (_) {}
+    } else if (widget.scannedData != null) {
+      // Initialize state with pre-filled AI scanned/parsed data
+      final data = widget.scannedData!;
+      
+      final settings =
+          Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+      
+      _amountController.text = data.amount > 0
+          ? CurrencyUtil.formatNumber(
+              data.amount.toDouble(),
+              locale: settings.languageCode == 'vi' ? 'vi_VN' : 'en_US',
+            )
+          : '';
+      _noteController.text = data.note;
+      
+      _selectedDate = widget.initialDate ?? DateTime.now();
+      if (data.date != 'TODAY') {
+        final parsedDate = DateTime.tryParse(data.date);
+        if (parsedDate != null) {
+          _selectedDate = parsedDate;
+        }
+      }
+      
+      _imagePath = widget.scannedImagePath;
+      _selectedTypeIndex = 0; // Default Expense
+      
+      // Match category
+      final catName = data.category.toLowerCase().trim();
+      CategoryModel? matchedCat;
+      for (final cat in _catBox.values) {
+        if (cat.name.toLowerCase().trim() == catName) {
+          matchedCat = cat;
+          break;
+        }
+      }
+
+      if (matchedCat != null) {
+        _selectedCategoryId = matchedCat.id;
+        _selectedTypeIndex = matchedCat.effectiveTypeIndex;
+      } else {
+        // Fallback mapping
+        final mapping = {
+          'ăn uống': 'cat_eat',
+          'mua sắm': 'cat_shop',
+          'hóa đơn': 'cat_bill',
+          'hoá đơn': 'cat_bill',
+        };
+        final targetId = mapping[catName];
+        if (targetId != null && _catBox.containsKey(targetId)) {
+          _selectedCategoryId = targetId;
+          final cat = _catBox.get(targetId);
+          if (cat != null) {
+            _selectedTypeIndex = cat.effectiveTypeIndex;
+          }
+        }
+      }
     } else {
       // Default state for new transaction
       _selectedDate = widget.initialDate ?? DateTime.now();
@@ -210,7 +271,9 @@ class _TransactionFormState extends State<TransactionForm>
           pickedFile.path,
         );
         if (mounted) {
-          setState(() => _imagePath = storedImageRef);
+          setState(() {
+            _imagePath = storedImageRef;
+          });
         }
       }
     }
@@ -363,103 +426,108 @@ class _TransactionFormState extends State<TransactionForm>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      child: Container(
-      decoration: BoxDecoration(
-        color: AppColors.getSurface(theme.brightness),
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(SheepRadius.sheet),
-        ),
-      ),
-      padding: EdgeInsets.only(
-        top: SheepSpacing.xl,
-        left: SheepSpacing.page,
-        right: SheepSpacing.page,
-        bottom: MediaQuery.of(context).viewInsets.bottom + SheepSpacing.xl,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDragHandle(),
-            const SizedBox(height: SheepSpacing.xl),
-            if (_imageTransactions.length > 1) ...[
-              AspectRatio(
-                aspectRatio: 1 / 0.82,
-                child: PageView.builder(
-                  controller: _effectivePageController,
-                  itemCount: _loopItemCount,
-                  clipBehavior: Clip.none,
-                  onPageChanged: (index) {
-                    final realIndex = index % _imageTransactions.length;
-                    _setActiveTransaction(_imageTransactions[realIndex], fromPageSwipe: true);
-                  },
-                  itemBuilder: (context, index) {
-                    final realIndex = index % _imageTransactions.length;
-                    final tx = _imageTransactions[realIndex];
-                    final isCurrent = tx.key == _activeTransaction?.key;
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.getSurface(theme.brightness),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(SheepRadius.sheet),
+              ),
+            ),
+            padding: EdgeInsets.only(
+              top: SheepSpacing.xl,
+              left: SheepSpacing.page,
+              right: SheepSpacing.page,
+              bottom: MediaQuery.of(context).viewInsets.bottom + SheepSpacing.xl,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildDragHandle(),
+                  const SizedBox(height: SheepSpacing.xl),
+                  if (_imageTransactions.length > 1) ...[
+                    AspectRatio(
+                      aspectRatio: 1 / 0.82,
+                      child: PageView.builder(
+                        controller: _effectivePageController,
+                        itemCount: _loopItemCount,
+                        clipBehavior: Clip.none,
+                        onPageChanged: (index) {
+                          final realIndex = index % _imageTransactions.length;
+                          _setActiveTransaction(_imageTransactions[realIndex], fromPageSwipe: true);
+                        },
+                        itemBuilder: (context, index) {
+                          final realIndex = index % _imageTransactions.length;
+                          final tx = _imageTransactions[realIndex];
+                          final isCurrent = tx.key == _activeTransaction?.key;
 
-                    CategoryModel? txCategory;
-                    if (isCurrent) {
-                      txCategory = selectedCategory;
-                    } else {
-                      try {
-                        txCategory = _catBox.values.firstWhere((c) => c.id == tx.categoryId);
-                      } catch (_) {}
-                    }
+                          CategoryModel? txCategory;
+                          if (isCurrent) {
+                            txCategory = selectedCategory;
+                          } else {
+                            try {
+                              txCategory = _catBox.values.firstWhere((c) => c.id == tx.categoryId);
+                            } catch (_) {}
+                          }
 
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: TransactionImageArea(
-                          imagePath: tx.imagePath,
-                          selectedIndex: isCurrent ? _selectedTypeIndex : (tx.isExpense ? 0 : 1),
-                          selectedCategory: txCategory,
-                          categoryColor: (txCategory != null && txCategory.colorValue != null)
-                              ? Color(txCategory.colorValue!)
-                              : null,
-                          amountController: _amountController,
-                          noteController: _noteController,
-                          onRemoveImage: _confirmRemoveImage,
-                          noteShakeAnimation: _noteShakeAnimation,
-                          noteMaxLength: _noteMaxLength,
-                          onNoteLimitExceeded: _shakeNoteField,
-                          date: tx.date,
-                          isActive: isCurrent,
-                        ),
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: TransactionImageArea(
+                                imagePath: tx.imagePath,
+                                selectedIndex: isCurrent ? _selectedTypeIndex : (tx.isExpense ? 0 : 1),
+                                selectedCategory: txCategory,
+                                categoryColor: (txCategory != null && txCategory.colorValue != null)
+                                    ? Color(txCategory.colorValue!)
+                                    : null,
+                                amountController: _amountController,
+                                noteController: _noteController,
+                                onRemoveImage: _confirmRemoveImage,
+                                noteShakeAnimation: _noteShakeAnimation,
+                                noteMaxLength: _noteMaxLength,
+                                onNoteLimitExceeded: _shakeNoteField,
+                                date: tx.date,
+                                isActive: isCurrent,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+                    ),
+                    const SizedBox(height: SheepSpacing.xs),
+                    _buildMiniPreviews(),
+                  ] else ...[
+                    TransactionImageArea(
+                      imagePath: _imagePath,
+                      selectedIndex: _selectedTypeIndex,
+                      selectedCategory: selectedCategory,
+                      categoryColor: selectedCategory?.colorValue != null
+                          ? Color(selectedCategory!.colorValue!)
+                          : null,
+                      amountController: _amountController,
+                      noteController: _noteController,
+                      onRemoveImage: _confirmRemoveImage,
+                      noteShakeAnimation: _noteShakeAnimation,
+                      noteMaxLength: _noteMaxLength,
+                      onNoteLimitExceeded: _shakeNoteField,
+                      date: _selectedDate,
+                      isActive: true,
+                    ),
+                  ],
+                  const SizedBox(height: SheepSpacing.lg),
+                  _buildMetaControls(selectedCategory),
+                  const SizedBox(height: SheepSpacing.xl),
+                  _buildActionButtons(),
+                ],
               ),
-              const SizedBox(height: SheepSpacing.xs),
-              _buildMiniPreviews(),
-            ] else ...[
-              TransactionImageArea(
-                imagePath: _imagePath,
-                selectedIndex: _selectedTypeIndex,
-                selectedCategory: selectedCategory,
-                categoryColor: selectedCategory?.colorValue != null
-                    ? Color(selectedCategory!.colorValue!)
-                    : null,
-                amountController: _amountController,
-                noteController: _noteController,
-                onRemoveImage: _confirmRemoveImage,
-                noteShakeAnimation: _noteShakeAnimation,
-                noteMaxLength: _noteMaxLength,
-                onNoteLimitExceeded: _shakeNoteField,
-                date: _selectedDate,
-                isActive: true,
-              ),
-            ],
-            const SizedBox(height: SheepSpacing.lg),
-            _buildMetaControls(selectedCategory),
-            const SizedBox(height: SheepSpacing.xl),
-            _buildActionButtons(),
-          ],
-        ),
+            ),
+          ),
+
+        ],
       ),
-    ),
-  );
+    );
 }
 
   Widget _buildMetaControls(CategoryModel? selectedCategory) {
