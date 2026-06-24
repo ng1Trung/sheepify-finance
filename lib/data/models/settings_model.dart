@@ -40,9 +40,16 @@ class AppSettings extends HiveObject {
   @HiveField(11)
   DateTime? lastBackupAt;
 
-  bool get hideAmounts => _hideAmounts ?? true;
+  @HiveField(12)
+  bool? _enableNotifications;
+
+  bool get hideAmounts => _hideAmounts ?? false;
 
   set hideAmounts(bool value) => _hideAmounts = value;
+
+  bool get enableNotifications => _enableNotifications ?? true;
+
+  set enableNotifications(bool value) => _enableNotifications = value;
 
   String get themeMode => _themeMode ?? (isDarkMode ? 'dark' : 'light');
 
@@ -66,11 +73,13 @@ class AppSettings extends HiveObject {
     this.avatarImageRef,
     int financialCycleStartDay = 1,
     String themeMode = 'light',
-    bool hideAmounts = true,
+    bool hideAmounts = false,
     int weekStartDay = DateTime.monday,
     this.lastBackupAt,
+    bool? enableNotifications,
   }) : _themeMode = themeMode,
        _hideAmounts = hideAmounts,
        _weekStartDay = weekStartDay,
-       _financialCycleStartDay = financialCycleStartDay;
+       _financialCycleStartDay = financialCycleStartDay,
+       _enableNotifications = enableNotifications;
 }

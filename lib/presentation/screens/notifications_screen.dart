@@ -46,10 +46,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             builder: (context, Box box, _) {
               if (box.isEmpty) return const SizedBox.shrink();
               return PopupMenuButton<String>(
-                icon: const Icon(
-                  Icons.more_vert_rounded,
-                  color: Colors.white,
-                ),
+                icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
                 onSelected: (value) async {
                   if (value == 'mark_read') {
                     for (var key in box.keys) {
@@ -84,19 +81,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         builder: (context, Box box, _) {
           if (box.isEmpty) {
             return Center(
-              child: SheepEmptyState(
-                message: l10n.get('no_notifications'),
-              ),
+              child: SheepEmptyState(message: l10n.get('no_notifications')),
             );
           }
 
-          // Convert Hive box items to list and sort by dateTime descending
-          final items = box.toMap().entries.toList()
-            ..sort((a, b) {
-              final aTime = DateTime.parse(a.value['dateTime'] as String);
-              final bTime = DateTime.parse(b.value['dateTime'] as String);
-              return bTime.compareTo(aTime);
-            });
+          // Convert Hive box items to list, filter valid notifications, and sort by dateTime descending
+          final items =
+              box
+                  .toMap()
+                  .entries
+                  .where(
+                    (entry) =>
+                        entry.value is Map && entry.value['dateTime'] != null,
+                  )
+                  .toList()
+                ..sort((a, b) {
+                  final aTime = DateTime.parse(a.value['dateTime'] as String);
+                  final bTime = DateTime.parse(b.value['dateTime'] as String);
+                  return bTime.compareTo(aTime);
+                });
 
           final totalCount = items.length;
           final displayedItems = items.take(_limit).toList();
@@ -118,15 +121,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       },
                       icon: const Icon(Icons.expand_more_rounded),
                       label: Text(
-                        l10n.locale.languageCode == 'vi' ? 'Xem thêm' : 'Load more',
+                        l10n.locale.languageCode == 'vi'
+                            ? 'Xem thêm'
+                            : 'Load more',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       style: TextButton.styleFrom(
                         foregroundColor: theme.primaryColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(100),
-                          side: BorderSide(color: theme.primaryColor.withValues(alpha: 0.3)),
+                          side: BorderSide(
+                            color: theme.primaryColor.withValues(alpha: 0.3),
+                          ),
                         ),
                       ),
                     ),
@@ -138,7 +148,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               final key = entry.key;
               final map = Map<String, dynamic>.from(entry.value as Map);
               final String content = map['content'] as String;
-              final DateTime dateTime = DateTime.parse(map['dateTime'] as String);
+              final DateTime dateTime = DateTime.parse(
+                map['dateTime'] as String,
+              );
               final bool isRead = map['isRead'] as bool? ?? false;
               final String type = map['type'] as String;
 
@@ -150,8 +162,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   color: isRead
                       ? AppColors.getSurface(theme.brightness)
                       : (isDark
-                          ? const Color(0xFF2E2C36)
-                          : theme.primaryColor.withValues(alpha: 0.05)),
+                            ? const Color(0xFF2E2C36)
+                            : theme.primaryColor.withValues(alpha: 0.05)),
                   borderRadius: BorderRadius.circular(SheepRadius.xl),
                   border: Border.all(
                     color: isRead
@@ -159,13 +171,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         : theme.primaryColor.withValues(alpha: 0.2),
                     width: isRead ? 1.0 : 1.5,
                   ),
-                  boxShadow: isRead ? null : [
-                    BoxShadow(
-                      color: theme.primaryColor.withValues(alpha: 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    )
-                  ],
+                  boxShadow: isRead
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: theme.primaryColor.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(SheepRadius.xl),
@@ -178,17 +192,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                     // Navigation logic:
                     if (context.mounted) {
-                      if (type == 'savings_completed' || type == 'savings_halfway') {
-                        Navigator.pop(context, 2); // Return index 2 to navigate to Savings tab
-                      } else if (type == 'budget_exceeded' || type == 'budget_threshold') {
-                        Navigator.pop(context, 3); // Return index 3 to navigate to Categories tab
+                      if (type == 'savings_completed' ||
+                          type == 'savings_halfway') {
+                        Navigator.pop(
+                          context,
+                          2,
+                        ); // Return index 2 to navigate to Savings tab
+                      } else if (type == 'budget_exceeded' ||
+                          type == 'budget_threshold') {
+                        Navigator.pop(
+                          context,
+                          3,
+                        ); // Return index 3 to navigate to Categories tab
                       } else {
                         Navigator.pop(context);
                       }
                     }
                   },
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 4, left: 4, right: 2),
+                    padding: const EdgeInsets.only(
+                      top: 4,
+                      bottom: 4,
+                      left: 4,
+                      right: 2,
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -199,7 +226,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             color: visual.color.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(SheepRadius.md),
                           ),
-                          child: Icon(visual.icon, color: visual.color, size: 22),
+                          child: Icon(
+                            visual.icon,
+                            color: visual.color,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         // Text Content
@@ -214,13 +245,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     content,
                                     TextStyle(
                                       fontSize: SheepTypeScale.body,
-                                      color: AppColors.getTextPrimary(theme.brightness),
-                                      fontWeight: isRead ? FontWeight.normal : FontWeight.w500,
+                                      color: AppColors.getTextPrimary(
+                                        theme.brightness,
+                                      ),
+                                      fontWeight: isRead
+                                          ? FontWeight.normal
+                                          : FontWeight.w500,
                                       height: 1.4,
                                     ),
                                     TextStyle(
                                       fontSize: SheepTypeScale.body,
-                                      color: AppColors.getTextPrimary(theme.brightness),
+                                      color: AppColors.getTextPrimary(
+                                        theme.brightness,
+                                      ),
                                       fontWeight: FontWeight.bold,
                                       height: 1.4,
                                     ),
@@ -234,7 +271,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 _formatTime(dateTime, l10n.locale.languageCode),
                                 style: TextStyle(
                                   fontSize: SheepTypeScale.micro,
-                                  color: AppColors.getTextSecondary(theme.brightness).withValues(alpha: 0.6),
+                                  color: AppColors.getTextSecondary(
+                                    theme.brightness,
+                                  ).withValues(alpha: 0.6),
                                   fontWeight: FontWeight.normal,
                                 ),
                               ),
@@ -319,15 +358,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   width: 38,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF42404B) : const Color(0xFFE7DDE1),
+                    color: isDark
+                        ? const Color(0xFF42404B)
+                        : const Color(0xFFE7DDE1),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
                 const SizedBox(height: 18),
                 // Toggle Read/Unread option
                 _NotificationActionTile(
-                  icon: isRead ? Icons.mark_chat_unread_outlined : Icons.mark_chat_read_outlined,
-                  label: isRead 
+                  icon: isRead
+                      ? Icons.mark_chat_unread_outlined
+                      : Icons.mark_chat_read_outlined,
+                  label: isRead
                       ? l10n.get('mark_as_unread')
                       : l10n.get('mark_as_read'),
                   color: theme.primaryColor,
@@ -378,9 +421,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'budget_exceeded':
         return _NotifVisual(Icons.error_outline_rounded, AppColors.expense);
       case 'budget_threshold':
-        return _NotifVisual(Icons.warning_amber_rounded, const Color(0xFFF9A825)); // Gold/Yellow
+        return _NotifVisual(
+          Icons.warning_amber_rounded,
+          const Color(0xFFF9A825),
+        ); // Gold/Yellow
       case 'savings_completed':
-        return _NotifVisual(Icons.star_rounded, const Color(0xFFFBC02D)); // Gold Star
+        return _NotifVisual(
+          Icons.star_rounded,
+          const Color(0xFFFBC02D),
+        ); // Gold Star
       case 'savings_halfway':
         return _NotifVisual(Icons.trending_up_rounded, AppColors.savings);
       case 'daily_reminder':
@@ -400,22 +449,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     for (final RegExpMatch match in regExp.allMatches(text)) {
       if (match.start > lastIndex) {
-        spans.add(TextSpan(
-          text: text.substring(lastIndex, match.start),
-          style: normalStyle,
-        ));
+        spans.add(
+          TextSpan(
+            text: text.substring(lastIndex, match.start),
+            style: normalStyle,
+          ),
+        );
       }
-      spans.add(TextSpan(
-        text: match.group(1),
-        style: boldStyle,
-      ));
+      spans.add(TextSpan(text: match.group(1), style: boldStyle));
       lastIndex = match.end;
     }
     if (lastIndex < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(lastIndex),
-        style: normalStyle,
-      ));
+      spans.add(TextSpan(text: text.substring(lastIndex), style: normalStyle));
     }
     if (spans.isEmpty && text.isNotEmpty) {
       spans.add(TextSpan(text: text, style: normalStyle));

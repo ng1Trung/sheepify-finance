@@ -345,6 +345,7 @@ class _StatsTabState extends State<StatsTab> {
         alignment: Alignment.center,
         children: [
           PieChart(
+            key: ValueKey('pie-chart-$_selectedTypeIndex-${stats.length}'),
             PieChartData(
               sectionsSpace: 2, // Smaller gap between segments
               centerSpaceRadius: centerSpaceRadius,
@@ -696,7 +697,12 @@ class _StatsTabState extends State<StatsTab> {
     double bestError = double.infinity;
     List<int> bestP = [];
 
-    void search(int index, int remainingSum, List<int> currentP, double currentError) {
+    void search(
+      int index,
+      int remainingSum,
+      List<int> currentP,
+      double currentError,
+    ) {
       if (currentError >= bestError) return;
       if (index == groups.length) {
         if (remainingSum == 0) {
@@ -728,7 +734,12 @@ class _StatsTabState extends State<StatsTab> {
     search(0, target, [], 0.0);
 
     if (bestP.isEmpty) {
-      void searchFallback(int index, int remainingSum, List<int> currentP, double currentError) {
+      void searchFallback(
+        int index,
+        int remainingSum,
+        List<int> currentP,
+        double currentError,
+      ) {
         if (currentError >= bestError) return;
         if (index == groups.length) {
           if (remainingSum == 0) {
@@ -751,10 +762,16 @@ class _StatsTabState extends State<StatsTab> {
         for (final p in candidates) {
           final err = s * (p - e) * (p - e);
           currentP.add(p);
-          searchFallback(index + 1, remainingSum - s * p, currentP, currentError + err);
+          searchFallback(
+            index + 1,
+            remainingSum - s * p,
+            currentP,
+            currentError + err,
+          );
           currentP.removeLast();
         }
       }
+
       searchFallback(0, target, [], 0.0);
     }
 
@@ -769,7 +786,9 @@ class _StatsTabState extends State<StatsTab> {
       }
     } else {
       for (final stat in activeStats) {
-        labels[stat.category.id] = (stat.amount / total * 100).round().toString();
+        labels[stat.category.id] = (stat.amount / total * 100)
+            .round()
+            .toString();
       }
     }
 

@@ -114,16 +114,24 @@ class SheepCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    final resolvedRadius = BorderRadius.circular(
+      borderRadius ?? SheepRadius.xl,
+    );
     return Container(
       margin: margin,
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color ?? AppColors.getSurface(brightness),
-        borderRadius: BorderRadius.circular(borderRadius ?? SheepRadius.xl),
+        borderRadius: resolvedRadius,
         border: border ?? Border.all(color: AppColors.getBorder(brightness)),
         boxShadow: AppColors.getSoftShadow(brightness),
       ),
-      child: child,
+      child: Material(
+        color: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: resolvedRadius,
+        child: child,
+      ),
     );
   }
 }
@@ -168,7 +176,8 @@ class SheepCategoryIcon extends StatelessWidget {
                 ? Image.file(
                     imageFile!,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _fallbackIcon(),
+                    errorBuilder: (context, error, stackTrace) =>
+                        _fallbackIcon(),
                   )
                 : _fallbackIcon(),
           ),
@@ -177,7 +186,8 @@ class SheepCategoryIcon extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: radius,
                 border: Border.all(
-                  color: borderColor ??
+                  color:
+                      borderColor ??
                       (hasReadableImage ? color : color.withValues(alpha: 0.3)),
                   width: hasReadableImage ? 1.5 : 1.0,
                 ),
@@ -843,7 +853,8 @@ class SheepDatePicker {
                           childAspectRatio: 1,
                         ),
                     itemBuilder: (context, index) {
-                      if (index < leadingDays || index >= leadingDays + daysInMonth) {
+                      if (index < leadingDays ||
+                          index >= leadingDays + daysInMonth) {
                         return const SizedBox.shrink();
                       }
                       final date = DateTime(
@@ -1106,7 +1117,8 @@ class SheepDateRangePicker {
                             childAspectRatio: 1,
                           ),
                       itemBuilder: (context, index) {
-                        if (index < leadingDays || index >= leadingDays + daysInMonth) {
+                        if (index < leadingDays ||
+                            index >= leadingDays + daysInMonth) {
                           return const SizedBox.shrink();
                         }
                         final date = DateTime(

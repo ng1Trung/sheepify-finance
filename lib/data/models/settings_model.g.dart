@@ -25,6 +25,7 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       isDarkMode: fields[5] as bool,
       avatarImageRef: fields[8] as String?,
       lastBackupAt: fields[11] as DateTime?,
+      enableNotifications: fields[12] as bool?,
     )
       .._hideAmounts = fields[6] as bool?
       .._themeMode = fields[7] as String?
@@ -35,7 +36,7 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.accumulateBalance)
       ..writeByte(1)
@@ -59,7 +60,9 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(10)
       ..write(obj._weekStartDay)
       ..writeByte(11)
-      ..write(obj.lastBackupAt);
+      ..write(obj.lastBackupAt)
+      ..writeByte(12)
+      ..write(obj.enableNotifications);
   }
 
   @override
