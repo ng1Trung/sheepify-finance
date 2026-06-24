@@ -6,6 +6,7 @@ import 'data/models/category_model.dart';
 import 'data/models/settings_model.dart';
 import 'core/constants/constants.dart';
 import 'presentation/screens/main_screen.dart'; // Import màn hình chính
+import 'data/services/notification_service.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
@@ -35,16 +36,22 @@ void main() async {
   final moneyBox = await Hive.openBox<Transaction>(kMoneyBox);
   await Hive.openBox<CategoryModel>(kCatBox);
   final settingsBox = await Hive.openBox<AppSettings>(kSettingsBox);
-  await Hive.openBox(kStreakBox);
-  await Hive.openBox('notifications');
+  final streakBox = await Hive.openBox(kStreakBox);
+  final notifBox = await Hive.openBox('notifications');
+
+  // Clean up any migration flag mistakenly put in the notifications box
+  await notifBox.delete('migrated_notif_v1');
 
   // Initialize Default Settings if empty
   if (settingsBox.isEmpty) {
-    await settingsBox.put('current', AppSettings(hideAmounts: true));
+    await settingsBox.put(
+      'current',
+      AppSettings(hideAmounts: false, enableNotifications: true),
+    );
   } else {
     final s = settingsBox.get('current');
     if (s != null) {
-      s.hideAmounts = true;
+      s.hideAmounts = false;
       if (s.themePresetName == 'Midnight Black' && s.fontFamily == 'Inter') {
         s.themePresetName = 'Rose Petal';
         s.fontFamily = 'Quicksand';
@@ -52,6 +59,16 @@ void main() async {
       }
       await s.save();
     }
+  }
+
+  // One-time migration to force enableNotifications to true for existing test databases
+  if (streakBox.get('migrated_notif_v1') != true) {
+    final s = settingsBox.get('current');
+    if (s != null) {
+      s.enableNotifications = true;
+      await s.save();
+    }
+    await streakBox.put('migrated_notif_v1', true);
   }
 
   await _migrateLegacyTransactionImages(moneyBox);
@@ -104,6 +121,7 @@ class SheepifyApp extends StatelessWidget {
         final locale = Locale(settings.languageCode);
 
         return MaterialApp(
+          navigatorKey: NotificationService.navigatorKey,
           debugShowCheckedModeBanner: false,
           title: 'Sheepify',
           theme: lightTheme,

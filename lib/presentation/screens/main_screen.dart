@@ -96,14 +96,44 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _activeInsightType = _pickRandomInsightType();
     unawaited(_prepareStreakTracking());
     unawaited(NotificationService.initialize());
+    NotificationService.selectNotificationStream.addListener(
+      _handleNotificationPayload,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleNotificationPayload();
+    });
   }
 
   @override
   void dispose() {
+    NotificationService.selectNotificationStream.removeListener(
+      _handleNotificationPayload,
+    );
     _stopForegroundTracking();
     _moneyListenable.removeListener(_handleTransactionEvents);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _handleNotificationPayload() {
+    final payload = NotificationService.selectNotificationStream.value;
+    if (payload == null || !mounted) return;
+    NotificationService.selectNotificationStream.value =
+        null; // Clear so it doesn't trigger again
+
+    if (payload != 'daily_reminder') {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+
+    if (payload == 'savings_completed' || payload == 'savings_halfway') {
+      _selectTab(2); // Tab Tích lũy
+    } else if (payload == 'budget_exceeded' || payload == 'budget_threshold') {
+      _selectTab(3); // Tab Danh mục
+    } else if (payload == 'weekly_stats') {
+      _selectTab(1); // Tab Thống kê
+    } else if (payload == 'daily_reminder') {
+      _showAddTransactionForm(); // Mở Suggest Sheet
+    }
   }
 
   @override
@@ -581,24 +611,22 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         ),
         title: buildAppBarTitle(),
         actions: [
-          _buildNotificationBell(context, headerForeground),
-          if (_usesDateRange)
-            const SizedBox(width: 8)
-          else if (_currentIndex == 2 || _currentIndex == 3)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: IconButton(
-                icon: Icon(
-                  Icons.add_circle_outline_rounded,
-                  color: AppColors.getInteractiveAccent(
-                    theme.brightness,
-                    headerForeground,
-                  ),
-                  size: 28,
+          if (_currentIndex == 2 || _currentIndex == 3) ...[
+            IconButton(
+              icon: Icon(
+                Icons.add_circle_outline_rounded,
+                color: AppColors.getInteractiveAccent(
+                  theme.brightness,
+                  headerForeground,
                 ),
-                onPressed: _showAddCategoryForm,
+                size: 28,
               ),
+              onPressed: _showAddCategoryForm,
             ),
+            const SizedBox(width: 4),
+          ],
+          _buildNotificationBell(context, headerForeground),
+          const SizedBox(width: 8),
         ],
       ),
       body: buildBody(),
@@ -906,9 +934,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       isDismissible: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AddTransactionSuggestSheet(
-        initialDate: DateTime.now(),
-      ),
+      builder: (_) => AddTransactionSuggestSheet(initialDate: DateTime.now()),
     );
 
     if (resultDate != null) {

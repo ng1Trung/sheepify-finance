@@ -16,6 +16,7 @@ import '../../core/utils/l10n.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/transaction.dart';
 import '../../data/services/data_portability_service.dart';
+import '../../data/services/notification_service.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../widgets/common/sheep_toggles.dart';
@@ -108,6 +109,28 @@ class SettingsTab extends StatelessWidget {
                         onChanged: (val) {
                           settings.hideAmounts = val;
                           settings.save();
+                        },
+                      ),
+                    ),
+                    _buildDivider(),
+                    ListTile(
+                      title: Text(
+                        l10n.locale.languageCode == 'vi'
+                            ? 'Nhận thông báo thiết bị'
+                            : 'Receive device notifications',
+                        style: _settingsRowTitleStyle(context),
+                      ),
+                      trailing: SheepSwitch(
+                        value: settings.enableNotifications,
+                        onChanged: (val) async {
+                          settings.enableNotifications = val;
+                          await settings.save();
+                          if (val) {
+                            await NotificationService.requestPermissions();
+                            await NotificationService.checkDailyReminderReschedule();
+                          } else {
+                            await NotificationService.cancelAll();
+                          }
                         },
                       ),
                     ),
