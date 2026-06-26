@@ -43,6 +43,12 @@ class AppSettings extends HiveObject {
   @HiveField(12)
   bool? _enableNotifications;
 
+  @HiveField(13)
+  String? userName;
+
+  @HiveField(14)
+  bool? _showAvailableBalance;
+
   bool get hideAmounts => _hideAmounts ?? false;
 
   set hideAmounts(bool value) => _hideAmounts = value;
@@ -50,6 +56,10 @@ class AppSettings extends HiveObject {
   bool get enableNotifications => _enableNotifications ?? true;
 
   set enableNotifications(bool value) => _enableNotifications = value;
+
+  bool get showAvailableBalance => _showAvailableBalance ?? true;
+
+  set showAvailableBalance(bool value) => _showAvailableBalance = value;
 
   String get themeMode => _themeMode ?? (isDarkMode ? 'dark' : 'light');
 
@@ -71,15 +81,18 @@ class AppSettings extends HiveObject {
     this.fontFamily = 'Quicksand',
     this.isDarkMode = false,
     this.avatarImageRef,
+    this.userName,
     int financialCycleStartDay = 1,
     String themeMode = 'light',
     bool hideAmounts = false,
     int weekStartDay = DateTime.monday,
     this.lastBackupAt,
     bool? enableNotifications,
+    bool? showAvailableBalance,
   }) : _themeMode = themeMode,
        _hideAmounts = hideAmounts,
        _weekStartDay = weekStartDay,
        _financialCycleStartDay = financialCycleStartDay,
-       _enableNotifications = enableNotifications;
+       _enableNotifications = enableNotifications,
+       _showAvailableBalance = showAvailableBalance;
 }

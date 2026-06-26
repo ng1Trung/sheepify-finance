@@ -43,6 +43,10 @@ class CategoryUtil {
           .fold(0.0, (sum, tx) => sum + tx.amount);
     }
 
+    if (cat.effectiveTypeIndex == 2) {
+      spent += cat.initialAmount ?? 0;
+    }
+
     return spent;
   }
 }

@@ -49,6 +49,9 @@ class CategoryModel extends HiveObject {
   @HiveField(14)
   String? imagePath;
 
+  @HiveField(15)
+  double? initialAmount;
+
   CategoryModel({
     required this.id,
     required this.name,
@@ -64,6 +67,7 @@ class CategoryModel extends HiveObject {
     this.targetYear,
     this.targetMonth,
     this.imagePath,
+    this.initialAmount,
   });
 
   int get effectiveTypeIndex => typeIndex ?? (isExpense ? 0 : 1);

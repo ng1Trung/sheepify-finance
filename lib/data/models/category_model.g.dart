@@ -31,13 +31,14 @@ class CategoryModelAdapter extends TypeAdapter<CategoryModel> {
       targetYear: fields[12] as int?,
       targetMonth: fields[13] as int?,
       imagePath: fields[14] as String?,
+      initialAmount: fields[15] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CategoryModel obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -65,7 +66,9 @@ class CategoryModelAdapter extends TypeAdapter<CategoryModel> {
       ..writeByte(13)
       ..write(obj.targetMonth)
       ..writeByte(14)
-      ..write(obj.imagePath);
+      ..write(obj.imagePath)
+      ..writeByte(15)
+      ..write(obj.initialAmount);
   }
 
   @override

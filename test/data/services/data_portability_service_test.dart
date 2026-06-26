@@ -92,6 +92,7 @@ void main() {
         targetYear: 2026,
         targetMonth: 12,
         imagePath: 'category_images/travel.jpg',
+        initialAmount: 500000,
       );
 
       final dto = CategoryBackupDto.fromJson(
@@ -113,6 +114,7 @@ void main() {
       expect(restored.targetYear, category.targetYear);
       expect(restored.targetMonth, category.targetMonth);
       expect(restored.imagePath, category.imagePath);
+      expect(restored.initialAmount, category.initialAmount);
     });
 
     test('settings mapper roundtrips privacy and theme fields', () {
@@ -128,6 +130,8 @@ void main() {
         themeMode: 'dark',
         hideAmounts: true,
         weekStartDay: DateTime.sunday,
+        userName: 'Alice',
+        showAvailableBalance: false,
       );
 
       final dto = SettingsBackupDto.fromJson(
@@ -146,6 +150,8 @@ void main() {
       expect(restored.avatarImageRef, settings.avatarImageRef);
       expect(restored.financialCycleStartDay, settings.financialCycleStartDay);
       expect(restored.weekStartDay, settings.weekStartDay);
+      expect(restored.userName, settings.userName);
+      expect(restored.showAvailableBalance, settings.showAvailableBalance);
     });
   });
 

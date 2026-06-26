@@ -428,6 +428,8 @@ class NotificationService {
         }
       }
     }
+    if (!context.mounted) return;
+    await _checkAndTriggerRemainingBalanceNotification(context, txDate);
   }
 
   // Calculate current transaction logging streak
@@ -711,5 +713,100 @@ class NotificationService {
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       payload: 'weekly_stats',
     );
+  }
+
+  static Future<void> _checkAndTriggerRemainingBalanceNotification(
+    BuildContext context,
+    DateTime txDate,
+  ) async {
+    final l10n = L10n.of(context);
+    final settings = Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final transactions = Hive.box<Transaction>(kMoneyBox).values.toList();
+    final catBox = Hive.box<CategoryModel>(kCatBox);
+    final categoriesById = {
+      for (final cat in catBox.values) cat.id: cat,
+    };
+
+    final currentRange = FinancialCycleUtil.cycleRangeFor(
+      txDate,
+      settings.financialCycleStartDay,
+    );
+
+    double currentIncome = 0;
+    double currentExpense = 0;
+    double currentSavings = 0;
+    double previousBalance = 0;
+
+    for (final tx in transactions) {
+      final cat = categoriesById[tx.categoryId];
+      final effectiveType = cat?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
+      final inCurrentCycle = FinancialCycleUtil.isInRange(tx.date, currentRange);
+
+      if (inCurrentCycle) {
+        if (effectiveType == 1) {
+          currentIncome += tx.amount;
+        } else if (effectiveType == 0) {
+          currentExpense += tx.amount;
+        } else if (effectiveType == 2) {
+          currentSavings += tx.amount;
+        }
+      } else if (tx.date.isBefore(currentRange.start)) {
+        if (settings.accumulateBalance) {
+          if (effectiveType == 1) {
+            previousBalance += tx.amount;
+          } else if (effectiveType == 0) {
+            previousBalance -= tx.amount;
+          } else if (effectiveType == 2) {
+            previousBalance -= tx.amount;
+          }
+        }
+      }
+    }
+
+    if (settings.accumulateBalance) {
+      double totalInitialSavings = 0;
+      for (final cat in catBox.values) {
+        if (cat.effectiveTypeIndex == 2) {
+          totalInitialSavings += cat.initialAmount ?? 0;
+        }
+      }
+      previousBalance -= totalInitialSavings;
+    }
+
+    final balance = currentIncome + previousBalance - currentExpense - currentSavings;
+    final totalIncomePool = currentIncome + previousBalance;
+
+    if (totalIncomePool <= 0) return;
+
+    if (balance <= 0.1 * totalIncomePool) {
+      const threshold = 0.1;
+      if (!_hasBeenTriggered(
+        categoryId: 'cycle_balance',
+        type: 'balance_low',
+        threshold: threshold,
+        cycleStart: currentRange.start,
+      )) {
+        final percentText = ((balance / totalIncomePool) * 100).round();
+        final formattedAmount = CurrencyUtil.formatByCurrency(balance, settings.currencyCode);
+
+        final title = l10n.get('balance_low_title');
+        final content = l10n.get(
+          'balance_low_body',
+          params: {
+            'percent': percentText.toString(),
+            'amount': formattedAmount,
+          },
+        );
+
+        await _createInAppNotification(
+          title: title,
+          content: content,
+          type: 'balance_low',
+          categoryId: 'cycle_balance',
+          threshold: threshold,
+          cycleStart: currentRange.start,
+        );
+      }
+    }
   }
 }

@@ -11,6 +11,9 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/constants/constants.dart';
 import '../../data/models/settings_model.dart';
 import '../../core/theme/app_colors.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart' as cropper;
+import '../../core/utils/avatar_image_store.dart';
 import '../../core/utils/category_image_store.dart';
 import '../../core/utils/l10n.dart';
 import '../../data/models/category_model.dart';
@@ -44,6 +47,79 @@ class SettingsTab extends StatelessWidget {
               32,
             ),
             children: [
+              SheepCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _buildCardSectionTitle(
+                      context,
+                      l10n.locale.languageCode == 'vi' ? 'Tài khoản' : 'Account',
+                    ),
+                    ListTile(
+                      leading: CircleAvatar(
+                        radius: 20,
+                        backgroundImage: settings.avatarImageRef != null
+                            ? (() {
+                                final file = AvatarImageStore.resolve(settings.avatarImageRef);
+                                return file != null && file.existsSync() ? FileImage(file) : null;
+                              })()
+                            : null,
+                        child: settings.avatarImageRef == null ||
+                                (() {
+                                  final file = AvatarImageStore.resolve(settings.avatarImageRef);
+                                  return file == null || !file.existsSync();
+                                })()
+                            ? const Icon(Icons.person_rounded)
+                            : null,
+                      ),
+                      title: Text(
+                        l10n.locale.languageCode == 'vi' ? 'Ảnh đại diện' : 'Avatar',
+                        style: _settingsRowTitleStyle(context),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                      ),
+                      onTap: () => _showAvatarActions(context, settings),
+                    ),
+                    _buildDivider(),
+                    ListTile(
+                      title: Text(
+                        l10n.locale.languageCode == 'vi' ? 'Tên hiển thị' : 'Display name',
+                        style: _settingsRowTitleStyle(context),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            settings.userName ?? 'Jason',
+                            style: SheepTextStyles.itemMeta(context),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.chevron_right_rounded, size: 20),
+                        ],
+                      ),
+                      onTap: () => _showEditNameSheet(context, settings),
+                    ),
+                    _buildDivider(),
+                    ListTile(
+                      title: Text(
+                        l10n.locale.languageCode == 'vi' ? 'Hiển thị số dư khả dụng' : 'Show available balance',
+                        style: _settingsRowTitleStyle(context),
+                      ),
+                      trailing: SheepSwitch(
+                        value: settings.showAvailableBalance,
+                        onChanged: (val) {
+                          settings.showAvailableBalance = val;
+                          settings.save();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
               SheepCard(
                 padding: EdgeInsets.zero,
                 child: Column(
@@ -1043,6 +1119,382 @@ class SettingsTab extends StatelessWidget {
             );
           }
         },
+      ),
+    );
+  }
+
+  Future<void> _showAvatarActions(
+    BuildContext context,
+    AppSettings settings,
+  ) async {
+    final avatarFile = AvatarImageStore.resolve(settings.avatarImageRef);
+    final hasAvatar = avatarFile != null && avatarFile.existsSync();
+    final action = await showModalBottomSheet<_AvatarAction>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7DDE1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _AvatarActionTile(
+                  icon: Icons.account_circle_rounded,
+                  label: 'Xem ảnh đại diện',
+                  enabled: hasAvatar,
+                  color: theme.primaryColor,
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _AvatarAction.preview),
+                ),
+                _AvatarActionTile(
+                  icon: Icons.photo_library_rounded,
+                  label: 'Đổi ảnh',
+                  color: theme.primaryColor,
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _AvatarAction.change),
+                ),
+                _AvatarActionTile(
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Xoá ảnh',
+                  enabled: hasAvatar,
+                  color: AppColors.expense,
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _AvatarAction.delete),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!context.mounted || action == null) return;
+
+    switch (action) {
+      case _AvatarAction.preview:
+        _previewAvatar(context, settings);
+        break;
+      case _AvatarAction.change:
+        await _changeAvatar(context, settings);
+        break;
+      case _AvatarAction.delete:
+        _confirmDeleteAvatar(context, settings);
+        break;
+    }
+  }
+
+  void _previewAvatar(BuildContext context, AppSettings settings) {
+    final avatarFile = AvatarImageStore.resolve(settings.avatarImageRef);
+    if (avatarFile == null || !avatarFile.existsSync()) return;
+
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black,
+      builder: (dialogContext) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 4,
+                    child: Image.file(avatarFile, fit: BoxFit.contain),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeAvatar(BuildContext context, AppSettings settings) async {
+    final themeColor = Theme.of(context).primaryColor;
+    final oldAvatarRef = settings.avatarImageRef;
+    String? newAvatarRef;
+
+    try {
+      final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (picked == null) return;
+
+      final cropped = await cropper.ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const cropper.CropAspectRatio(ratioX: 1, ratioY: 1),
+        maxWidth: 512,
+        maxHeight: 512,
+        compressFormat: cropper.ImageCompressFormat.jpg,
+        compressQuality: 80,
+        uiSettings: [
+          cropper.AndroidUiSettings(
+            toolbarTitle: 'Đổi ảnh đại diện',
+            toolbarColor: themeColor,
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: themeColor,
+            initAspectRatio: cropper.CropAspectRatioPreset.square,
+            aspectRatioPresets: const [cropper.CropAspectRatioPreset.square],
+            lockAspectRatio: true,
+          ),
+          cropper.IOSUiSettings(
+            title: 'Đổi ảnh đại diện',
+            doneButtonTitle: 'Lưu',
+            cancelButtonTitle: 'Huỷ',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            aspectRatioPickerButtonHidden: true,
+            aspectRatioPresets: const [cropper.CropAspectRatioPreset.square],
+          ),
+        ],
+      );
+      if (cropped == null) return;
+
+      newAvatarRef = await AvatarImageStore.saveFromSourcePath(cropped.path);
+      settings.avatarImageRef = newAvatarRef;
+      await settings.save();
+      await AvatarImageStore.deleteStoredRef(oldAvatarRef);
+      if (!context.mounted) return;
+      SheepNotifications.showSuccess(context, 'Đã cập nhật ảnh đại diện');
+    } catch (_) {
+      await AvatarImageStore.deleteStoredRef(newAvatarRef);
+      if (!context.mounted) return;
+      SheepNotifications.showError(context, 'Không thể cập nhật ảnh đại diện');
+    }
+  }
+
+  void _confirmDeleteAvatar(BuildContext context, AppSettings settings) {
+    showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => SheepConfirmDialog(
+        title: 'Xoá ảnh đại diện?',
+        content: 'Ảnh đại diện hiện tại sẽ bị xoá khỏi thiết bị.',
+        confirmLabel: 'Xoá ảnh',
+        confirmColor: AppColors.expense,
+        icon: Icons.delete_outline_rounded,
+        onConfirm: () => _deleteAvatar(context, settings),
+      ),
+    );
+  }
+
+  Future<void> _deleteAvatar(BuildContext context, AppSettings settings) async {
+    final oldAvatarRef = settings.avatarImageRef;
+    if (oldAvatarRef == null || oldAvatarRef.isEmpty) return;
+
+    try {
+      settings.avatarImageRef = null;
+      await settings.save();
+      await AvatarImageStore.deleteStoredRef(oldAvatarRef);
+      if (!context.mounted) return;
+      SheepNotifications.showSuccess(context, 'Đã xoá ảnh đại diện');
+    } catch (_) {
+      if (!context.mounted) return;
+      SheepNotifications.showError(context, 'Không thể xoá ảnh đại diện');
+    }
+  }
+
+  Future<void> _showEditNameSheet(BuildContext context, AppSettings settings) {
+    final controller = TextEditingController(text: settings.userName ?? 'Jason');
+    final l10n = L10n.of(context);
+    final brightness = Theme.of(context).brightness;
+    final primaryColor = Theme.of(context).primaryColor;
+
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return GestureDetector(
+          onTap: () => FocusScope.of(sheetContext).unfocus(),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.getSurface(brightness),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(SheepRadius.sheet),
+              ),
+            ),
+            padding: EdgeInsets.only(
+              top: SheepSpacing.xl,
+              left: SheepSpacing.page,
+              right: SheepSpacing.page,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + SheepSpacing.xl,
+            ),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          l10n.locale.languageCode == 'vi' ? 'Sửa tên hiển thị' : 'Edit display name',
+                          style: TextStyle(
+                            fontSize: SheepTypeScale.title,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.getTextPrimary(brightness),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(sheetContext),
+                          color: AppColors.getTextSecondary(brightness),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: controller,
+                      decoration: InputDecoration(
+                        hintText: l10n.locale.languageCode == 'vi' ? 'Nhập tên của bạn' : 'Enter your name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(SheepRadius.md),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(SheepRadius.md),
+                          borderSide: BorderSide(color: primaryColor, width: 2),
+                        ),
+                      ),
+                      autofocus: true,
+                      maxLength: 20,
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final newName = controller.text.trim();
+                          if (newName.isNotEmpty) {
+                            settings.userName = newName;
+                            if (settings.box == null) {
+                              await Hive.box<AppSettings>(kSettingsBox).put('current', settings);
+                            } else {
+                              await settings.save();
+                            }
+                            if (context.mounted) {
+                              SheepNotifications.showSuccess(
+                                context,
+                                l10n.locale.languageCode == 'vi'
+                                    ? 'Đã cập nhật tên hiển thị'
+                                    : 'Display name updated successfully',
+                              );
+                            }
+                          }
+                          if (sheetContext.mounted) {
+                            Navigator.pop(sheetContext);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(SheepRadius.lg),
+                          ),
+                        ),
+                        child: Text(
+                          l10n.locale.languageCode == 'vi' ? 'Lưu thay đổi' : 'Save changes',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: SheepTypeScale.bodyLarge,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+enum _AvatarAction { preview, change, delete }
+
+class _AvatarActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _AvatarActionTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foreground = enabled
+        ? color
+        : AppColors.getTextSecondary(theme.brightness).withValues(alpha: 0.38);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Opacity(
+          opacity: enabled ? 1.0 : 0.45,
+          child: Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                Icon(icon, color: foreground, size: 24),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: foreground,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

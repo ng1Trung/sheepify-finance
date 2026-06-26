@@ -33,6 +33,7 @@ class _CategoryFormState extends State<CategoryForm> {
   final _nameController = TextEditingController();
   final _budgetController = TextEditingController();
   final _goalAmountController = TextEditingController(); // NEW
+  final _initialAmountController = TextEditingController();
   final _catBox = Hive.box<CategoryModel>(kCatBox);
 
   late int _selectedTypeIndex; // 0: expense, 1: income, 2: savings
@@ -136,6 +137,9 @@ class _CategoryFormState extends State<CategoryForm> {
       _goalAmountController.text = cat.targetAmount != null
           ? CurrencyUtil.formatNumber(cat.targetAmount!)
           : '';
+      _initialAmountController.text = cat.initialAmount != null
+          ? CurrencyUtil.formatNumber(cat.initialAmount!)
+          : '';
       // Merge 2 (short-term) and 3 (long-term) into 2 (Goal)
       int gType = cat.goalTypeIndex ?? 1;
       _selectedGoalTypeIndex = (gType == 3) ? 2 : (gType == 0 ? 1 : gType);
@@ -159,6 +163,7 @@ class _CategoryFormState extends State<CategoryForm> {
       // Default for goals
       _selectedTargetMonth = DateTime.now().month;
       _selectedTargetYear = DateTime.now().year + 1;
+      _initialAmountController.text = '';
     }
   }
 
@@ -179,6 +184,12 @@ class _CategoryFormState extends State<CategoryForm> {
         ? parsedBudget
         : null;
     final enteredGoal = CurrencyParsing.parseAmount(_goalAmountController.text);
+    final parsedInitial = _initialAmountController.text.trim().isEmpty
+        ? null
+        : CurrencyParsing.parseAmount(_initialAmountController.text);
+    final enteredInitialAmount = parsedInitial != null && parsedInitial > 0
+        ? parsedInitial
+        : null;
     HapticFeedback.mediumImpact();
     _didSubmit = true;
 
@@ -192,6 +203,7 @@ class _CategoryFormState extends State<CategoryForm> {
       cat.typeIndex = _selectedTypeIndex;
       cat.budget = _selectedTypeIndex == 0 ? enteredBudget : null;
       cat.targetAmount = _selectedTypeIndex == 2 ? enteredGoal : null;
+      cat.initialAmount = _selectedTypeIndex == 2 ? enteredInitialAmount : null;
 
       if (_selectedTypeIndex == 2) {
         cat.goalTypeIndex = _selectedGoalTypeIndex;
@@ -235,6 +247,7 @@ class _CategoryFormState extends State<CategoryForm> {
         typeIndex: _selectedTypeIndex,
         budget: _selectedTypeIndex == 0 ? enteredBudget : null,
         targetAmount: _selectedTypeIndex == 2 ? enteredGoal : null,
+        initialAmount: _selectedTypeIndex == 2 ? enteredInitialAmount : null,
         goalTypeIndex: _selectedTypeIndex == 2 ? _selectedGoalTypeIndex : 0,
         reminderDay: (_selectedTypeIndex == 2 && _selectedGoalTypeIndex == 1)
             ? _selectedReminderDay
@@ -270,6 +283,7 @@ class _CategoryFormState extends State<CategoryForm> {
     _nameController.dispose();
     _budgetController.dispose();
     _goalAmountController.dispose();
+    _initialAmountController.dispose();
     super.dispose();
   }
 
@@ -349,6 +363,13 @@ class _CategoryFormState extends State<CategoryForm> {
                             ? l10n.get('goal_amount')
                             : l10n.get('target_amount'),
                         icon: Icons.flag_outlined,
+                        isNumber: true,
+                      ),
+                      const SizedBox(height: SheepSpacing.lg),
+                      _buildTextField(
+                        controller: _initialAmountController,
+                        hint: l10n.get('initial_savings'),
+                        icon: Icons.account_balance_wallet_outlined,
                         isNumber: true,
                       ),
                       const SizedBox(height: SheepSpacing.lg),

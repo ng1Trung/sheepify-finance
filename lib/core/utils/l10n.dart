@@ -103,6 +103,7 @@ class L10n {
       'change_image': 'Đổi ảnh',
       'delete_image': 'Xoá ảnh',
       'goal_amount': 'Số tiền tích luỹ',
+      'initial_savings': 'Tích luỹ ban đầu',
       'goal_type': 'HÌNH THỨC',
       'recurring_monthly': 'Định kỳ',
       'goal': 'Mục tiêu',
@@ -234,6 +235,9 @@ class L10n {
       'savings_completed_body': 'Bạn đã hoàn thành mục tiêu tích luỹ <b>{name}</b>',
       'daily_reminder_title': '🐑 Cuối ngày rồi, Sheepify chút không?',
       'daily_reminder_body': 'Dành 5 giây để ghi lại các khoản chi tiêu hôm nay để giữ thói quen kỷ luật nào!',
+      'balance_low_title': '⚠️ Số dư khả dụng sắp hết',
+      'balance_low_body':
+          'Số dư khả dụng của bạn chỉ còn <b>{percent}%</b> ({amount}) so với tổng thu nhập và số dư chu kỳ trước.',
     },
     'en': {
       'app_title': 'Sheepify',
@@ -328,6 +332,7 @@ class L10n {
       'change_image': 'Change image',
       'delete_image': 'Delete image',
       'goal_amount': 'Savings goal',
+      'initial_savings': 'Initial savings',
       'goal_type': 'GOAL TYPE',
       'recurring_monthly': 'Periodic',
       'goal': 'Goal',
@@ -459,6 +464,9 @@ class L10n {
       'savings_completed_body': 'You have completed the savings goal <b>{name}</b>',
       'daily_reminder_title': '🐑 End of day, let\'s Sheepify?',
       'daily_reminder_body': 'Take 5 seconds to log today\'s expenses to maintain a disciplined habit!',
+      'balance_low_title': '⚠️ Low Available Balance',
+      'balance_low_body':
+          'Your available balance is only <b>{percent}%</b> ({amount}) of your total income and rollover balance.',
     },
   };
 

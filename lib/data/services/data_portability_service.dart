@@ -204,6 +204,7 @@ class CategoryBackupDto {
   final int? targetYear;
   final int? targetMonth;
   final String? imagePath;
+  final double? initialAmount;
 
   const CategoryBackupDto({
     required this.id,
@@ -220,6 +221,7 @@ class CategoryBackupDto {
     this.targetYear,
     this.targetMonth,
     this.imagePath,
+    this.initialAmount,
   });
 
   factory CategoryBackupDto.fromModel(CategoryModel category) {
@@ -238,6 +240,7 @@ class CategoryBackupDto {
       targetYear: category.targetYear,
       targetMonth: category.targetMonth,
       imagePath: category.imagePath,
+      initialAmount: category.initialAmount,
     );
   }
 
@@ -257,6 +260,7 @@ class CategoryBackupDto {
       targetYear: _asInt(json['targetYear']),
       targetMonth: _asInt(json['targetMonth']),
       imagePath: _nullableString(json['imagePath']),
+      initialAmount: _asDouble(json['initialAmount']),
     );
   }
 
@@ -276,6 +280,7 @@ class CategoryBackupDto {
       targetYear: targetYear,
       targetMonth: targetMonth,
       imagePath: restoredImagePath ?? imagePath,
+      initialAmount: initialAmount,
     );
   }
 
@@ -295,6 +300,7 @@ class CategoryBackupDto {
       'targetYear': targetYear,
       'targetMonth': targetMonth,
       'imagePath': imagePath,
+      'initialAmount': initialAmount,
     };
   }
 }
@@ -311,6 +317,8 @@ class SettingsBackupDto {
   final String? avatarImageRef;
   final int financialCycleStartDay;
   final int weekStartDay;
+  final String? userName;
+  final bool showAvailableBalance;
 
   const SettingsBackupDto({
     required this.accumulateBalance,
@@ -324,6 +332,8 @@ class SettingsBackupDto {
     required this.avatarImageRef,
     required this.financialCycleStartDay,
     required this.weekStartDay,
+    required this.userName,
+    required this.showAvailableBalance,
   });
 
   factory SettingsBackupDto.fromModel(AppSettings? settings) {
@@ -340,6 +350,8 @@ class SettingsBackupDto {
       avatarImageRef: value.avatarImageRef,
       financialCycleStartDay: value.financialCycleStartDay,
       weekStartDay: value.weekStartDay,
+      userName: value.userName,
+      showAvailableBalance: value.showAvailableBalance,
     );
   }
 
@@ -356,6 +368,8 @@ class SettingsBackupDto {
       avatarImageRef: _nullableString(json['avatarImageRef']),
       financialCycleStartDay: _asInt(json['financialCycleStartDay']) ?? 1,
       weekStartDay: _asInt(json['weekStartDay']) ?? DateTime.monday,
+      userName: _nullableString(json['userName']),
+      showAvailableBalance: _asBool(json['showAvailableBalance']) ?? true,
     );
   }
 
@@ -372,6 +386,8 @@ class SettingsBackupDto {
       themeMode: themeMode,
       hideAmounts: hideAmounts,
       weekStartDay: weekStartDay,
+      userName: userName,
+      showAvailableBalance: showAvailableBalance,
     );
   }
 
@@ -387,6 +403,8 @@ class SettingsBackupDto {
     settings.avatarImageRef = restoredAvatarRef ?? avatarImageRef;
     settings.financialCycleStartDay = financialCycleStartDay;
     settings.weekStartDay = weekStartDay;
+    settings.userName = userName;
+    settings.showAvailableBalance = showAvailableBalance;
   }
 
   Map<String, dynamic> toJson() {
@@ -402,6 +420,8 @@ class SettingsBackupDto {
       'avatarImageRef': avatarImageRef,
       'financialCycleStartDay': financialCycleStartDay,
       'weekStartDay': weekStartDay,
+      'userName': userName,
+      'showAvailableBalance': showAvailableBalance,
     };
   }
 }
@@ -837,6 +857,7 @@ class DataExportService {
         'target_year',
         'target_month',
         'image_path',
+        'initial_amount',
       ],
       for (final category in payload.categories)
         [
@@ -854,6 +875,7 @@ class DataExportService {
           category.targetYear ?? '',
           category.targetMonth ?? '',
           category.imagePath ?? '',
+          category.initialAmount ?? '',
         ],
     ];
   }
@@ -874,6 +896,8 @@ class DataExportService {
         ['avatar_image_ref', settings.avatarImageRef ?? ''],
         ['financial_cycle_start_day', settings.financialCycleStartDay],
         ['week_start_day', settings.weekStartDay],
+        ['user_name', settings.userName ?? ''],
+        ['show_available_balance', settings.showAvailableBalance],
       ],
     ];
   }

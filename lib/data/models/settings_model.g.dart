@@ -24,19 +24,21 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       fontFamily: fields[4] as String,
       isDarkMode: fields[5] as bool,
       avatarImageRef: fields[8] as String?,
+      userName: fields[13] as String?,
       lastBackupAt: fields[11] as DateTime?,
-      enableNotifications: fields[12] as bool?,
     )
       .._hideAmounts = fields[6] as bool?
       .._themeMode = fields[7] as String?
       .._financialCycleStartDay = fields[9] as int?
-      .._weekStartDay = fields[10] as int?;
+      .._weekStartDay = fields[10] as int?
+      .._enableNotifications = fields[12] as bool?
+      .._showAvailableBalance = fields[14] as bool?;
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.accumulateBalance)
       ..writeByte(1)
@@ -62,7 +64,11 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(11)
       ..write(obj.lastBackupAt)
       ..writeByte(12)
-      ..write(obj.enableNotifications);
+      ..write(obj._enableNotifications)
+      ..writeByte(13)
+      ..write(obj.userName)
+      ..writeByte(14)
+      ..write(obj._showAvailableBalance);
   }
 
   @override

@@ -706,9 +706,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Widget _buildSideMenu(BuildContext context) {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
-    const username = 'Jason';
     final settings =
         Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final username = settings.userName ?? 'Jason';
     final headerBase = AppColors.getPalette(settings.themePresetName).primary;
     final headerShade = Color.lerp(
       headerBase,

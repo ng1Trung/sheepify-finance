@@ -6,6 +6,7 @@ import 'package:line_icons/line_icons.dart';
 import '../../core/constants/constants.dart';
 import '../../core/utils/category_icon_resolver.dart';
 import '../../core/utils/currency_util.dart';
+import '../../core/utils/financial_cycle_util.dart';
 import '../../core/utils/l10n.dart';
 import '../../core/utils/transaction_image_store.dart';
 import '../../data/models/transaction.dart';
@@ -401,6 +402,8 @@ class _DiaryTabState extends State<DiaryTab> {
               return Column(
                 children: [
                   buildViewModeSelector(),
+                  if (settings.showAvailableBalance)
+                    _buildRemainingBalanceCard(context, settings),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       SheepSpacing.page,
@@ -426,6 +429,8 @@ class _DiaryTabState extends State<DiaryTab> {
               return Column(
                 children: [
                   buildViewModeSelector(),
+                  if (settings.showAvailableBalance)
+                    _buildRemainingBalanceCard(context, settings),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
@@ -459,6 +464,8 @@ class _DiaryTabState extends State<DiaryTab> {
             return Column(
               children: [
                 buildViewModeSelector(),
+                if (settings.showAvailableBalance)
+                  _buildRemainingBalanceCard(context, settings),
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -1238,6 +1245,223 @@ class _DiaryTabState extends State<DiaryTab> {
           },
         );
       },
+    );
+  }
+
+  double _calculateRemainingBalance(AppSettings settings, List<Transaction> transactions) {
+    final catBox = Hive.box<CategoryModel>(kCatBox);
+    final categoriesById = {
+      for (final cat in catBox.values) cat.id: cat,
+    };
+
+    final now = DateTime.now();
+    final currentRange = FinancialCycleUtil.cycleRangeFor(
+      now,
+      settings.financialCycleStartDay,
+    );
+
+    double currentIncome = 0;
+    double currentExpense = 0;
+    double currentSavings = 0;
+    double previousBalance = 0;
+
+    for (final tx in transactions) {
+      final cat = categoriesById[tx.categoryId];
+      final effectiveType = cat?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
+
+      // Check if transaction is in current cycle
+      final inCurrentCycle = FinancialCycleUtil.isInRange(tx.date, currentRange);
+
+      if (inCurrentCycle) {
+        if (effectiveType == 1) {
+          currentIncome += tx.amount;
+        } else if (effectiveType == 0) {
+          currentExpense += tx.amount;
+        } else if (effectiveType == 2) {
+          currentSavings += tx.amount;
+        }
+      } else if (tx.date.isBefore(currentRange.start)) {
+        // Transaction is in previous cycle
+        if (settings.accumulateBalance) {
+          if (effectiveType == 1) {
+            previousBalance += tx.amount;
+          } else if (effectiveType == 0) {
+            previousBalance -= tx.amount;
+          } else if (effectiveType == 2) {
+            previousBalance -= tx.amount;
+          }
+        }
+      }
+    }
+
+    if (settings.accumulateBalance) {
+      double totalInitialSavings = 0;
+      for (final cat in catBox.values) {
+        if (cat.effectiveTypeIndex == 2) {
+          totalInitialSavings += cat.initialAmount ?? 0;
+        }
+      }
+      previousBalance -= totalInitialSavings;
+    }
+
+    return currentIncome + previousBalance - currentExpense - currentSavings;
+  }
+
+  bool _isBalanceLow(AppSettings settings, List<Transaction> transactions) {
+    final catBox = Hive.box<CategoryModel>(kCatBox);
+    final categoriesById = {
+      for (final cat in catBox.values) cat.id: cat,
+    };
+
+    final now = DateTime.now();
+    final currentRange = FinancialCycleUtil.cycleRangeFor(
+      now,
+      settings.financialCycleStartDay,
+    );
+
+    double currentIncome = 0;
+    double currentExpense = 0;
+    double currentSavings = 0;
+    double previousBalance = 0;
+
+    for (final tx in transactions) {
+      final cat = categoriesById[tx.categoryId];
+      final effectiveType = cat?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
+
+      // Check if transaction is in current cycle
+      final inCurrentCycle = FinancialCycleUtil.isInRange(tx.date, currentRange);
+
+      if (inCurrentCycle) {
+        if (effectiveType == 1) {
+          currentIncome += tx.amount;
+        } else if (effectiveType == 0) {
+          currentExpense += tx.amount;
+        } else if (effectiveType == 2) {
+          currentSavings += tx.amount;
+        }
+      } else if (tx.date.isBefore(currentRange.start)) {
+        // Transaction is in previous cycle
+        if (settings.accumulateBalance) {
+          if (effectiveType == 1) {
+            previousBalance += tx.amount;
+          } else if (effectiveType == 0) {
+            previousBalance -= tx.amount;
+          } else if (effectiveType == 2) {
+            previousBalance -= tx.amount;
+          }
+        }
+      }
+    }
+
+    if (settings.accumulateBalance) {
+      double totalInitialSavings = 0;
+      for (final cat in catBox.values) {
+        if (cat.effectiveTypeIndex == 2) {
+          totalInitialSavings += cat.initialAmount ?? 0;
+        }
+      }
+      previousBalance -= totalInitialSavings;
+    }
+
+    final balance = currentIncome + previousBalance - currentExpense - currentSavings;
+    final totalIncomePool = currentIncome + previousBalance;
+
+    if (totalIncomePool <= 0) {
+      return balance <= 0;
+    }
+
+    return balance <= 0.1 * totalIncomePool;
+  }
+
+  Widget _buildRemainingBalanceCard(BuildContext context, AppSettings settings) {
+    final transactions = Hive.box<Transaction>(kMoneyBox).values.toList();
+    final balance = _calculateRemainingBalance(settings, transactions);
+    final theme = Theme.of(context);
+    final isLow = _isBalanceLow(settings, transactions);
+
+    final title = settings.languageCode == 'vi' ? 'Số dư khả dụng' : 'Available Balance';
+    final amountText = CurrencyUtil.formatDisplayAmount(
+      balance,
+      settings.currencyCode,
+      isHidden: settings.hideAmounts,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(SheepSpacing.page, 0, SheepSpacing.page, 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isLow
+              ? AppColors.expense.withValues(alpha: 0.1)
+              : theme.primaryColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(SheepRadius.xl),
+          border: Border.all(
+            color: isLow
+                ? AppColors.expense.withValues(alpha: 0.3)
+                : theme.primaryColor.withValues(alpha: 0.15),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isLow
+                    ? AppColors.expense.withValues(alpha: 0.15)
+                    : theme.primaryColor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isLow ? Icons.warning_amber_rounded : Icons.account_balance_wallet_rounded,
+                color: isLow ? AppColors.expense : theme.primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.getTextSecondary(theme.brightness),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    amountText,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: isLow ? AppColors.expense : AppColors.getTextPrimary(theme.brightness),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isLow)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.expense,
+                  borderRadius: BorderRadius.circular(SheepRadius.sm),
+                ),
+                child: Text(
+                  settings.languageCode == 'vi' ? 'Sắp hết' : 'Running Low',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
