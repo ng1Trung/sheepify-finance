@@ -49,6 +49,9 @@ class AppSettings extends HiveObject {
   @HiveField(14)
   bool? _showAvailableBalance;
 
+  @HiveField(15)
+  DateTime? accumulateStartDate;
+
   bool get hideAmounts => _hideAmounts ?? false;
 
   set hideAmounts(bool value) => _hideAmounts = value;
@@ -89,6 +92,7 @@ class AppSettings extends HiveObject {
     this.lastBackupAt,
     bool? enableNotifications,
     bool? showAvailableBalance,
+    this.accumulateStartDate,
   }) : _themeMode = themeMode,
        _hideAmounts = hideAmounts,
        _weekStartDay = weekStartDay,

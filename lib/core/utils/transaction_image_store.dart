@@ -88,4 +88,11 @@ class TransactionImageStore {
         ? '${DateTime.now().microsecondsSinceEpoch}.jpg'
         : safeName;
   }
+
+  static Future<void> deleteAll() async {
+    await initialize();
+    if (await _imageDirectory.exists()) {
+      await _imageDirectory.delete(recursive: true);
+    }
+  }
 }

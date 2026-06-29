@@ -631,9 +631,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       ),
       body: buildBody(),
       floatingActionButton: _currentIndex == 0 || _currentIndex == 1
-          ? FloatingActionButton(
-              onPressed: _showAddTransactionForm,
-              child: const Icon(Icons.add_rounded, size: 28),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 24.0, right: 8.0),
+              child: FloatingActionButton(
+                onPressed: _showAddTransactionForm,
+                child: const Icon(Icons.add_rounded, size: 28),
+              ),
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -969,18 +972,22 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     required String label,
   }) {
     final isSelected = _currentIndex == index;
+    final settings = Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final palette = AppColors.getPalette(settings.themePresetName);
+    final accentColor = palette.primary;
+
     final foreground = isSelected
-        ? const Color(0xFFFF7FA2)
+        ? accentColor
         : const Color(0xFF5F555A);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
-        color: isSelected ? const Color(0x1FFF7FA2) : Colors.transparent,
+        color: isSelected ? accentColor.withValues(alpha: 0.12) : Colors.transparent,
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          overlayColor: WidgetStateProperty.all(const Color(0x14FF7FA2)),
+          overlayColor: WidgetStateProperty.all(accentColor.withValues(alpha: 0.08)),
           onTap: () {
             _selectTab(index);
             Navigator.of(context).pop();
@@ -1437,9 +1444,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         continue;
       }
 
+      final initial = category.initialAmount ?? 0.0;
       final saved = transactions
           .where((tx) => tx.categoryId == category.id)
-          .fold(0.0, (sum, tx) => sum + tx.amount);
+          .fold(0.0, (sum, tx) => sum + tx.amount) + initial;
       final progress = saved / target;
       if (progress <= bestProgress) continue;
 

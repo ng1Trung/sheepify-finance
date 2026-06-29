@@ -33,18 +33,50 @@ class NotificationService {
   static const int reminderNotificationId = 999;
   static const int weeklyStatsNotificationId = 998;
 
-  // Initialize the notification service
-  static Future<void> initialize() async {
-    // 1. Initialize Timezones
+  // Configure the local timezone with robust fallback
+  static Future<void> _configureLocalTimeZone() async {
     tz.initializeTimeZones();
     try {
       final String currentTimeZone = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(currentTimeZone));
     } catch (_) {
       try {
-        tz.setLocalLocation(tz.getLocation('Asia/Ho_Chi_Minh'));
-      } catch (_) {}
+        final offset = DateTime.now().timeZoneOffset;
+        final hours = offset.inHours;
+        if (hours == 0) {
+          tz.setLocalLocation(tz.UTC);
+        } else {
+          final sign = hours > 0 ? '-' : '+';
+          final fallbackZone = 'Etc/GMT$sign${hours.abs()}';
+          tz.setLocalLocation(tz.getLocation(fallbackZone));
+        }
+      } catch (_) {
+        tz.setLocalLocation(tz.UTC);
+      }
     }
+  }
+
+  // Get next instance of a specific time in the timezone-aware calendar
+  static tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+    if (scheduledDate.isBefore(now) || scheduledDate.isAtSameMomentAs(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
+  }
+
+  // Initialize the notification service
+  static Future<void> initialize() async {
+    // 1. Initialize Timezones
+    await _configureLocalTimeZone();
 
     // 2. Initialize Flutter Local Notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -481,14 +513,16 @@ class NotificationService {
       return;
     }
 
-    final now = DateTime.now();
+    final scheduledTime = _nextInstanceOfTime(21, 0);
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    final isTomorrow = scheduledTime.day != now.day;
 
-    // We always schedule for 21:00.
-    // If it's already past 21:00 today, schedule for tomorrow 21:00 (since we don't know tomorrow's transactions yet, we pass hasTransactions: false).
-    if (now.hour >= 21) {
-      await _scheduleDailyNotification(tomorrow: true, hasTransactions: false);
+    if (isTomorrow) {
+      await _scheduleDailyNotification(
+        scheduledTime: scheduledTime,
+        hasTransactions: false,
+      );
     } else {
-      // It's before 21:00. Schedule for today 21:00.
       final txBox = Hive.box<Transaction>(kMoneyBox);
       final todayTransactions = txBox.values
           .where(
@@ -500,7 +534,7 @@ class NotificationService {
           .toList();
 
       await _scheduleDailyNotification(
-        tomorrow: false,
+        scheduledTime: scheduledTime,
         hasTransactions: todayTransactions.isNotEmpty,
         transactionsCount: todayTransactions.length,
         todayTransactions: todayTransactions,
@@ -513,22 +547,13 @@ class NotificationService {
 
   // Schedule/reschedule the daily notification at 21:00
   static Future<void> _scheduleDailyNotification({
-    required bool tomorrow,
+    required tz.TZDateTime scheduledTime,
     required bool hasTransactions,
     int transactionsCount = 0,
     List<Transaction> todayTransactions = const [],
   }) async {
     // Cancel existing reminder first
     await _localNotificationsPlugin.cancel(reminderNotificationId);
-
-    // Get 21:00 target time
-    final now = DateTime.now();
-    DateTime target = DateTime(now.year, now.month, now.day, 21, 0, 0);
-    if (tomorrow) {
-      target = target.add(const Duration(days: 1));
-    }
-
-    final scheduledTime = tz.TZDateTime.from(target, tz.local);
 
     // Android details
     const AndroidNotificationDetails androidDetails =
@@ -625,7 +650,7 @@ class NotificationService {
       hour,
       minute,
     );
-    if (scheduledDate.isBefore(now)) {
+    if (scheduledDate.isBefore(now) || scheduledDate.isAtSameMomentAs(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
     while (scheduledDate.weekday != weekday) {

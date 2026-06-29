@@ -400,17 +400,20 @@ class TransactionHistorySheet extends StatelessWidget {
     final allCategoryTransactions = Hive.box<Transaction>(
       kMoneyBox,
     ).values.where((tx) => tx.categoryId == category.id);
+    final initial = category.initialAmount ?? 0.0;
+
     final totalInCycle = allCategoryTransactions
         .where((tx) => FinancialCycleUtil.isInRange(tx.date, cycleRange))
         .fold(0.0, (sum, tx) => sum + tx.amount);
+    final totalInCycleWithInitial = totalInCycle + initial;
 
     final goalType = category.effectiveGoalTypeIndex;
     if (goalType == 1) {
       // --- LOẠI: ĐỊNH KỲ HÀNG THÁNG ---
       final target = category.targetAmount ?? 0;
-      final remaining = target - totalInCycle;
+      final remaining = target - totalInCycleWithInitial;
       final progress = target > 0
-          ? (totalInCycle / target).clamp(0.0, 1.0)
+          ? (totalInCycleWithInitial / target).clamp(0.0, 1.0)
           : 0.0;
 
       final reminderDate = FinancialCycleUtil.cycleDateInRange(
@@ -452,16 +455,17 @@ class TransactionHistorySheet extends StatelessWidget {
         progress: progress,
         info: infoText,
         footerLeft:
-            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatDisplayAmount(totalInCycle, settings.currencyCode, isHidden: settings.hideAmounts)}',
+            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatDisplayAmount(totalInCycleWithInitial, settings.currencyCode, isHidden: settings.hideAmounts)}',
         footerRight:
             '${l10n.get('monthly_goal_label')}: ${CurrencyUtil.formatDisplayAmount(target, settings.currencyCode, isHidden: settings.hideAmounts)}',
       );
     } else if (goalType == 2 || goalType == 3) {
       // --- LOẠI: MỤC TIÊU DÀI HẠN / NGẮN HẠN ---
       final target = category.targetAmount ?? 0;
-      final remaining = target - totalAllTime;
+      final totalAllTimeWithInitial = totalAllTime + initial;
+      final remaining = target - totalAllTimeWithInitial;
       final progress = target > 0
-          ? (totalAllTime / target).clamp(0.0, 1.0)
+          ? (totalAllTimeWithInitial / target).clamp(0.0, 1.0)
           : 0.0;
 
       final targetDate =
@@ -490,7 +494,7 @@ class TransactionHistorySheet extends StatelessWidget {
         progress: progress,
         info: infoText,
         footerLeft:
-            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatDisplayAmount(totalAllTime, settings.currencyCode, isHidden: settings.hideAmounts)}',
+            '${l10n.get('total_savings_label')}: ${CurrencyUtil.formatDisplayAmount(totalAllTimeWithInitial, settings.currencyCode, isHidden: settings.hideAmounts)}',
         footerRight:
             '${l10n.get('target_amount')}: ${CurrencyUtil.formatDisplayAmount(target, settings.currencyCode, isHidden: settings.hideAmounts)}',
       );

@@ -401,18 +401,18 @@ class _DiaryTabState extends State<DiaryTab> {
             if (effectiveViewMode == 3) {
               return Column(
                 children: [
-                  buildViewModeSelector(),
                   if (settings.showAvailableBalance)
                     _buildRemainingBalanceCard(context, settings),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
+                    padding: EdgeInsets.fromLTRB(
+                      SheepSpacing.page,
+                      settings.showAvailableBalance ? 0 : 12,
                       SheepSpacing.page,
                       0,
-                      SheepSpacing.page,
-                      12,
                     ),
                     child: buildContentHeader(timelineTxs.length),
                   ),
+                  buildViewModeSelector(),
                   Expanded(
                     child: _buildTimelineCalendar(
                       context,
@@ -428,31 +428,32 @@ class _DiaryTabState extends State<DiaryTab> {
             if (displayTxs.isEmpty) {
               return Column(
                 children: [
-                  buildViewModeSelector(),
                   if (settings.showAvailableBalance)
                     _buildRemainingBalanceCard(context, settings),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      SheepSpacing.page,
+                      settings.showAvailableBalance ? 0 : 12,
+                      SheepSpacing.page,
+                      0,
+                    ),
+                    child: buildContentHeader(displayTxs.length),
+                  ),
+                  buildViewModeSelector(),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
                         SheepSpacing.page,
-                        12,
+                        0,
                         SheepSpacing.page,
                         24,
                       ),
                       child: SheepCard(
                         padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            buildContentHeader(displayTxs.length),
-                            Expanded(
-                              child: SheepEmptyState(
-                                message: isSingleDay
-                                    ? l10n.get('no_tx_today')
-                                    : l10n.get('no_tx_range'),
-                              ),
-                            ),
-                          ],
+                        child: SheepEmptyState(
+                          message: isSingleDay
+                              ? l10n.get('no_tx_today')
+                              : l10n.get('no_tx_range'),
                         ),
                       ),
                     ),
@@ -463,9 +464,18 @@ class _DiaryTabState extends State<DiaryTab> {
 
             return Column(
               children: [
-                buildViewModeSelector(),
                 if (settings.showAvailableBalance)
                   _buildRemainingBalanceCard(context, settings),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    SheepSpacing.page,
+                    settings.showAvailableBalance ? 0 : 12,
+                    SheepSpacing.page,
+                    0,
+                  ),
+                  child: buildContentHeader(displayTxs.length),
+                ),
+                buildViewModeSelector(),
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -473,7 +483,7 @@ class _DiaryTabState extends State<DiaryTab> {
                       children: [
                         Builder(
                           builder: (context) {
-                            const topGap = 12.0;
+                            const topGap = 0.0;
                             const bottomGap = 24.0;
 
                             return Padding(
@@ -491,8 +501,6 @@ class _DiaryTabState extends State<DiaryTab> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    buildContentHeader(displayTxs.length),
-                                    const SizedBox(height: 8),
                                     for (
                                       var dayIdx = 0;
                                       dayIdx < sortedDayKeys.length;
@@ -1248,15 +1256,19 @@ class _DiaryTabState extends State<DiaryTab> {
     );
   }
 
-  double _calculateRemainingBalance(AppSettings settings, List<Transaction> transactions) {
+
+
+  Widget _buildRemainingBalanceCard(BuildContext context, AppSettings settings) {
+    final transactions = Hive.box<Transaction>(kMoneyBox).values.toList();
+    final theme = Theme.of(context);
+
     final catBox = Hive.box<CategoryModel>(kCatBox);
     final categoriesById = {
       for (final cat in catBox.values) cat.id: cat,
     };
 
-    final now = DateTime.now();
     final currentRange = FinancialCycleUtil.cycleRangeFor(
-      now,
+      widget.selectedRange.start,
       settings.financialCycleStartDay,
     );
 
@@ -1268,8 +1280,6 @@ class _DiaryTabState extends State<DiaryTab> {
     for (final tx in transactions) {
       final cat = categoriesById[tx.categoryId];
       final effectiveType = cat?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
-
-      // Check if transaction is in current cycle
       final inCurrentCycle = FinancialCycleUtil.isInRange(tx.date, currentRange);
 
       if (inCurrentCycle) {
@@ -1281,8 +1291,8 @@ class _DiaryTabState extends State<DiaryTab> {
           currentSavings += tx.amount;
         }
       } else if (tx.date.isBefore(currentRange.start)) {
-        // Transaction is in previous cycle
-        if (settings.accumulateBalance) {
+        final start = settings.accumulateStartDate;
+        if (settings.accumulateBalance && (start == null || !tx.date.isBefore(start))) {
           if (effectiveType == 1) {
             previousBalance += tx.amount;
           } else if (effectiveType == 0) {
@@ -1294,66 +1304,7 @@ class _DiaryTabState extends State<DiaryTab> {
       }
     }
 
-    if (settings.accumulateBalance) {
-      double totalInitialSavings = 0;
-      for (final cat in catBox.values) {
-        if (cat.effectiveTypeIndex == 2) {
-          totalInitialSavings += cat.initialAmount ?? 0;
-        }
-      }
-      previousBalance -= totalInitialSavings;
-    }
-
-    return currentIncome + previousBalance - currentExpense - currentSavings;
-  }
-
-  bool _isBalanceLow(AppSettings settings, List<Transaction> transactions) {
-    final catBox = Hive.box<CategoryModel>(kCatBox);
-    final categoriesById = {
-      for (final cat in catBox.values) cat.id: cat,
-    };
-
-    final now = DateTime.now();
-    final currentRange = FinancialCycleUtil.cycleRangeFor(
-      now,
-      settings.financialCycleStartDay,
-    );
-
-    double currentIncome = 0;
-    double currentExpense = 0;
-    double currentSavings = 0;
-    double previousBalance = 0;
-
-    for (final tx in transactions) {
-      final cat = categoriesById[tx.categoryId];
-      final effectiveType = cat?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
-
-      // Check if transaction is in current cycle
-      final inCurrentCycle = FinancialCycleUtil.isInRange(tx.date, currentRange);
-
-      if (inCurrentCycle) {
-        if (effectiveType == 1) {
-          currentIncome += tx.amount;
-        } else if (effectiveType == 0) {
-          currentExpense += tx.amount;
-        } else if (effectiveType == 2) {
-          currentSavings += tx.amount;
-        }
-      } else if (tx.date.isBefore(currentRange.start)) {
-        // Transaction is in previous cycle
-        if (settings.accumulateBalance) {
-          if (effectiveType == 1) {
-            previousBalance += tx.amount;
-          } else if (effectiveType == 0) {
-            previousBalance -= tx.amount;
-          } else if (effectiveType == 2) {
-            previousBalance -= tx.amount;
-          }
-        }
-      }
-    }
-
-    if (settings.accumulateBalance) {
+    if (settings.accumulateBalance && settings.accumulateStartDate == null) {
       double totalInitialSavings = 0;
       for (final cat in catBox.values) {
         if (cat.effectiveTypeIndex == 2) {
@@ -1364,20 +1315,6 @@ class _DiaryTabState extends State<DiaryTab> {
     }
 
     final balance = currentIncome + previousBalance - currentExpense - currentSavings;
-    final totalIncomePool = currentIncome + previousBalance;
-
-    if (totalIncomePool <= 0) {
-      return balance <= 0;
-    }
-
-    return balance <= 0.1 * totalIncomePool;
-  }
-
-  Widget _buildRemainingBalanceCard(BuildContext context, AppSettings settings) {
-    final transactions = Hive.box<Transaction>(kMoneyBox).values.toList();
-    final balance = _calculateRemainingBalance(settings, transactions);
-    final theme = Theme.of(context);
-    final isLow = _isBalanceLow(settings, transactions);
 
     final title = settings.languageCode == 'vi' ? 'Số dư khả dụng' : 'Available Balance';
     final amountText = CurrencyUtil.formatDisplayAmount(
@@ -1386,79 +1323,152 @@ class _DiaryTabState extends State<DiaryTab> {
       isHidden: settings.hideAmounts,
     );
 
+    final expenseText = CurrencyUtil.formatDisplayAmount(
+      currentExpense,
+      settings.currencyCode,
+      isHidden: settings.hideAmounts,
+    );
+    final incomeText = CurrencyUtil.formatDisplayAmount(
+      currentIncome,
+      settings.currencyCode,
+      isHidden: settings.hideAmounts,
+    );
+    final savingsText = CurrencyUtil.formatDisplayAmount(
+      currentSavings,
+      settings.currencyCode,
+      isHidden: settings.hideAmounts,
+    );
+
+    final expenseLabel = settings.languageCode == 'vi' ? 'Chi' : 'Expense';
+    final incomeLabel = settings.languageCode == 'vi' ? 'Thu' : 'Income';
+    final savingsLabel = settings.languageCode == 'vi' ? 'Tích lũy' : 'Savings';
+
+    final balanceColor = balance >= 0 ? AppColors.income : AppColors.expense;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(SheepSpacing.page, 0, SheepSpacing.page, 12),
+      padding: const EdgeInsets.fromLTRB(SheepSpacing.page, 12, SheepSpacing.page, 12),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isLow
-              ? AppColors.expense.withValues(alpha: 0.1)
-              : theme.primaryColor.withValues(alpha: 0.08),
+          color: theme.brightness == Brightness.dark ? theme.cardColor : Colors.white,
           borderRadius: BorderRadius.circular(SheepRadius.xl),
           border: Border.all(
-            color: isLow
-                ? AppColors.expense.withValues(alpha: 0.3)
-                : theme.primaryColor.withValues(alpha: 0.15),
+            color: (theme.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black)
+                .withValues(alpha: 0.08),
             width: 1.5,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isLow
-                    ? AppColors.expense.withValues(alpha: 0.15)
-                    : theme.primaryColor.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isLow ? Icons.warning_amber_rounded : Icons.account_balance_wallet_rounded,
-                color: isLow ? AppColors.expense : theme.primaryColor,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.getTextSecondary(theme.brightness),
-                    ),
+            // Row 1: Available Balance centered
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$title: ',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.getTextSecondary(theme.brightness),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    amountText,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: isLow ? AppColors.expense : AppColors.getTextPrimary(theme.brightness),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isLow)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.expense,
-                  borderRadius: BorderRadius.circular(SheepRadius.sm),
                 ),
-                child: Text(
-                  settings.languageCode == 'vi' ? 'Sắp hết' : 'Running Low',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
+                Text(
+                  amountText,
+                  style: TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: balanceColor,
                   ),
                 ),
+              ],
+            ),
+            if (settings.accumulateBalance && previousBalance != 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                '(${settings.languageCode == 'vi' ? 'Số dư chu kỳ trước' : 'Previous balance'}: ${previousBalance >= 0 ? '+' : ''}${CurrencyUtil.formatDisplayAmount(previousBalance, settings.currencyCode, isHidden: settings.hideAmounts)})',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.getTextSecondary(theme.brightness),
+                  fontStyle: FontStyle.italic,
+                ),
               ),
+            ],
+            const SizedBox(height: 10),
+            // Row 2: Expense (-), Income (+), and Savings with vertical dividers
+            Row(
+              children: [
+                // Column 1: Chi: -expense
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '$expenseLabel: -$expenseText',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.expense,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                // Divider 1
+                Container(
+                  height: 16,
+                  width: 1,
+                  color: (theme.brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black)
+                      .withValues(alpha: 0.12),
+                ),
+                // Column 2: Thu: +income
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '$incomeLabel: +$incomeText',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.income,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                // Divider 2
+                Container(
+                  height: 16,
+                  width: 1,
+                  color: (theme.brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black)
+                      .withValues(alpha: 0.12),
+                ),
+                // Column 3: Tích lũy: savings
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '$savingsLabel: $savingsText',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.savings,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

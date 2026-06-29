@@ -274,18 +274,7 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              
-              Text(
-                'Thêm giao dịch mới',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: SheepTypeScale.headline,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.getTextPrimary(theme.brightness),
-                ),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               // ==========================================
               // VÙNG 1: PHƯƠNG THỨC THÔNG MINH (ƯU TIÊN)
@@ -308,7 +297,7 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
                     child: _buildSmartCard(
                       title: 'Nhập bằng Giọng nói',
                       icon: Icons.mic_rounded,
-                      color: const Color(0xFFFF7FA2),
+                      color: accentColor,
                       description: 'Nói để AI ghi nhận',
                       onTap: _openVoiceInput,
                     ),
