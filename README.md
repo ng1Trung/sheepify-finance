@@ -58,6 +58,12 @@
 - **Environment Variables**: AI integration is securely implemented using environment variables (`--dart-define-from-file=.env`), ensuring API keys are never hardcoded in the source repository.
 - **No Account Required**: Start tracking immediately. No email, no password, no tracking pixels.
 
+### 10. Available Balance & Resets
+- **Available Balance Formula**: Calculated as `income + previous balance - expense - savings` scoped within the active financial cycle.
+- **Carryover Balance Helper**: Displays a clean, italicized carrying-over text under the available balance card to clarify carried-over funds.
+- **Carryover Balance Hard Reset**: A dedicated settings option to reset the carry-over balance of previous months/cycles to 0 without deleting any of your historical transactions.
+- **Complete App Data Reset**: An all-inclusive setting to erase all databases (transactions, categories, settings, notifications, streaks) and local image storage folders, instantly re-seeding default categories to ensure the app remains fully functional without a restart.
+
 ---
 
 ## Tech Stack

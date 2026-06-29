@@ -15,7 +15,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart' as cropper;
 import '../../core/utils/avatar_image_store.dart';
 import '../../core/utils/category_image_store.dart';
+import '../../core/utils/transaction_image_store.dart';
 import '../../core/utils/l10n.dart';
+import '../../core/utils/financial_cycle_util.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/transaction.dart';
 import '../../data/services/data_portability_service.dart';
@@ -234,17 +236,23 @@ class SettingsTab extends StatelessWidget {
                       onTap: () => _showExportFormatSheet(context),
                     ),
                     _buildDivider(),
+                    _buildSettingsActionRow(
+                      context,
+                      title: settings.languageCode == 'vi'
+                          ? 'Đặt lại số dư chu kỳ trước'
+                          : 'Reset previous cycle balance',
+                      subtitle: settings.languageCode == 'vi'
+                          ? 'Đưa số dư khả dụng lũy kế trước chu kỳ này về 0đ'
+                          : 'Reset carryover balance from previous cycles to 0',
+                      onTap: () => _confirmResetPreviousBalance(context, settings),
+                    ),
+                    _buildDivider(),
                     ListTile(
                       title: Text(
                         l10n.get('delete_all_data'),
                         style: _settingsRowTitleStyle(
                           context,
                         ).copyWith(color: AppColors.expense),
-                      ),
-                      trailing: const Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: AppColors.expense,
                       ),
                       onTap: () => _confirmDeleteAllData(context),
                     ),
@@ -1109,13 +1117,125 @@ class SettingsTab extends StatelessWidget {
         confirmColor: AppColors.expense,
         icon: Icons.delete_forever_rounded,
         onConfirm: () async {
+          // Clear all boxes
           await Hive.box<Transaction>(kMoneyBox).clear();
           await Hive.box<CategoryModel>(kCatBox).clear();
-          await CategoryImageStore.deleteAll();
+          await Hive.box<AppSettings>(kSettingsBox).clear();
+          await Hive.box(kStreakBox).clear();
+          await Hive.box('notifications').clear();
+
+          // Reset to default AppSettings
+          await Hive.box<AppSettings>(kSettingsBox).put(
+            'current',
+            AppSettings(hideAmounts: false, enableNotifications: true),
+          );
+
+          // Re-seed default categories so the app can continue working immediately
+          final defaultCategories = [
+            CategoryModel(
+              id: 'cat_bill',
+              name: 'Hoá đơn',
+              iconCode: Icons.receipt.codePoint,
+              isExpense: true,
+              typeIndex: 0,
+              colorValue: AppColors.expense.toARGB32(),
+            ),
+            CategoryModel(
+              id: 'cat_eat',
+              name: 'Ăn uống',
+              iconCode: Icons.restaurant.codePoint,
+              isExpense: true,
+              typeIndex: 0,
+              colorValue: AppColors.expense.toARGB32(),
+            ),
+            CategoryModel(
+              id: 'cat_shop',
+              name: 'Mua sắm',
+              iconCode: Icons.shopping_cart.codePoint,
+              isExpense: true,
+              typeIndex: 0,
+              colorValue: AppColors.expense.toARGB32(),
+            ),
+            CategoryModel(
+              id: 'cat_salary',
+              name: 'Lương',
+              iconCode: Icons.attach_money.codePoint,
+              isExpense: false,
+              typeIndex: 1,
+              colorValue: AppColors.income.toARGB32(),
+            ),
+            CategoryModel(
+              id: 'cat_bonus',
+              name: 'Thưởng',
+              iconCode: Icons.card_giftcard.codePoint,
+              isExpense: false,
+              typeIndex: 1,
+              colorValue: AppColors.income.toARGB32(),
+            ),
+            CategoryModel(
+              id: 'cat_savings',
+              name: 'Tiết kiệm',
+              iconCode: Icons.savings.codePoint,
+              isExpense: false,
+              typeIndex: 2,
+              colorValue: AppColors.savings.toARGB32(),
+            ),
+          ];
+          await Hive.box<CategoryModel>(kCatBox).addAll(defaultCategories);
+
+          // Clear all image folders
+          try {
+            await CategoryImageStore.deleteAll();
+          } catch (_) {}
+          try {
+            await AvatarImageStore.deleteAll();
+          } catch (_) {}
+          try {
+            await TransactionImageStore.deleteAll();
+          } catch (_) {}
+
           if (context.mounted) {
             SheepNotifications.showSuccess(
               context,
               L10n.of(context).get('all_data_deleted'),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _confirmResetPreviousBalance(
+    BuildContext context,
+    AppSettings settings,
+  ) async {
+    final isVi = settings.languageCode == 'vi';
+
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => SheepConfirmDialog(
+        title: isVi ? 'Đặt lại số dư chu kỳ trước?' : 'Reset previous balance?',
+        content: isVi
+            ? 'Hành động này sẽ đặt lại số dư tích lũy từ các tháng/chu kỳ trước về 0đ mà không xóa bất kỳ giao dịch nào của bạn.'
+            : 'This will reset the accumulated balance from previous months/cycles to 0 without deleting any of your transactions.',
+        confirmLabel: isVi ? 'Đặt lại' : 'Reset',
+        confirmColor: AppColors.savings,
+        icon: Icons.refresh_rounded,
+        onConfirm: () async {
+          final now = DateTime.now();
+          final cycleRange = FinancialCycleUtil.cycleRangeFor(
+            now,
+            settings.financialCycleStartDay,
+          );
+          settings.accumulateStartDate = cycleRange.start;
+          await settings.save();
+
+          if (context.mounted) {
+            SheepNotifications.showSuccess(
+              context,
+              isVi
+                  ? 'Đã đặt lại số dư chu kỳ trước về 0đ.'
+                  : 'Previous balance reset to 0.',
             );
           }
         },

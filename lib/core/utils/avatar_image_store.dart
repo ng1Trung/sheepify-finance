@@ -100,4 +100,14 @@ class AvatarImageStore {
         ? '${DateTime.now().microsecondsSinceEpoch}.jpg'
         : safeName;
   }
+
+  static Future<void> deleteAll() async {
+    await initialize();
+    final directory = _imageDirectory;
+    if (directory != null && await directory.exists()) {
+      await directory.delete(recursive: true);
+    }
+    _imageDirectory = null;
+    _initializeFuture = null;
+  }
 }

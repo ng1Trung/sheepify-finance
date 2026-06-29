@@ -36,6 +36,9 @@ class _CategoryFormState extends State<CategoryForm> {
   final _initialAmountController = TextEditingController();
   final _catBox = Hive.box<CategoryModel>(kCatBox);
 
+  bool _isEditingName = false;
+  late FocusNode _nameFocusNode;
+
   late int _selectedTypeIndex; // 0: expense, 1: income, 2: savings
   int _selectedGoalTypeIndex = 1; // 1: monthly, 2: short-term, 3: long-term
   int _selectedReminderDay = DateTime.now().day;
@@ -124,6 +127,14 @@ class _CategoryFormState extends State<CategoryForm> {
   @override
   void initState() {
     super.initState();
+    _nameFocusNode = FocusNode();
+    _nameFocusNode.addListener(() {
+      if (!_nameFocusNode.hasFocus) {
+        setState(() {
+          _isEditingName = false;
+        });
+      }
+    });
     if (widget.category != null) {
       final cat = widget.category!;
       _nameController.text = cat.name;
@@ -275,6 +286,7 @@ class _CategoryFormState extends State<CategoryForm> {
 
   @override
   void dispose() {
+    _nameFocusNode.dispose();
     if (!_didSubmit) {
       for (final imageRef in _createdImageRefs) {
         CategoryImageStore.deleteStoredRef(imageRef);
@@ -465,35 +477,80 @@ class _CategoryFormState extends State<CategoryForm> {
         ),
         const SizedBox(width: SheepSpacing.xl),
         Expanded(
-          child: TextField(
-            controller: _nameController,
-            onChanged: (_) => setState(() {}),
-            textCapitalization: TextCapitalization.sentences,
-            minLines: 1,
-            maxLines: 1,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-            decoration: InputDecoration(
-              hintText: widget.category == null
-                  ? (_selectedTypeIndex == 2
-                        ? l10n.get('new_savings')
-                        : l10n.get('new_category'))
-                  : l10n.get('category_name'),
-              hintStyle: theme.textTheme.titleLarge?.copyWith(
-                color: theme.hintColor,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              filled: false,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
+          child: _isEditingName
+              ? TextField(
+                  controller: _nameController,
+                  focusNode: _nameFocusNode,
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) {
+                    setState(() {
+                      _isEditingName = false;
+                    });
+                  },
+                  textCapitalization: TextCapitalization.sentences,
+                  minLines: 1,
+                  maxLines: 1,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: widget.category == null
+                        ? (_selectedTypeIndex == 2
+                              ? l10n.get('new_savings')
+                              : l10n.get('new_category'))
+                        : l10n.get('category_name'),
+                    hintStyle: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.hintColor,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                )
+              : GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isEditingName = true;
+                    });
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _nameFocusNode.requestFocus();
+                    });
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          _nameController.text.trim().isEmpty
+                              ? (widget.category == null
+                                  ? (_selectedTypeIndex == 2
+                                      ? l10n.get('new_savings')
+                                      : l10n.get('new_category'))
+                                  : l10n.get('category_name'))
+                              : _nameController.text,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        LineIcons.edit,
+                        color: theme.hintColor,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
         ),
       ],
     );

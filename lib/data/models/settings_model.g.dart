@@ -26,6 +26,7 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       avatarImageRef: fields[8] as String?,
       userName: fields[13] as String?,
       lastBackupAt: fields[11] as DateTime?,
+      accumulateStartDate: fields[15] as DateTime?,
     )
       .._hideAmounts = fields[6] as bool?
       .._themeMode = fields[7] as String?
@@ -38,7 +39,7 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.accumulateBalance)
       ..writeByte(1)
@@ -68,7 +69,9 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(13)
       ..write(obj.userName)
       ..writeByte(14)
-      ..write(obj._showAvailableBalance);
+      ..write(obj._showAvailableBalance)
+      ..writeByte(15)
+      ..write(obj.accumulateStartDate);
   }
 
   @override

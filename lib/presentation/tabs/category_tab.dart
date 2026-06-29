@@ -187,14 +187,6 @@ class _CategoryTabState extends State<CategoryTab> {
                               _buildIcon(cat, typeIndex),
                               const SizedBox(width: 15),
                               _buildInfo(cat, spent, typeIndex),
-                              IconButton(
-                                icon: const Icon(
-                                  LineIcons.edit,
-                                  color: Colors.grey,
-                                ),
-                                onPressed: () =>
-                                    _showCategoryForm(context, cat),
-                              ),
                             ],
                           ),
                         ),

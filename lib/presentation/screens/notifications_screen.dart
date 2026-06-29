@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/l10n.dart';
 import '../widgets/common/sheep_widgets.dart';
+import '../widgets/common/sheep_dialogs.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -57,6 +58,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         await box.put(key, updated);
                       }
                     }
+                  } else if (value == 'delete_all') {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => SheepConfirmDialog(
+                        title: l10n.locale.languageCode == 'vi' ? 'Xoá tất cả thông báo?' : 'Delete all notifications?',
+                        content: l10n.locale.languageCode == 'vi' ? 'Hành động này sẽ xoá toàn bộ lịch sử thông báo và không thể hoàn tác.' : 'This action will clear all notification history and cannot be undone.',
+                        confirmLabel: l10n.locale.languageCode == 'vi' ? 'Xoá' : 'Delete',
+                        confirmColor: AppColors.expense,
+                        icon: Icons.delete_sweep_outlined,
+                        onConfirm: () async {
+                          await box.clear();
+                        },
+                      ),
+                    );
                   }
                 },
                 itemBuilder: (context) => [
@@ -67,6 +82,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         const Icon(Icons.mark_chat_read_outlined, size: 20),
                         const SizedBox(width: 8),
                         Text(l10n.get('mark_all_read')),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete_all',
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.delete_sweep_outlined,
+                          size: 20,
+                          color: AppColors.expense,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          l10n.locale.languageCode == 'vi' ? 'Xoá tất cả' : 'Delete all',
+                          style: const TextStyle(color: AppColors.expense),
+                        ),
                       ],
                     ),
                   ),
