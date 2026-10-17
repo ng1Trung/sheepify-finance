@@ -53,5 +53,20 @@
 	<string>Ứng dụng cần sử dụng microphone để nhập dữ liệu giao dịch bằng giọng nói.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Ứng dụng cần quyền nhận diện giọng nói để chuyển đổi lời nói thành chữ.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>vcb</string>
+		<string>techcombank</string>
+		<string>mbmobile</string>
+		<string>tpb</string>
+		<string>momo</string>
+		<string>zalopay</string>
+		<string>bidvsmartbanking</string>
+		<string>vietinbankipay</string>
+		<string>acbone</string>
+		<string>vpbankneo</string>
+		<string>https</string>
+		<string>http</string>
+	</array>
 </dict>
 </plist>

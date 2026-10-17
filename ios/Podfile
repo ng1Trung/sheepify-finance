@@ -40,5 +40,52 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
+      config.build_settings.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
+    end
   end
+  Dir.glob("#{File.dirname(__FILE__)}/Pods/Target Support Files/**/*.xcconfig").each do |file|
+    content = File.read(file)
+    if content.include?("EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64")
+      File.write(file, content.gsub("EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64", "EXCLUDED_ARCHS[sdk=iphonesimulator*] = i386"))
+    end
+  end
+
+  # Auto-patch Google ML Kit fat binaries so arm64 slice works natively on Apple Silicon iOS Simulator
+  system("python3 -c \"
+import struct, os, subprocess
+frameworks = [
+  '#{File.dirname(__FILE__)}/Pods/MLImage/Frameworks/MLImage.framework/MLImage',
+  '#{File.dirname(__FILE__)}/Pods/MLKitVision/Frameworks/MLKitVision.framework/MLKitVision',
+  '#{File.dirname(__FILE__)}/Pods/MLKitCommon/Frameworks/MLKitCommon.framework/MLKitCommon',
+  '#{File.dirname(__FILE__)}/Pods/MLKitTextRecognitionCommon/Frameworks/MLKitTextRecognitionCommon.framework/MLKitTextRecognitionCommon',
+  '#{File.dirname(__FILE__)}/Pods/MLKitTextRecognition/Frameworks/MLKitTextRecognition.framework/MLKitTextRecognition'
+]
+for fw in frameworks:
+    if not os.path.exists(fw): continue
+    try:
+        lipo_out = subprocess.check_output(['lipo', '-info', fw]).decode()
+        if 'arm64' not in lipo_out: continue
+        arm64_path = fw + '.arm64'
+        other_path = fw + '.other'
+        subprocess.check_call(['lipo', '-thin', 'arm64', fw, '-output', arm64_path])
+        with open(arm64_path, 'rb') as f: data = bytearray(f.read())
+        idx = 0
+        while idx < len(data) - 24:
+            cmd, cmdsize, platform = struct.unpack_from('<III', data, idx)
+            if cmd == 0x32 and platform == 2:
+                struct.pack_into('<I', data, idx + 8, 7)
+                idx += cmdsize
+            else: idx += 4
+        with open(arm64_path, 'wb') as f: f.write(data)
+        if 'x86_64' in lipo_out:
+            subprocess.check_call(['lipo', '-thin', 'x86_64', fw, '-output', other_path])
+            subprocess.check_call(['lipo', '-create', arm64_path, other_path, '-output', fw])
+            if os.path.exists(other_path): os.remove(other_path)
+        else:
+            subprocess.check_call(['mv', arm64_path, fw])
+        if os.path.exists(arm64_path): os.remove(arm64_path)
+    except Exception: pass
+\"")
 end
