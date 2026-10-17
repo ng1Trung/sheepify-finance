@@ -80,6 +80,7 @@ class L10n {
       'understood': 'Đã hiểu',
       'awesome': 'Tuyệt vời!',
       'savings': 'Tích luỹ',
+      'wallets': 'Quản lý Ví',
       'total_target': 'TỔNG TÍCH LUỸ',
       'total_spent_cat': 'TỔNG CHI TIÊU',
       'num_transactions': '{count} giao dịch',
@@ -309,6 +310,7 @@ class L10n {
       'understood': 'Understood',
       'awesome': 'Awesome!',
       'savings': 'Savings',
+      'wallets': 'Wallets',
       'total_target': 'TOTAL ACCUMULATED',
       'total_spent_cat': 'TOTAL SPENT',
       'num_transactions': '{count} transactions',
@@ -491,6 +493,7 @@ class L10n {
   String get income => get('income');
   String get expense => get('expense');
   String get savings => get('savings');
+  String get wallets => get('wallets');
   String get accumulateBalance => get('accumulate_balance');
   String get accumulateSubtitle => get('accumulate_subtitle');
   String get systemSettings => get('system_settings');

@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:line_icons/line_icons.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/transaction_image_store.dart';
 import '../../../../data/models/settings_model.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../data/models/transaction.dart';
 import '../../../../data/services/sheepify_scan_ai_service.dart';
+import '../../screens/payment/quick_transfer_screen.dart';
+import '../../screens/scanner/smart_qr_scanner_screen.dart';
 import '../common/sheep_widgets.dart';
 import '../common/sheep_notifications.dart';
 import '../transaction_form.dart';
@@ -13,19 +18,45 @@ import 'voice_input_dialog.dart';
 
 class AddTransactionSuggestSheet extends StatefulWidget {
   final DateTime? initialDate;
+  final ValueChanged<Transaction>? onTransactionCreated;
 
   const AddTransactionSuggestSheet({
     super.key,
     this.initialDate,
+    this.onTransactionCreated,
   });
 
   @override
-  State<AddTransactionSuggestSheet> createState() => _AddTransactionSuggestSheetState();
+  State<AddTransactionSuggestSheet> createState() =>
+      _AddTransactionSuggestSheetState();
 }
 
-class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet> {
+class _AddTransactionSuggestSheetState
+    extends State<AddTransactionSuggestSheet> {
   bool _isProcessingOCR = false;
   String _loadingMessage = 'Đang quét ảnh...';
+
+  Future<void> _openVietQrScanner() async {
+    Navigator.pop(context); // Đóng Suggest Sheet
+    final transaction = await Navigator.push<Transaction>(
+      context,
+      MaterialPageRoute(builder: (_) => const SmartQrScannerScreen()),
+    );
+    if (transaction != null && mounted) {
+      widget.onTransactionCreated?.call(transaction);
+    }
+  }
+
+  Future<void> _openQuickTransfer() async {
+    Navigator.pop(context); // Đóng Suggest Sheet
+    final transaction = await Navigator.push<Transaction>(
+      context,
+      MaterialPageRoute(builder: (_) => const QuickTransferScreen()),
+    );
+    if (transaction != null && mounted) {
+      widget.onTransactionCreated?.call(transaction);
+    }
+  }
 
   Future<void> _pickAndProcessImage(ImageSource source) async {
     final picker = ImagePicker();
@@ -35,11 +66,13 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
 
       setState(() {
         _isProcessingOCR = true;
-        _loadingMessage = 'Đang nhận diện chữ và phân tích hóa đơn bằng AI...';
+        _loadingMessage =
+            'Đang nhận diện chữ và phân tích hóa đơn bằng AI...';
       });
 
       // 1. Chạy OCR và phân tích bằng Gemini
-      final scannedResult = await SheepifyScanAIService.processInvoiceScan(pickedFile);
+      final scannedResult =
+          await SheepifyScanAIService.processInvoiceScan(pickedFile);
 
       if (!mounted) return;
 
@@ -48,19 +81,23 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
       });
 
       if (scannedResult == null) {
-        SheepNotifications.showError(context, 'Không thể nhận diện hóa đơn. Hãy thử lại hoặc chụp ảnh rõ nét hơn!');
+        SheepNotifications.showError(
+          context,
+          'Không thể nhận diện hóa đơn. Hãy thử lại hoặc chụp ảnh rõ nét hơn!',
+        );
         return;
       }
 
       // 2. Lưu ảnh cục bộ vào bộ nhớ
-      final storedImageRef = await TransactionImageStore.saveFromSourcePath(
+      final storedImageRef =
+          await TransactionImageStore.saveFromSourcePath(
         pickedFile.path,
       );
 
       // 3. Đóng bảng gợi ý này và mở TransactionForm với dữ liệu pre-fill
       if (mounted) {
-        Navigator.pop(context); // Đóng Suggest Sheet
-        
+        Navigator.pop(context);
+
         // Mở Form
         final resultDate = await showModalBottomSheet<DateTime>(
           context: context,
@@ -75,8 +112,7 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
         );
 
         if (resultDate != null && mounted) {
-          // Trả kết quả ngày về MainScreen để cập nhật UI
-          Navigator.pop(context, resultDate); 
+          Navigator.pop(context, resultDate);
         }
       }
     } catch (e) {
@@ -91,7 +127,8 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
 
   Future<void> _showScanSourceOptions() async {
     final theme = Theme.of(context);
-    final settings = Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     final palette = AppColors.getPalette(settings.themePresetName);
     final accentColor = palette.primary;
 
@@ -101,12 +138,11 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
       builder: (ctx) => Container(
         decoration: BoxDecoration(
           color: AppColors.getSurface(theme.brightness),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: SheepSpacing.page,
-          vertical: SheepSpacing.xl,
-        ),
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -159,7 +195,10 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
                   color: Colors.purple.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.photo_library_rounded, color: Colors.purple),
+                child: const Icon(
+                  Icons.photo_library_rounded,
+                  color: Colors.purple,
+                ),
               ),
               title: Text(
                 'Chọn từ thư viện ảnh',
@@ -183,10 +222,8 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
   }
 
   Future<void> _openVoiceInput() async {
-    // Đóng bàn phím nếu đang mở
     FocusScope.of(context).unfocus();
 
-    // Mở VoiceInputDialog
     final result = await showModalBottomSheet<ScannedTransactionModel>(
       context: context,
       isScrollControlled: true,
@@ -197,10 +234,8 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
     );
 
     if (result != null && mounted) {
-      // Đóng Suggest Sheet
       Navigator.pop(context);
 
-      // Mở Form với dữ liệu pre-fill
       final resultDate = await showModalBottomSheet<DateTime>(
         context: context,
         isScrollControlled: true,
@@ -219,9 +254,8 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
   }
 
   void _openManualForm() {
-    Navigator.pop(context); // Đóng Suggest Sheet
+    Navigator.pop(context);
 
-    // Mở Form trống
     showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
@@ -240,9 +274,8 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    // Lấy tông màu chủ đạo
-    final settings = Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     final palette = AppColors.getPalette(settings.themePresetName);
     final accentColor = palette.primary;
 
@@ -257,7 +290,7 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: SheepSpacing.page,
-            vertical: SheepSpacing.xl,
+            vertical: SheepSpacing.lg,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -274,41 +307,114 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: SheepSpacing.md),
 
               // ==========================================
-              // VÙNG 1: PHƯƠNG THỨC THÔNG MINH (ƯU TIÊN)
+              // VÙNG 1: THANH TOÁN & GHI SỔ TỰ ĐỘNG
               // ==========================================
               Row(
                 children: [
-                  // Nút 1: Quét hóa đơn
-                  Expanded(
-                    child: _buildSmartCard(
-                      title: 'Scan tự động',
-                      icon: Icons.qr_code_scanner_rounded,
+                  Container(
+                    width: 3,
+                    height: 14,
+                    decoration: BoxDecoration(
                       color: accentColor,
-                      description: 'AI tự phân tích từ ảnh quét',
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'THANH TOÁN & GHI SỔ TỰ ĐỘNG',
+                    style: SheepTextStyles.itemMeta(context).copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: SheepTypeScale.micro,
+                      letterSpacing: 0.5,
+                      color: accentColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  // Nút 1: Quét VietQR
+                  Expanded(
+                    child: _buildActionCard(
+                      title: 'Quét VietQR',
+                      icon: LineIcons.qrcode,
+                      color: accentColor,
+                      description: 'Mở app ngân hàng FaceID thanh toán & tự ghi sổ',
+                      badge: 'Siêu tốc',
+                      onTap: _openVietQrScanner,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Nút 2: Chuyển khoản
+                  Expanded(
+                    child: _buildActionCard(
+                      title: 'Chuyển tiền',
+                      icon: LineIcons.paperPlane,
+                      color: const Color(0xFF4EA8DE),
+                      description: 'Chuyển theo STK hoặc Danh bạ đã lưu',
+                      onTap: _openQuickTransfer,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: SheepSpacing.lg),
+
+              // ==========================================
+              // VÙNG 2: GHI CHÉP THÔNG MINH
+              // ==========================================
+              Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: AppColors.getTextSecondary(theme.brightness),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'GHI CHÉP THÔNG MINH KHÔNG THANH TOÁN',
+                    style: SheepTextStyles.itemMeta(context).copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: SheepTypeScale.micro,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  // Nút 3: Scan hóa đơn
+                  Expanded(
+                    child: _buildSecondaryCard(
+                      title: 'Scan hóa đơn',
+                      icon: Icons.receipt_long_rounded,
+                      color: const Color(0xFFFF9E7D),
                       onTap: _showScanSourceOptions,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  // Nút 2: Nhập bằng giọng nói
+                  const SizedBox(width: 10),
+                  // Nút 4: Giọng nói
                   Expanded(
-                    child: _buildSmartCard(
-                      title: 'Nhập bằng Giọng nói',
+                    child: _buildSecondaryCard(
+                      title: 'Nói ghi chép',
                       icon: Icons.mic_rounded,
-                      color: accentColor,
-                      description: 'Nói để AI ghi nhận',
+                      color: const Color(0xFFB79CED),
                       onTap: _openVoiceInput,
                     ),
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 28),
-              
+              const SizedBox(height: SheepSpacing.md),
+
               // ==========================================
-              // VÙNG 2: PHƯƠNG THỨC THỦ CÔNG (PHỤ)
+              // VÙNG 3: PHƯƠNG THỨC THỦ CÔNG
               // ==========================================
               Center(
                 child: TextButton.icon(
@@ -321,23 +427,26 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
                   label: Text(
                     'Hoặc nhập thủ công bằng tay ✏️',
                     style: TextStyle(
-                      fontSize: 15,
+                      fontFamily: 'Quicksand',
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.getTextSecondary(theme.brightness),
                       decoration: TextDecoration.underline,
                     ),
                   ),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
             ],
           ),
         ),
 
-        // Loading Overlay
+        // Loading Overlay khi chạy OCR
         if (_isProcessingOCR)
           Positioned.fill(
             child: Container(
@@ -355,18 +464,23 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
                   ),
                   elevation: 8,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(accentColor),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           _loadingMessage,
                           textAlign: TextAlign.center,
                           style: TextStyle(
+                            fontFamily: 'Quicksand',
                             fontSize: SheepTypeScale.body,
                             fontWeight: FontWeight.w600,
                             color: AppColors.getTextPrimary(theme.brightness),
@@ -383,64 +497,137 @@ class _AddTransactionSuggestSheetState extends State<AddTransactionSuggestSheet>
     );
   }
 
-  Widget _buildSmartCard({
+  Widget _buildActionCard({
     required String title,
     required IconData icon,
     required Color color,
     required String description,
+    String? badge,
     required VoidCallback onTap,
   }) {
     return Container(
-      height: 172,
+      height: 145,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
             color,
-            color.withValues(alpha: 0.82),
+            color.withValues(alpha: 0.85),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(SheepRadius.lg),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.24),
+            color: color.withValues(alpha: 0.28),
             blurRadius: 10,
-            offset: const Offset(0, 6),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(SheepRadius.lg),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 32,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(icon, color: Colors.white, size: 28),
+                    if (badge != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius:
+                              BorderRadius.circular(SheepRadius.pill),
+                        ),
+                        child: Text(
+                          badge,
+                          style: const TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const Spacer(),
                 Text(
                   title,
                   style: const TextStyle(
+                    fontFamily: 'Quicksand',
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
-                    height: 1.25,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.72),
+                    fontFamily: 'Quicksand',
+                    fontSize: 11,
+                    height: 1.2,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      height: 60,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(SheepRadius.md),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(SheepRadius.md),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
                   ),
                 ),
               ],

@@ -25,11 +25,17 @@ import '../../core/utils/currency_util.dart';
 import '../../core/utils/financial_cycle_util.dart';
 import '../../core/utils/l10n.dart';
 
+import 'package:flutter/services.dart';
+import 'package:line_icons/line_icons.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_widgets.dart';
 import '../../data/services/notification_service.dart';
+import '../../data/services/bank_deeplink_service.dart';
 import 'notifications_screen.dart';
+import 'scanner/smart_qr_scanner_screen.dart';
+import 'payment/quick_transfer_screen.dart';
+import 'wallet/wallet_management_screen.dart';
 
 enum _DrawerInsightType { budget, cycle, savings, today, streak }
 
@@ -59,6 +65,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   static const Duration _insightRepickDelay = Duration(seconds: 180);
   static const int _dailyStreakCompletionSeconds = 30;
+
+  // Smart Payment & Undo state
+  Transaction? _pendingPaymentUndoTx;
+  Timer? _undoPaymentTimer;
+  int _undoCountdown = 15;
+  String? _lastCheckedClipboard;
 
   static DateTimeRange _dayRange(DateTime date) {
     return DateTimeRange(
@@ -106,6 +118,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _undoPaymentTimer?.cancel();
     NotificationService.selectNotificationStream.removeListener(
       _handleNotificationPayload,
     );
@@ -141,6 +154,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _startForegroundTracking();
       unawaited(NotificationService.checkDailyReminderReschedule());
+      _checkClipboardForBankDetails();
       return;
     }
     if (state == AppLifecycleState.inactive ||
@@ -471,6 +485,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       }
       if (_currentIndex == 4) {
         return Text(
+          l10n.wallets,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: headerForeground,
+          ),
+        );
+      }
+      if (_currentIndex == 5) {
+        return Text(
           l10n.settings,
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
@@ -562,6 +585,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         case 3:
           return const CategoryTab(key: ValueKey('categories-tab'));
         case 4:
+          return const WalletManagementScreen(isTab: true);
+        case 5:
           return const SettingsTab();
         default:
           return const SizedBox();
@@ -611,8 +636,22 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         ),
         title: buildAppBarTitle(),
         actions: [
-          if (_currentIndex == 2 || _currentIndex == 3) ...[
+          IconButton(
+            tooltip: 'Quét VietQR',
+            icon: Icon(
+              LineIcons.qrcode,
+              color: AppColors.getInteractiveAccent(
+                theme.brightness,
+                headerForeground,
+              ),
+              size: 26,
+            ),
+            onPressed: _openVietQrScanner,
+          ),
+          const SizedBox(width: 2),
+          if (_currentIndex == 2 || _currentIndex == 3 || _currentIndex == 4) ...[
             IconButton(
+              tooltip: _currentIndex == 4 ? 'Thêm ví mới' : null,
               icon: Icon(
                 Icons.add_circle_outline_rounded,
                 color: AppColors.getInteractiveAccent(
@@ -621,7 +660,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 ),
                 size: 28,
               ),
-              onPressed: _showAddCategoryForm,
+              onPressed: _currentIndex == 4
+                  ? () => WalletManagementScreen.showAddOrEditWalletDialog(context)
+                  : _showAddCategoryForm,
             ),
             const SizedBox(width: 4),
           ],
@@ -629,7 +670,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           const SizedBox(width: 8),
         ],
       ),
-      body: buildBody(),
+      body: Stack(
+        children: [
+          buildBody(),
+          if (_pendingPaymentUndoTx != null)
+            _buildUndoPaymentBanner(context, headerBase),
+        ],
+      ),
       floatingActionButton: _currentIndex == 0 || _currentIndex == 1
           ? Padding(
               padding: const EdgeInsets.only(bottom: 24.0, right: 8.0),
@@ -890,6 +937,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                                 icon: Icons.sell_rounded,
                                 label: l10n.categories,
                               ),
+                              _buildDrawerItem(
+                                context,
+                                index: 4,
+                                icon: Icons.account_balance_wallet_rounded,
+                                label: l10n.wallets,
+                              ),
                               Container(
                                 height: 1,
                                 margin: const EdgeInsets.symmetric(vertical: 8),
@@ -897,7 +950,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                               ),
                               _buildDrawerItem(
                                 context,
-                                index: 4,
+                                index: 5,
                                 icon: Icons.settings_rounded,
                                 label: l10n.settings,
                               ),
@@ -929,6 +982,258 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
+  void _onPaymentTransactionCreated(Transaction tx) {
+    _undoPaymentTimer?.cancel();
+    setState(() {
+      _pendingPaymentUndoTx = tx;
+      _undoCountdown = 15;
+      _selectedDate = tx.date;
+      _diaryRange = _currentCycleRange(date: tx.date);
+    });
+
+    _undoPaymentTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_undoCountdown > 1) {
+          _undoCountdown--;
+        } else {
+          _pendingPaymentUndoTx = null;
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  Future<void> _undoPaymentTransaction() async {
+    if (_pendingPaymentUndoTx == null) return;
+    final tx = _pendingPaymentUndoTx!;
+    _undoPaymentTimer?.cancel();
+    setState(() {
+      _pendingPaymentUndoTx = null;
+    });
+
+    await Hive.box<Transaction>(kMoneyBox).delete(tx.id);
+    if (mounted) {
+      SheepNotifications.showSuccess(
+        context,
+        'Đã hoàn tác và xóa giao dịch ${CurrencyUtil.formatMoney(tx.amount, locale: 'vi_VN')}₫',
+      );
+    }
+  }
+
+  Future<void> _openVietQrScanner() async {
+    final tx = await Navigator.push<Transaction>(
+      context,
+      MaterialPageRoute(builder: (_) => const SmartQrScannerScreen()),
+    );
+    if (tx != null && mounted) {
+      _onPaymentTransactionCreated(tx);
+    }
+  }
+
+  Future<void> _checkClipboardForBankDetails() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim() ?? '';
+      if (text.isEmpty || text == _lastCheckedClipboard) return;
+      _lastCheckedClipboard = text;
+
+      final lower = text.toLowerCase();
+      BankAppModel? detectedBank;
+      for (final bank in BankDeeplinkService.supportedBanks) {
+        if (lower.contains(bank.shortName.toLowerCase()) ||
+            lower.contains(bank.id.toLowerCase())) {
+          detectedBank = bank;
+          break;
+        }
+      }
+
+      final match = RegExp(r'\b\d{8,19}\b').firstMatch(text);
+      if (match != null &&
+          (detectedBank != null || lower.contains('stk') || lower.contains('tk'))) {
+        final stk = match.group(0)!;
+        if (!mounted) return;
+
+        final settings =
+            Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+        final accentColor =
+            AppColors.getPalette(settings.themePresetName).primary;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor:
+                AppColors.getSurface(Theme.of(context).brightness),
+            elevation: 8,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(SheepRadius.md),
+              side: BorderSide(
+                color: detectedBank?.brandColor ?? accentColor,
+                width: 1.5,
+              ),
+            ),
+            duration: const Duration(seconds: 8),
+            content: Row(
+              children: [
+                Icon(
+                  LineIcons.paperPlane,
+                  color: detectedBank?.brandColor ?? accentColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Phát hiện STK: $stk ${detectedBank?.shortName ?? ''}',
+                    style: TextStyle(
+                      fontFamily: 'Quicksand',
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.getTextPrimary(
+                          Theme.of(context).brightness),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            action: SnackBarAction(
+              label: 'Chuyển ngay',
+              textColor: detectedBank?.brandColor ?? accentColor,
+              onPressed: () async {
+                final tx = await Navigator.push<Transaction>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => QuickTransferScreen(
+                      initialAccountNo: stk,
+                      initialBankBin: detectedBank?.bin,
+                    ),
+                  ),
+                );
+                if (tx != null && mounted) {
+                  _onPaymentTransactionCreated(tx);
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Widget _buildUndoPaymentBanner(BuildContext context, Color accentColor) {
+    final brightness = Theme.of(context).brightness;
+    final tx = _pendingPaymentUndoTx!;
+
+    return Positioned(
+      left: SheepSpacing.page,
+      right: SheepSpacing.page,
+      bottom: 90,
+      child: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(SheepRadius.lg),
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.getSurface(brightness),
+            borderRadius: BorderRadius.circular(SheepRadius.lg),
+            border: Border.all(color: accentColor, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.expense.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  LineIcons.paperPlane,
+                  color: AppColors.expense,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Đã ghi: -${CurrencyUtil.formatMoney(tx.amount, locale: 'vi_VN')}₫',
+                          style: const TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.expense,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '(${_undoCountdown}s)',
+                          style: SheepTextStyles.itemMeta(context).copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      tx.note.isNotEmpty ? tx.note : 'Thanh toán chuyển khoản',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: SheepTextStyles.itemMeta(context),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: _undoPaymentTransaction,
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.expense.withValues(alpha: 0.12),
+                  foregroundColor: AppColors.expense,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(SheepRadius.sm),
+                  ),
+                ),
+                child: const Text(
+                  'Hoàn tác',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                color: AppColors.getTextSecondary(brightness),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  _undoPaymentTimer?.cancel();
+                  setState(() => _pendingPaymentUndoTx = null);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showAddTransactionForm() async {
     final sourceIndex = _currentIndex;
     final resultDate = await showModalBottomSheet<DateTime>(
@@ -937,7 +1242,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       isDismissible: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AddTransactionSuggestSheet(initialDate: DateTime.now()),
+      builder: (_) => AddTransactionSuggestSheet(
+        initialDate: DateTime.now(),
+        onTransactionCreated: _onPaymentTransactionCreated,
+      ),
     );
 
     if (resultDate != null) {

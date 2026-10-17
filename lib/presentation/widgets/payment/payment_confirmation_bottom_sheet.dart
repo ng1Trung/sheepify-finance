@@ -1,0 +1,833 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/intl.dart';
+import 'package:line_icons/line_icons.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+
+import '../../../core/constants/constants.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/currency_util.dart';
+import '../../../core/utils/vietqr_parser.dart';
+import '../../../data/models/category_model.dart';
+import '../../../data/models/settings_model.dart';
+import '../../../data/models/transaction.dart';
+import '../../../data/services/bank_deeplink_service.dart';
+import '../../../data/services/sheepify_scan_ai_service.dart';
+import '../../../data/services/wallet_service.dart';
+import '../common/sheep_notifications.dart';
+import '../common/sheep_widgets.dart';
+import '../transaction/transaction_category_picker.dart';
+
+class PaymentConfirmationBottomSheet extends StatefulWidget {
+  final VietQrModel qrData;
+  final String? initialPayeeName;
+
+  const PaymentConfirmationBottomSheet({
+    super.key,
+    required this.qrData,
+    this.initialPayeeName,
+  });
+
+  @override
+  State<PaymentConfirmationBottomSheet> createState() =>
+      _PaymentConfirmationBottomSheetState();
+}
+
+class _PaymentConfirmationBottomSheetState
+    extends State<PaymentConfirmationBottomSheet>
+    with SingleTickerProviderStateMixin {
+  late final TextEditingController _amountController;
+  late final TextEditingController _noteController;
+  
+  BankAppModel? _selectedBank;
+  CategoryModel? _selectedCategory;
+  late final Box<CategoryModel> _catBox;
+  late final Box<Transaction> _moneyBox;
+  late final Box<AppSettings> _settingsBox;
+
+  // Voice AI State
+  late final stt.SpeechToText _speech;
+  bool _isSpeechAvailable = false;
+  bool _isListening = false;
+  bool _isProcessingVoiceAi = false;
+  late final AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _catBox = Hive.box<CategoryModel>(kCatBox);
+    _moneyBox = Hive.box<Transaction>(kMoneyBox);
+    _settingsBox = Hive.box<AppSettings>(kSettingsBox);
+
+    // Điền số tiền từ mã QR nếu có
+    final double initialAmount = widget.qrData.amount ?? 0;
+    _amountController = TextEditingController(
+      text: initialAmount > 0
+          ? NumberFormat('#,###', 'vi_VN').format(initialAmount.toInt())
+          : '',
+    );
+
+    // Điền nội dung từ mã QR nếu có
+    _noteController = TextEditingController(
+      text: widget.qrData.purpose ?? '',
+    );
+
+    // Chọn ngân hàng thanh toán mặc định từ Cài đặt Ví
+    final defaultWallet = WalletService.getDefaultWallet();
+    if (defaultWallet != null && defaultWallet.bankId != null) {
+      _selectedBank = BankDeeplinkService.findById(defaultWallet.bankId);
+    }
+    _selectedBank ??= BankDeeplinkService.supportedBanks.first;
+
+    // Chọn danh mục mặc định (ưu tiên Ăn uống hoặc danh mục đầu tiên)
+    final expenseCategories = _catBox.values
+        .where((c) => c.effectiveTypeIndex == 0)
+        .toList();
+    if (expenseCategories.isNotEmpty) {
+      try {
+        _selectedCategory = expenseCategories.firstWhere(
+          (c) => c.name.toLowerCase().contains('ăn') ||
+              c.name.toLowerCase().contains('uống'),
+        );
+      } catch (_) {
+        _selectedCategory = expenseCategories.first;
+      }
+    }
+
+    // Khởi tạo Voice AI
+    _speech = stt.SpeechToText();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+
+    _initSpeech();
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _noteController.dispose();
+    _pulseController.dispose();
+    _speech.stop();
+    super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      final available = await _speech.initialize(
+        onStatus: (status) {
+          if (mounted) {
+            setState(() {
+              _isListening = (status == 'listening');
+            });
+          }
+        },
+        onError: (_) {
+          if (mounted) {
+            setState(() {
+              _isListening = false;
+            });
+          }
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _isSpeechAvailable = available;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _toggleVoiceInput() async {
+    if (_isListening) {
+      await _speech.stop();
+      setState(() => _isListening = false);
+      return;
+    }
+
+    if (!_isSpeechAvailable) {
+      SheepNotifications.showError(
+        context,
+        'Không thể kích hoạt microphone trên thiết bị này',
+      );
+      return;
+    }
+
+    HapticFeedback.mediumImpact();
+    setState(() => _isListening = true);
+
+    try {
+      await _speech.listen(
+        onResult: (result) async {
+          if (result.finalResult && result.recognizedWords.isNotEmpty) {
+            await _processVoiceText(result.recognizedWords);
+          }
+        },
+        listenOptions: stt.SpeechListenOptions(
+          localeId: 'vi_VN',
+        ),
+      );
+    } catch (_) {
+      if (mounted) setState(() => _isListening = false);
+    }
+  }
+
+  Future<void> _processVoiceText(String speechText) async {
+    setState(() {
+      _isListening = false;
+      _isProcessingVoiceAi = true;
+    });
+
+    try {
+      final parsed =
+          await SheepifyScanAIService.processVoiceDescription(speechText);
+      if (parsed != null && mounted) {
+        setState(() {
+          if (parsed.amount > 0) {
+            _amountController.text =
+                NumberFormat('#,###', 'vi_VN').format(parsed.amount);
+          }
+          if (parsed.note.isNotEmpty) {
+            _noteController.text = parsed.note;
+          }
+          // Tìm danh mục khớp với tên AI gợi ý
+          if (parsed.category.isNotEmpty) {
+            try {
+              final matchedCat = _catBox.values.firstWhere(
+                (c) =>
+                    c.name.toLowerCase() == parsed.category.toLowerCase() &&
+                    c.effectiveTypeIndex == 0,
+              );
+              _selectedCategory = matchedCat;
+            } catch (_) {}
+          }
+        });
+
+        HapticFeedback.lightImpact();
+        if (mounted) {
+          SheepNotifications.showSuccess(
+            context,
+            'AI đã điền: ${CurrencyUtil.formatMoney(parsed.amount.toDouble(), locale: 'vi_VN')}₫ (${parsed.category})',
+          );
+        }
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessingVoiceAi = false);
+      }
+    }
+  }
+
+  double _getParsedAmount() {
+    final clean = _amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    return double.tryParse(clean) ?? 0;
+  }
+
+  void _showCategoryPicker() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final expenseCategories = _catBox.values
+        .where((c) => c.effectiveTypeIndex == 0)
+        .toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => TransactionCategoryPicker(
+        categories: expenseCategories,
+        selectedCategoryId: _selectedCategory?.id,
+        onCategorySelected: (id) {
+          final selected = _catBox.values.firstWhere((c) => c.id == id);
+          setState(() {
+            _selectedCategory = selected;
+          });
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  Future<void> _handleConfirmPayment() async {
+    final amount = _getParsedAmount();
+    if (amount <= 0) {
+      HapticFeedback.heavyImpact();
+      SheepNotifications.showError(
+        context,
+        'Vui lòng nhập số tiền thanh toán hợp lệ!',
+      );
+      return;
+    }
+
+    if (_selectedCategory == null) {
+      SheepNotifications.showError(
+        context,
+        'Vui lòng chọn danh mục cho khoản chi tiêu này!',
+      );
+      return;
+    }
+
+    final note = _noteController.text.trim().isNotEmpty
+        ? _noteController.text.trim()
+        : 'Thanh toan VietQR';
+
+    // 1. Tự động lưu giao dịch vào Sheepify Database
+    final transaction = Transaction(
+      id: Transaction.createId(),
+      amount: amount,
+      note: note,
+      date: DateTime.now(),
+      isExpense: true,
+      categoryId: _selectedCategory!.id,
+    );
+
+    await _moneyBox.put(transaction.id, transaction);
+    HapticFeedback.mediumImpact();
+
+    // Cập nhật số dư ví tương ứng
+    final wallets = WalletService.getWallets();
+    try {
+      final matchingWallet = wallets.firstWhere(
+        (w) => w.bankId == _selectedBank?.id,
+      );
+      final newBal = (matchingWallet.initialBalance - amount).clamp(0.0, double.infinity);
+      await WalletService.adjustBalance(matchingWallet.id, newBal);
+    } catch (_) {}
+
+    // 2. Tạo / Cập nhật chuỗi VietQR với số tiền và nội dung đã nhập
+    String finalPayload = widget.qrData.rawPayload;
+    if (widget.qrData.bankBin != null && widget.qrData.bankAccount != null) {
+      finalPayload = VietQrParser.generateVietQr(
+        bankBin: widget.qrData.bankBin!,
+        bankAccount: widget.qrData.bankAccount!,
+        amount: amount,
+        purpose: note,
+      );
+    }
+
+    // 3. Mở App Ngân Hàng qua Deeplink
+    if (_selectedBank != null) {
+      await BankDeeplinkService.launchBankApp(
+        bank: _selectedBank!,
+        qrPayload: finalPayload,
+        accountNo: widget.qrData.bankAccount,
+        amount: amount,
+        note: note,
+      );
+    }
+
+    if (mounted) {
+      Navigator.pop(context, transaction);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final brightness = theme.brightness;
+    final settings =
+        _settingsBox.get('current') ?? AppSettings();
+    final palette = AppColors.getPalette(settings.themePresetName);
+    final accentColor = palette.primary;
+
+    final beneficiaryBank =
+        BankDeeplinkService.findByBin(widget.qrData.bankBin);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.getSurface(brightness),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(SheepRadius.sheet),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        top: SheepSpacing.sm,
+        left: SheepSpacing.page,
+        right: SheepSpacing.page,
+        bottom: MediaQuery.of(context).viewInsets.bottom + SheepSpacing.lg,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag Handle
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: SheepSpacing.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.getTextSecondary(brightness)
+                      .withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            // Header Title
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(SheepRadius.md),
+                  ),
+                  child: Icon(
+                    LineIcons.qrcode,
+                    color: accentColor,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: SheepSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Xác nhận thanh toán',
+                        style: SheepTextStyles.itemTitle(context).copyWith(
+                          fontSize: SheepTypeScale.bodyLarge,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Tự động ghi sổ & chuyển khoản qua App',
+                        style: SheepTextStyles.itemMeta(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: SheepSpacing.md),
+
+            // Thông tin người nhận (Beneficiary Card)
+            SheepCard(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  _buildBankAvatar(beneficiaryBank),
+                  const SizedBox(width: SheepSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          beneficiaryBank?.shortName ?? 'Ngân hàng nhận',
+                          style: SheepTextStyles.itemTitle(context),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'STK: ${widget.qrData.bankAccount ?? '---'}',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: SheepTypeScale.item,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                            color: AppColors.getTextPrimary(brightness),
+                          ),
+                        ),
+                        if (widget.initialPayeeName != null &&
+                            widget.initialPayeeName!.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.initialPayeeName!.toUpperCase(),
+                            style: SheepTextStyles.itemMeta(context).copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: accentColor,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: SheepSpacing.md),
+
+            // Ô nhập số tiền + Nút Voice AI
+            SheepCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'SỐ TIỀN CHI TIÊU',
+                          style: SheepTextStyles.itemMeta(context).copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: SheepTypeScale.micro,
+                          ),
+                        ),
+                        TextField(
+                          controller: _amountController,
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: SheepTypeScale.headline,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.expense,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '0',
+                            hintStyle: TextStyle(
+                              color: AppColors.getTextSecondary(brightness)
+                                  .withValues(alpha: 0.4),
+                            ),
+                            suffixText: '₫',
+                            suffixStyle: TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: SheepTypeScale.bodyLarge,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.expense,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 4),
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            _CurrencyTextInputFormatter(),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Nút Microphone Voice AI
+                  GestureDetector(
+                    onTap: _toggleVoiceInput,
+                    child: AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (context, child) {
+                        final pulse = _isListening
+                            ? (1.0 + _pulseController.value * 0.15)
+                            : 1.0;
+                        return Transform.scale(
+                          scale: pulse,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _isListening
+                                  ? AppColors.expense
+                                  : accentColor.withValues(alpha: 0.14),
+                              shape: BoxShape.circle,
+                              boxShadow: _isListening
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.expense
+                                            .withValues(alpha: 0.4),
+                                        blurRadius: 10,
+                                        spreadRadius: 2,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: _isProcessingVoiceAi
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor:
+                                          AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    _isListening
+                                        ? Icons.mic
+                                        : LineIcons.microphone,
+                                    color: _isListening
+                                        ? Colors.white
+                                        : accentColor,
+                                    size: 22,
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_isListening)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 4),
+                child: Text(
+                  '🎙️ Đang nghe... Hãy nói số tiền & nội dung (VD: 45k ăn bún chả)',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: SheepTypeScale.meta,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.expense,
+                  ),
+                ),
+              ),
+            const SizedBox(height: SheepSpacing.md),
+
+            // Chọn danh mục & Nội dung
+            Row(
+              children: [
+                // Chọn danh mục
+                Expanded(
+                  flex: 5,
+                  child: GestureDetector(
+                    onTap: _showCategoryPicker,
+                    child: SheepCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          if (_selectedCategory != null)
+                            SheepCategoryIcon(
+                              icon: _selectedCategory!.iconData,
+                              color: Color(
+                                _selectedCategory!.colorValue ??
+                                    accentColor.toARGB32(),
+                              ),
+                              size: 28,
+                              imagePath: _selectedCategory!.imagePath,
+                            )
+                          else
+                            Icon(
+                              LineIcons.tag,
+                              size: 24,
+                              color: accentColor,
+                            ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'DANH MỤC',
+                                  style: SheepTextStyles.itemMeta(context)
+                                      .copyWith(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  _selectedCategory?.name ?? 'Chọn',
+                                  style: SheepTextStyles.itemTitle(context)
+                                      .copyWith(
+                                    fontSize: SheepTypeScale.label,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: AppColors.getTextSecondary(brightness),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: SheepSpacing.sm),
+
+                // Ghi chú
+                Expanded(
+                  flex: 6,
+                  child: SheepCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    child: TextField(
+                      controller: _noteController,
+                      maxLength: 50,
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontSize: SheepTypeScale.item,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.getTextPrimary(brightness),
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'NỘI DUNG',
+                        labelStyle:
+                            SheepTextStyles.itemMeta(context).copyWith(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        hintText: 'VD: Cà phê...',
+                        counterText: '',
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: SheepSpacing.md),
+
+            // Chọn ứng dụng thanh toán (Bank Selector)
+            Text(
+              'CHỌN APP NGÂN HÀNG / VÍ ĐỂ CHUYỂN TIỀN',
+              style: SheepTextStyles.itemMeta(context).copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: SheepTypeScale.micro,
+              ),
+            ),
+            const SizedBox(height: SheepSpacing.xs),
+            SizedBox(
+              height: 48,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: BankDeeplinkService.supportedBanks.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final bank = BankDeeplinkService.supportedBanks[index];
+                  final isSelected = _selectedBank?.id == bank.id;
+
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _selectedBank = bank);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? bank.brandColor.withValues(alpha: 0.15)
+                            : AppColors.getSubtleSurface(brightness),
+                        borderRadius: BorderRadius.circular(SheepRadius.pill),
+                        border: Border.all(
+                          color: isSelected
+                              ? bank.brandColor
+                              : AppColors.getBorder(brightness),
+                          width: isSelected ? 1.5 : 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: bank.brandColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            bank.shortName,
+                            style: TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: SheepTypeScale.label,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              color: isSelected
+                                  ? bank.brandColor
+                                  : AppColors.getTextPrimary(brightness),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: SheepSpacing.lg),
+
+            // Nút bấm Xác nhận: Thanh toán & Ghi sổ
+            SheepButton(
+              label: 'Thanh toán & Ghi sổ',
+              isFullWidth: true,
+              backgroundColor: accentColor,
+              icon: const Icon(LineIcons.paperPlane, size: 20),
+              onPressed: _handleConfirmPayment,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBankAvatar(BankAppModel? bank) {
+    if (bank == null) {
+      return Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(LineIcons.university, size: 24),
+      );
+    }
+
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: bank.brandColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(SheepRadius.md),
+        border: Border.all(
+          color: bank.brandColor.withValues(alpha: 0.25),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        bank.shortName.substring(0, bank.shortName.length.clamp(1, 3)),
+        style: TextStyle(
+          fontFamily: 'Quicksand',
+          fontWeight: FontWeight.w800,
+          fontSize: SheepTypeScale.label,
+          color: bank.brandColor,
+        ),
+      ),
+    );
+  }
+}
+
+/// Formatter số tiền kiểu VND (10,000,000)
+class _CurrencyTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+
+    final number = int.tryParse(digits) ?? 0;
+    final formatted = NumberFormat('#,###', 'vi_VN').format(number);
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
