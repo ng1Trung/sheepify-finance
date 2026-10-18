@@ -1,8 +1,9 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/utils/vietqr_parser.dart';
+import 'notification_service.dart';
 
 /// Model đại diện cho một Ngân hàng hoặc Ví điện tử tại Việt Nam
 class BankAppModel {
@@ -217,6 +218,88 @@ class BankDeeplinkService {
       brandColor: Color(0xFF008345),
       logoUrl: 'https://api.vietqr.io/img/OCB.png',
     ),
+    const BankAppModel(
+      id: 'agribank',
+      shortName: 'Agribank',
+      fullName: 'Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam (Agribank Plus)',
+      bin: '970405',
+      iosScheme: 'agribankplus://',
+      alternativeSchemes: ['vba://'],
+      androidPackage: 'com.vnpay.agribank',
+      vietQrAppId: 'vba',
+      brandColor: Color(0xFF8B1D24),
+      logoUrl: 'https://api.vietqr.io/img/VBA.png',
+    ),
+    const BankAppModel(
+      id: 'vib',
+      shortName: 'VIB',
+      fullName: 'Ngân hàng TMCP Quốc tế Việt Nam (MyVIB)',
+      bin: '970441',
+      iosScheme: 'vib://',
+      alternativeSchemes: ['myvib2://'],
+      androidPackage: 'com.vib.myvib2',
+      alternativeAndroidPackages: ['com.vng.vib'],
+      vietQrAppId: 'vib-2',
+      brandColor: Color(0xFF0054A6),
+      logoUrl: 'https://api.vietqr.io/img/VIB.png',
+    ),
+    const BankAppModel(
+      id: 'sacombank',
+      shortName: 'Sacombank',
+      fullName: 'Ngân hàng TMCP Sài Gòn Thương Tín (Sacombank Pay)',
+      bin: '970403',
+      iosScheme: 'sacombankpay://',
+      androidPackage: 'com.vnpay.sacombank',
+      vietQrAppId: 'stb',
+      brandColor: Color(0xFF00529C),
+      logoUrl: 'https://api.vietqr.io/img/STB.png',
+    ),
+    const BankAppModel(
+      id: 'shb',
+      shortName: 'SHB',
+      fullName: 'Ngân hàng TMCP Sài Gòn - Hà Nội (SHB SAHA)',
+      bin: '970443',
+      iosScheme: 'shbsaha://',
+      androidPackage: 'com.vnpay.shb',
+      vietQrAppId: 'shb',
+      brandColor: Color(0xFFFF6600),
+      logoUrl: 'https://api.vietqr.io/img/SHB.png',
+    ),
+    const BankAppModel(
+      id: 'hdbank',
+      shortName: 'HDBank',
+      fullName: 'Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh (HDBank)',
+      bin: '970437',
+      iosScheme: 'hdbank://',
+      androidPackage: 'com.vnpay.hdbank',
+      vietQrAppId: 'hdb',
+      brandColor: Color(0xFFE50914),
+      logoUrl: 'https://api.vietqr.io/img/HDB.png',
+    ),
+    const BankAppModel(
+      id: 'lpbank',
+      shortName: 'LPBank',
+      fullName: 'Ngân hàng TMCP Lộc Phát Việt Nam (LPBank)',
+      bin: '970449',
+      iosScheme: 'lpbank://',
+      alternativeSchemes: ['lpb://'],
+      androidPackage: 'com.vnpay.lpb',
+      vietQrAppId: 'lpb',
+      brandColor: Color(0xFFDF7401),
+      logoUrl: 'https://api.vietqr.io/img/LPB.png',
+    ),
+    const BankAppModel(
+      id: 'viettelmoney',
+      shortName: 'Viettel Money',
+      fullName: 'Hệ sinh thái tài chính số Viettel Money',
+      bin: 'viettelmoney',
+      iosScheme: 'viettelmoney://',
+      alternativeSchemes: ['viettelpay://'],
+      androidPackage: 'com.bplus.vtpay',
+      vietQrAppId: 'viettelmoney',
+      brandColor: Color(0xFFEE0033),
+      logoUrl: 'https://api.vietqr.io/img/VIETTELMONEY.png',
+    ),
   ];
 
   /// Tìm ngân hàng theo mã BIN Napas
@@ -297,16 +380,24 @@ class BankDeeplinkService {
           }
         }
       } else if (Platform.isAndroid) {
-        for (final pkg in bank.allAndroidPackages) {
-          final uri = Uri.parse('android-app://$pkg');
-          if (await canLaunchUrl(uri)) {
-            return true;
-          }
-        }
-        // Fallback kiểm tra các URL scheme trên Android
+        // Kiểm tra qua URL Scheme chuẩn
         for (final scheme in bank.allSchemes) {
           if (await canLaunchUrl(Uri.parse(scheme))) {
             return true;
+          }
+        }
+        // Kiểm tra qua Android Intent URI có chỉ định package
+        for (final pkg in bank.allAndroidPackages) {
+          for (final scheme in bank.allSchemes) {
+            final schemeName = scheme.replaceAll('://', '');
+            try {
+              final intentUri = Uri.parse(
+                'intent://applink#Intent;scheme=$schemeName;package=$pkg;end',
+              );
+              if (await canLaunchUrl(intentUri)) {
+                return true;
+              }
+            } catch (_) {}
           }
         }
       }
@@ -333,7 +424,8 @@ class BankDeeplinkService {
   }
 
   /// Mở ứng dụng ngân hàng qua cổng VietQR Deeplink (autofill STK, số tiền, nội dung)
-  /// hoặc fallback về URL Scheme / Android Package của ngân hàng.
+  /// hoặc fallback về URL Scheme / Android Intent của ngân hàng.
+  /// Tự động sao chép STK vào Clipboard và đẩy thông báo Trợ lý chuyển khoản để hỗ trợ người dùng.
   static Future<bool> launchBankApp({
     required BankAppModel bank,
     required String qrPayload,
@@ -354,6 +446,33 @@ class BankDeeplinkService {
             : parsedQr.bankBin;
     final resolvedAmount = amount ?? parsedQr.amount;
     final resolvedNote = note ?? parsedQr.purpose;
+
+    // 1. TỰ ĐỘNG SAO CHÉP STK VÀO CLIPBOARD (BỘ NHỚ TẠM)
+    // Các ngân hàng như Techcombank, Vietcombank, TPBank... không có API autofill công khai
+    // từ app bên ngoài vì lý do bảo mật. Khi STK đã có sẵn trong clipboard:
+    // - App ngân hàng sẽ tự động hiện thông báo "Bạn có muốn chuyển tiền đến STK...?"
+    // - Hoặc người dùng chỉ cần chạm "Dán" trong ô STK nhận mà không cần gõ thủ công.
+    if (resolvedAccountNo != null && resolvedAccountNo.isNotEmpty) {
+      try {
+        await Clipboard.setData(ClipboardData(text: resolvedAccountNo));
+      } catch (_) {}
+    }
+
+    // 2. ĐẨY THÔNG BÁO LOCAL NOTIFICATION (TRỢ LÝ CHUYỂN KHOẢN)
+    // Khi đang trong app ngân hàng, người dùng chỉ cần vuốt thanh thông báo xuống
+    // là thấy ngay STK, số tiền, nội dung mà không phải chuyển qua lại giữa các app.
+    if (resolvedAccountNo != null && resolvedAccountNo.isNotEmpty) {
+      final recipientBank = findByBin(resolvedRecipientBin) ?? findById(resolvedRecipientBin);
+      try {
+        await NotificationService.showPaymentAssistantNotification(
+          bankName: bank.shortName,
+          recipientBankName: recipientBank?.shortName ?? 'Ngân hàng nhận',
+          accountNo: resolvedAccountNo,
+          amount: resolvedAmount,
+          note: resolvedNote,
+        );
+      } catch (_) {}
+    }
 
     final vietQrUri = (resolvedAccountNo != null && resolvedAccountNo.isNotEmpty)
         ? buildVietQrDeeplinkUri(
@@ -394,10 +513,27 @@ class BankDeeplinkService {
       } catch (_) {}
     }
 
-    // Kịch bản 3: Trên Android, thử mở qua cổng điều hướng VietQR Deeplink chuẩn
-    // (tự động redirect sang intent://applink#Intent;scheme=...;package=...;end)
-    // hoặc mở qua Android Package URI.
+    // Kịch bản 3: Trên Android, hỗ trợ mở qua Android Intent URI có chỉ định package
+    // hoặc cổng điều hướng VietQR Deeplink chuẩn
     if (Platform.isAndroid) {
+      for (final pkg in bank.allAndroidPackages) {
+        for (final scheme in bank.allSchemes) {
+          final schemeName = scheme.replaceAll('://', '');
+          try {
+            final intentUri = Uri.parse(
+              'intent://applink#Intent;scheme=$schemeName;package=$pkg;end',
+            );
+            if (await canLaunchUrl(intentUri)) {
+              final launched = await launchUrl(
+                intentUri,
+                mode: LaunchMode.externalApplication,
+              );
+              if (launched) return true;
+            }
+          } catch (_) {}
+        }
+      }
+
       if (vietQrUri != null) {
         try {
           final launched = await launchUrl(
@@ -405,19 +541,6 @@ class BankDeeplinkService {
             mode: LaunchMode.externalApplication,
           );
           if (launched) return true;
-        } catch (_) {}
-      }
-
-      for (final pkg in bank.allAndroidPackages) {
-        try {
-          final pkgUri = Uri.parse('android-app://$pkg');
-          if (await canLaunchUrl(pkgUri)) {
-            final launched = await launchUrl(
-              pkgUri,
-              mode: LaunchMode.externalApplication,
-            );
-            if (launched) return true;
-          }
         } catch (_) {}
       }
     }

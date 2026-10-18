@@ -24,6 +24,15 @@ class SheepNotifications {
     );
   }
 
+  static void showInfo(BuildContext context, String message) {
+    _show(
+      context,
+      message,
+      backgroundColor: const Color(0xFF3B82F6),
+      icon: Icons.info_outline,
+    );
+  }
+
   static void _show(
     BuildContext context,
     String message, {

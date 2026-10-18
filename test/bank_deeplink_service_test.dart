@@ -20,6 +20,34 @@ void main() {
       final momo = BankDeeplinkService.findByBin('momo');
       expect(momo, isNotNull);
       expect(momo!.shortName, 'MoMo');
+
+      final agribank = BankDeeplinkService.findByBin('970405');
+      expect(agribank, isNotNull);
+      expect(agribank!.shortName, 'Agribank');
+
+      final vib = BankDeeplinkService.findByBin('970441');
+      expect(vib, isNotNull);
+      expect(vib!.shortName, 'VIB');
+
+      final stb = BankDeeplinkService.findByBin('970403');
+      expect(stb, isNotNull);
+      expect(stb!.shortName, 'Sacombank');
+
+      final shb = BankDeeplinkService.findByBin('970443');
+      expect(shb, isNotNull);
+      expect(shb!.shortName, 'SHB');
+
+      final hdb = BankDeeplinkService.findByBin('970437');
+      expect(hdb, isNotNull);
+      expect(hdb!.shortName, 'HDBank');
+
+      final lpb = BankDeeplinkService.findByBin('970449');
+      expect(lpb, isNotNull);
+      expect(lpb!.shortName, 'LPBank');
+
+      final viettel = BankDeeplinkService.findByBin('viettelmoney');
+      expect(viettel, isNotNull);
+      expect(viettel!.shortName, 'Viettel Money');
     });
 
     test('Find bank by ID', () {

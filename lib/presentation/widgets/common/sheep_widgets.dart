@@ -620,40 +620,38 @@ class SheepDatePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return IntrinsicWidth(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(SheepRadius.xl),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color:
-                backgroundColor ??
-                (theme.brightness == Brightness.light
-                    ? Colors.white
-                    : AppColors.getSurface(theme.brightness)),
-            borderRadius: BorderRadius.circular(SheepRadius.xl),
-            border: border,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              softWrap: false,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppColors.getTextPrimary(theme.brightness),
-              ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SheepRadius.xl),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color:
+              backgroundColor ??
+              (theme.brightness == Brightness.light
+                  ? Colors.white
+                  : AppColors.getSurface(theme.brightness)),
+          borderRadius: BorderRadius.circular(SheepRadius.xl),
+          border: border,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontSize: 14.5,
+              fontWeight: FontWeight.bold,
+              color: AppColors.getTextPrimary(theme.brightness),
             ),
           ),
         ),

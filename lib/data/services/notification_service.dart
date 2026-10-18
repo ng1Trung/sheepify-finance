@@ -152,6 +152,53 @@ class NotificationService {
     } catch (_) {}
   }
 
+  /// Hiển thị thông báo Trợ lý chuyển khoản (Payment Assistant Notification)
+  /// Giúp người dùng có thể kéo Notification Center xem ngay STK, số tiền, nội dung
+  /// khi đang thao tác trong app ngân hàng (Techcombank, Vietcombank, ...)
+  static Future<void> showPaymentAssistantNotification({
+    required String bankName,
+    required String recipientBankName,
+    required String accountNo,
+    double? amount,
+    String? note,
+  }) async {
+    const int paymentNotificationId = 888;
+    final formattedAmount = amount != null && amount > 0
+        ? '${CurrencyUtil.formatMoney(amount, locale: 'vi_VN')}₫'
+        : '';
+    final buffer = StringBuffer('STK: $accountNo');
+    if (formattedAmount.isNotEmpty) buffer.write(' • $formattedAmount');
+    if (note != null && note.isNotEmpty) buffer.write(' • ND: $note');
+
+    const androidDetails = AndroidNotificationDetails(
+      'sheepify_payment_assistant',
+      'Trợ lý chuyển khoản',
+      channelDescription: 'Thông tin STK và số tiền khi chuyển khoản ngân hàng',
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'Thông tin chuyển khoản',
+      icon: '@mipmap/ic_launcher',
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: false,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    try {
+      await _localNotificationsPlugin.show(
+        paymentNotificationId,
+        'Chuyển tiền $bankName ➔ $recipientBankName',
+        buffer.toString(),
+        notificationDetails,
+      );
+    } catch (_) {}
+  }
+
   // Check if a specific notification threshold has already been triggered in a cycle
   static bool _hasBeenTriggered({
     required String categoryId,

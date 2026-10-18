@@ -333,6 +333,19 @@ class VietQrParser {
       'cake': '546034',
       'momo': 'momo',
       'zalopay': 'zalopay',
+      'ocb': '970448',
+      'vba': '970405',
+      'agribank': '970405',
+      'vib': '970441',
+      'vib-2': '970441',
+      'stb': '970403',
+      'sacombank': '970403',
+      'shb': '970443',
+      'hdb': '970437',
+      'hdbank': '970437',
+      'lpb': '970449',
+      'lpbank': '970449',
+      'viettelmoney': 'viettelmoney',
     };
     return codeToBin[lower] ?? codeOrBin;
   }

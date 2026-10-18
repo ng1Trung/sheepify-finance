@@ -30,11 +30,16 @@ import 'package:line_icons/line_icons.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_widgets.dart';
-import '../../data/services/notification_service.dart';
+import '../../data/models/pending_transfer.dart';
+import '../../data/models/wallet_model.dart';
 import '../../data/services/bank_deeplink_service.dart';
+import '../../data/services/notification_service.dart';
+import '../../data/services/pending_transfer_service.dart';
+import '../../data/services/wallet_service.dart';
+import '../widgets/payment/payment_transfer_assistant_sheet.dart';
 import 'notifications_screen.dart';
-import 'scanner/smart_qr_scanner_screen.dart';
 import 'payment/quick_transfer_screen.dart';
+import 'scanner/smart_qr_scanner_screen.dart';
 import 'wallet/wallet_management_screen.dart';
 
 enum _DrawerInsightType { budget, cycle, savings, today, streak }
@@ -68,6 +73,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   // Smart Payment & Undo state
   Transaction? _pendingPaymentUndoTx;
+  String? _pendingPaymentUndoWalletId;
+  double? _pendingPaymentUndoAmount;
   Timer? _undoPaymentTimer;
   int _undoCountdown = 15;
   String? _lastCheckedClipboard;
@@ -523,6 +530,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             if (isSingleDiaryDay) ...[
               IconButton(
                 visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 icon: Icon(
                   Icons.arrow_back_ios_new,
                   size: 14,
@@ -535,11 +544,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               ),
               const SizedBox(width: 4),
             ],
-            SheepDatePill(label: dateText, onTap: _pickTime),
+            Flexible(
+              child: SheepDatePill(label: dateText, onTap: _pickTime),
+            ),
             if (isSingleDiaryDay) ...[
               const SizedBox(width: 4),
               IconButton(
                 visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 icon: Icon(
                   Icons.arrow_forward_ios,
                   size: 14,
@@ -673,6 +686,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       body: Stack(
         children: [
           buildBody(),
+          _buildPendingTransfersBanner(context, headerBase),
           if (_pendingPaymentUndoTx != null)
             _buildUndoPaymentBanner(context, headerBase),
         ],
@@ -982,10 +996,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _onPaymentTransactionCreated(Transaction tx) {
+  void _onPaymentTransactionCreated(Transaction tx, {String? walletId, double? amount}) {
     _undoPaymentTimer?.cancel();
     setState(() {
       _pendingPaymentUndoTx = tx;
+      _pendingPaymentUndoWalletId = walletId;
+      _pendingPaymentUndoAmount = amount;
       _undoCountdown = 15;
       _selectedDate = tx.date;
       _diaryRange = _currentCycleRange(date: tx.date);
@@ -1001,6 +1017,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           _undoCountdown--;
         } else {
           _pendingPaymentUndoTx = null;
+          _pendingPaymentUndoWalletId = null;
+          _pendingPaymentUndoAmount = null;
           timer.cancel();
         }
       });
@@ -1010,12 +1028,28 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Future<void> _undoPaymentTransaction() async {
     if (_pendingPaymentUndoTx == null) return;
     final tx = _pendingPaymentUndoTx!;
+    final walletId = _pendingPaymentUndoWalletId;
+    final refundAmount = _pendingPaymentUndoAmount ?? tx.amount;
+
     _undoPaymentTimer?.cancel();
     setState(() {
       _pendingPaymentUndoTx = null;
+      _pendingPaymentUndoWalletId = null;
+      _pendingPaymentUndoAmount = null;
     });
 
     await Hive.box<Transaction>(kMoneyBox).delete(tx.id);
+
+    // Hoàn lại số dư ví nếu giao dịch đã từng trừ ví
+    if (walletId != null) {
+      try {
+        final wallet = WalletService.getWallet(walletId);
+        if (wallet != null) {
+          await WalletService.adjustBalance(wallet.id, wallet.initialBalance + refundAmount);
+        }
+      } catch (_) {}
+    }
+
     if (mounted) {
       SheepNotifications.showSuccess(
         context,
@@ -1224,13 +1258,330 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 constraints: const BoxConstraints(),
                 onPressed: () {
                   _undoPaymentTimer?.cancel();
-                  setState(() => _pendingPaymentUndoTx = null);
+                  setState(() {
+                    _pendingPaymentUndoTx = null;
+                    _pendingPaymentUndoWalletId = null;
+                    _pendingPaymentUndoAmount = null;
+                  });
                 },
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _openPendingTransferAssistant(PendingTransfer pending) {
+    final sendingBank = pending.sendingBankId != null
+        ? BankDeeplinkService.findById(pending.sendingBankId)
+        : BankDeeplinkService.supportedBanks.first;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (_) => PaymentTransferAssistantSheet(
+        sendingBank: sendingBank ?? BankDeeplinkService.supportedBanks.first,
+        recipientBankName: pending.recipientBankName ?? 'Ngân hàng nhận',
+        accountNo: pending.accountNo,
+        amount: pending.amount,
+        note: pending.note,
+        qrPayload: pending.qrPayload ?? '',
+        pendingId: pending.id,
+        onConfirmed: () async {
+          final tx = await PendingTransferService.confirmTransfer(pending.id);
+          if (mounted) {
+            Navigator.pop(context);
+            if (tx != null) {
+              final wallets = WalletService.getWallets();
+              WalletModel? matchingWallet;
+              try {
+                matchingWallet = wallets.firstWhere(
+                  (w) =>
+                      w.id == pending.walletId ||
+                      (pending.sendingBankId != null && w.bankId == pending.sendingBankId),
+                );
+              } catch (_) {}
+              _onPaymentTransactionCreated(tx, walletId: matchingWallet?.id, amount: pending.amount);
+            }
+            SheepNotifications.showSuccess(
+              context,
+              'Giao dịch thành công! Đã trừ số dư ví & cập nhật sổ chi tiêu.',
+            );
+          }
+        },
+        onCancelled: () async {
+          await PendingTransferService.cancelTransfer(pending.id);
+          if (mounted) {
+            Navigator.pop(context);
+            SheepNotifications.showInfo(
+              context,
+              'Đã hủy giao dịch. Số dư ví giữ nguyên.',
+            );
+          }
+        },
+        onReopenApp: () {
+          if (sendingBank != null) {
+            BankDeeplinkService.launchBankApp(
+              bank: sendingBank,
+              qrPayload: pending.qrPayload ?? '',
+              accountNo: pending.accountNo,
+              recipientBin: pending.recipientBankBin,
+              amount: pending.amount,
+              note: pending.note,
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildPendingTransfersBanner(BuildContext context, Color headerBase) {
+    return ValueListenableBuilder<Box<String>>(
+      valueListenable: PendingTransferService.listenable(),
+      builder: (context, box, _) {
+        final pendingList = PendingTransferService.getPendingTransfers();
+        if (pendingList.isEmpty) return const SizedBox.shrink();
+
+        final pending = pendingList.first;
+        final brightness = Theme.of(context).brightness;
+        final isDark = brightness == Brightness.dark;
+        final count = pendingList.length;
+
+        final sendingBank = pending.sendingBankId != null
+            ? BankDeeplinkService.findById(pending.sendingBankId)
+            : null;
+
+        return Positioned(
+          left: SheepSpacing.page,
+          right: SheepSpacing.page,
+          bottom: _pendingPaymentUndoTx != null ? 165 : 90,
+          child: Material(
+            elevation: 10,
+            borderRadius: BorderRadius.circular(SheepRadius.lg),
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.getSurface(brightness),
+                borderRadius: BorderRadius.circular(SheepRadius.lg),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.hourglass_top_rounded,
+                          color: Color(0xFFF59E0B),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  'Chờ xác nhận: -${CurrencyUtil.formatMoney(pending.amount, locale: 'vi_VN')}₫',
+                                  style: TextStyle(
+                                    fontFamily: 'Quicksand',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? const Color(0xFFFBBF24)
+                                        : const Color(0xFFD97706),
+                                  ),
+                                ),
+                                if (count > 1) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF59E0B)
+                                          .withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(
+                                          SheepRadius.pill),
+                                    ),
+                                    child: Text(
+                                      '+${count - 1}',
+                                      style: const TextStyle(
+                                        fontFamily: 'Quicksand',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFFD97706),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${sendingBank?.shortName ?? 'Ngân hàng'} ➔ ${pending.recipientBankName ?? pending.accountNo} (${pending.note})',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: SheepTextStyles.itemMeta(context).copyWith(
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      // Nút xem chi tiết / hỗ trợ copy
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _openPendingTransferAssistant(pending),
+                          icon: const Icon(Icons.info_outline, size: 14),
+                          label: const Text(
+                            'Chi tiết',
+                            style: TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            side: BorderSide(
+                              color: AppColors.getBorder(brightness),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(SheepRadius.sm),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Nút Hủy
+                      TextButton.icon(
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (dialogContext) => SheepConfirmDialog(
+                              title: 'Hủy giao dịch chờ?',
+                              content: 'Giao dịch chuyển khoản này sẽ bị hủy. Số dư ví vẫn giữ nguyên.',
+                              confirmLabel: 'Hủy giao dịch',
+                              cancelLabel: 'Giữ lại',
+                              onConfirm: () {},
+                            ),
+                          );
+                          if (confirm == true) {
+                            await PendingTransferService.cancelTransfer(pending.id);
+                            if (mounted && context.mounted) {
+                              SheepNotifications.showInfo(
+                                context,
+                                'Đã hủy giao dịch. Số dư ví giữ nguyên.',
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.close, size: 14, color: Color(0xFFEF4444)),
+                        label: const Text(
+                          'Hủy',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                            color: Color(0xFFEF4444),
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          backgroundColor:
+                              const Color(0xFFEF4444).withValues(alpha: 0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(SheepRadius.sm),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Nút Xác nhận đã chuyển
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final tx = await PendingTransferService.confirmTransfer(pending.id);
+                          if (mounted && context.mounted && tx != null) {
+                            final wallets = WalletService.getWallets();
+                            WalletModel? matchingWallet;
+                            try {
+                              matchingWallet = wallets.firstWhere(
+                                (w) =>
+                                    w.id == pending.walletId ||
+                                    (pending.sendingBankId != null && w.bankId == pending.sendingBankId),
+                              );
+                            } catch (_) {}
+                            _onPaymentTransactionCreated(tx, walletId: matchingWallet?.id, amount: pending.amount);
+                            SheepNotifications.showSuccess(
+                              context,
+                              'Đã xác nhận chuyển tiền thành công!',
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.check, size: 15),
+                        label: const Text(
+                          'Đã chuyển',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00A86B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(SheepRadius.sm),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
