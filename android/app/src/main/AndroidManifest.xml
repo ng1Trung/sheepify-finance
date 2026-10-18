@@ -1,10 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <application
         android:label="sheepify"
         android:name="${applicationName}"
@@ -70,6 +72,10 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
         <package android:name="com.VCB" />
         <package android:name="vn.com.techcombank.bb.app" />
         <package android:name="com.mbmobile" />
@@ -81,5 +87,9 @@
         <package android:name="com.vietinbank.ipay" />
         <package android:name="mobile.acb.com.vn" />
         <package android:name="com.vnpay.vpbankonline" />
+        <package android:name="io.lifestyle.plus" />
+        <package android:name="vn.timo.mobile" />
+        <package android:name="xyz.be.cake" />
+        <package android:name="vn.com.ocb.awe" />
     </queries>
 </manifest>

@@ -313,6 +313,7 @@ class _PaymentConfirmationBottomSheetState
         bank: _selectedBank!,
         qrPayload: finalPayload,
         accountNo: widget.qrData.bankAccount,
+        recipientBin: widget.qrData.bankBin,
         amount: amount,
         note: note,
       );

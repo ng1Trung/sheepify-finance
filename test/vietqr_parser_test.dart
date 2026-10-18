@@ -67,6 +67,14 @@ void main() {
       expect(parsed.bankBin, '970407');
       expect(parsed.amount, 100000);
       expect(parsed.purpose, 'TraTienNha');
+
+      const deeplinkUrl = 'https://dl.vietqr.io/pay?app=mb&ba=0011001234567@vcb&am=250000&tn=Tien+cafe';
+      final parsedDeeplink = VietQrParser.parse(deeplinkUrl);
+      expect(parsedDeeplink.isValid, isTrue);
+      expect(parsedDeeplink.bankAccount, '0011001234567');
+      expect(parsedDeeplink.bankBin, '970436');
+      expect(parsedDeeplink.amount, 250000);
+      expect(parsedDeeplink.purpose, 'Tien cafe');
     });
 
     test('Calculate CRC16 produces valid 4-character hex', () {

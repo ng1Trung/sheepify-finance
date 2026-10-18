@@ -539,6 +539,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
         bank: _sendingBank!,
         qrPayload: qrPayload,
         accountNo: accountNo,
+        recipientBin: _recipientBank?.bin,
         amount: amount,
         note: note,
       );

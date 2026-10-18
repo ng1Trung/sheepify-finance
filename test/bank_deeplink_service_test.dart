@@ -38,8 +38,32 @@ void main() {
         expect(bank.shortName.isNotEmpty, isTrue);
         expect(bank.fullName.isNotEmpty, isTrue);
         expect(bank.iosScheme.endsWith('://'), isTrue);
+        expect(bank.allSchemes.every((s) => s.endsWith('://')), isTrue);
         expect(bank.androidPackage.isNotEmpty, isTrue);
+        expect(bank.allAndroidPackages.every((p) => p.isNotEmpty), isTrue);
       }
+    });
+
+    test('Build VietQR deeplink URI for bank transfer', () {
+      final mb = BankDeeplinkService.findById('mb')!;
+      final uri = BankDeeplinkService.buildVietQrDeeplinkUri(
+        bank: mb,
+        accountNo: '0011001234567',
+        recipientBin: '970436', // Vietcombank
+        amount: 150000,
+        note: 'Trả tiền ăn trưa',
+      );
+
+      expect(uri, isNotNull);
+      expect(uri!.host, 'dl.vietqr.io');
+      expect(uri.path, '/pay');
+      expect(uri.queryParameters['app'], 'mb');
+      expect(uri.queryParameters['ba'], '0011001234567@vcb');
+      expect(uri.queryParameters['am'], '150000');
+      expect(uri.queryParameters['tn'], 'Tra tien an trua');
+      expect(uri.queryParameters['url'], 'https://www.vietqr.io/deeplink');
+      expect(uri.toString(), contains('ba=0011001234567@vcb'));
+      expect(uri.toString(), contains('url=https://www.vietqr.io/deeplink'));
     });
   });
 

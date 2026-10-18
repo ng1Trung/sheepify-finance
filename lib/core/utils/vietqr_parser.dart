@@ -272,11 +272,26 @@ class VietQrParser {
       final query = uri.queryParameters;
 
       final amount = double.tryParse(query['amount'] ?? query['am'] ?? '');
-      final purpose = query['memo'] ?? query['des'] ?? query['note'];
-      final bankBin = query['bin'] ?? query['bankCode'];
-      final bankAccount = query['accountNo'] ?? query['ba'];
+      final purpose = query['memo'] ??
+          query['des'] ??
+          query['note'] ??
+          query['tn'] ??
+          query['addInfo'];
+      String? bankBin = query['bin'] ?? query['bankCode'] ?? query['app'];
+      String? bankAccount = query['accountNo'] ?? query['ba'];
 
-      if (bankBin != null || bankAccount != null) {
+      // Hỗ trợ định dạng chuẩn VietQR deeplink: ba=AccountNo@BankCode
+      if (bankAccount != null && bankAccount.contains('@')) {
+        final parts = bankAccount.split('@');
+        bankAccount = parts.first.trim();
+        if (parts.length > 1 && parts[1].trim().isNotEmpty) {
+          bankBin = _resolveBankCodeToBin(parts[1].trim()) ?? bankBin;
+        }
+      } else if (bankBin != null) {
+        bankBin = _resolveBankCodeToBin(bankBin.trim()) ?? bankBin;
+      }
+
+      if (bankBin != null || (bankAccount != null && bankAccount.isNotEmpty)) {
         return VietQrModel(
           rawPayload: url,
           bankBin: bankBin,
@@ -295,6 +310,36 @@ class VietQrParser {
       errorMessage: 'URL không chứa dữ liệu VietQR hợp lệ',
     );
   }
+
+  static String? _resolveBankCodeToBin(String codeOrBin) {
+    final lower = codeOrBin.toLowerCase();
+    const codeToBin = <String, String>{
+      'vcb': '970436',
+      'vietcombank': '970436',
+      'tcb': '970407',
+      'techcombank': '970407',
+      'mb': '970422',
+      'mbbank': '970422',
+      'tpb': '970423',
+      'tpbank': '970423',
+      'vpb': '970432',
+      'vpbank': '970432',
+      'acb': '970416',
+      'bidv': '970418',
+      'icb': '970415',
+      'ctg': '970415',
+      'vietinbank': '970415',
+      'timo': '963388',
+      'cake': '546034',
+      'momo': 'momo',
+      'zalopay': 'zalopay',
+    };
+    return codeToBin[lower] ?? codeOrBin;
+  }
+
+  /// Chuẩn hóa nội dung chuyển khoản (bỏ dấu tiếng Việt) để tương thích ngân hàng
+  static String sanitizeTransferNote(String str) =>
+      _removeVietnameseDiacritics(str.trim());
 
   /// Loại bỏ dấu tiếng Việt để an toàn khi gửi sang hệ thống ngân hàng
   static String _removeVietnameseDiacritics(String str) {

@@ -56,15 +56,26 @@
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>vcb</string>
+		<string>vietcombankmobile</string>
 		<string>techcombank</string>
+		<string>tcb</string>
 		<string>mbmobile</string>
+		<string>mbbank</string>
 		<string>tpb</string>
+		<string>hydro</string>
 		<string>momo</string>
 		<string>zalopay</string>
 		<string>bidvsmartbanking</string>
+		<string>bidv.smartbanking.partner</string>
 		<string>vietinbankipay</string>
 		<string>acbone</string>
 		<string>vpbankneo</string>
+		<string>timo</string>
+		<string>plus</string>
+		<string>cake</string>
+		<string>cake.vn</string>
+		<string>ocbomni40</string>
+		<string>ocbomni</string>
 		<string>https</string>
 		<string>http</string>
 	</array>
