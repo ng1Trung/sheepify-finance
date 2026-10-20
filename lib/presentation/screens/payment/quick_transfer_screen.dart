@@ -515,10 +515,10 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     );
 
     final isAutofill =
-        _sendingBank == null || _sendingBank!.canAutofillPayment;
+        _sendingBank != null && _sendingBank!.canAutofillPayment;
 
     if (isAutofill) {
-      // FLOW TỰ ĐỘNG (Techcombank, Vietcombank, MB, ACB, BIDV, VietinBank, OCB):
+      // FLOW TỰ ĐỘNG (ACB, BIDV, VietinBank, OCB - Các ngân hàng hỗ trợ VietQR Autofill):
       if (_sendingBank != null) {
         final launched = await BankDeeplinkService.launchBankApp(
           bank: _sendingBank!,
@@ -574,13 +574,15 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
         } catch (_) {}
       }
 
-      try {
-        await NotificationService.checkAndTriggerNotifications(
-          context,
-          _selectedCategory!.id,
-          DateTime.now(),
-        );
-      } catch (_) {}
+      if (mounted) {
+        try {
+          await NotificationService.checkAndTriggerNotifications(
+            context,
+            _selectedCategory!.id,
+            DateTime.now(),
+          );
+        } catch (_) {}
+      }
 
       if (mounted) {
         Navigator.pop(context, tx);

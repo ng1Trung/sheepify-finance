@@ -48,8 +48,7 @@ class BankAppModel {
       }.toList();
 
   /// Cho biết ngân hàng này có hỗ trợ điền sẵn thông tin thanh toán tự động không
-  bool get canAutofillPayment =>
-      supportsVietQrAutofill || id == 'techcombank' || id == 'vcb';
+  bool get canAutofillPayment => supportsVietQrAutofill;
 
   @override
   bool operator ==(Object other) =>
@@ -74,7 +73,6 @@ class BankDeeplinkService {
       alternativeSchemes: ['vietcombankmobile://'],
       androidPackage: 'com.VCB',
       vietQrAppId: 'vcb',
-      supportsVietQrAutofill: true,
       brandColor: Color(0xFF005A36),
       logoUrl: 'https://api.vietqr.io/img/VCB.png',
     ),
@@ -87,7 +85,6 @@ class BankDeeplinkService {
       alternativeSchemes: ['tcb://'],
       androidPackage: 'vn.com.techcombank.bb.app',
       vietQrAppId: 'tcb',
-      supportsVietQrAutofill: true,
       brandColor: Color(0xFFE60000),
       logoUrl: 'https://api.vietqr.io/img/TCB.png',
     ),
@@ -100,7 +97,6 @@ class BankDeeplinkService {
       alternativeSchemes: ['mbbank://'],
       androidPackage: 'com.mbmobile',
       vietQrAppId: 'mb',
-      supportsVietQrAutofill: true,
       brandColor: Color(0xFF002D72),
       logoUrl: 'https://api.vietqr.io/img/MB.png',
     ),

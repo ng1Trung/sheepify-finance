@@ -95,16 +95,16 @@ void main() {
     });
 
     test('canAutofillPayment identifies automatic vs manual type 2 banks/wallets', () {
-      // Nhóm tự động điền thông tin (Techcombank, Vietcombank, MB, ACB, BIDV, VietinBank, OCB)
-      expect(BankDeeplinkService.findById('techcombank')!.canAutofillPayment, isTrue);
-      expect(BankDeeplinkService.findById('vcb')!.canAutofillPayment, isTrue);
-      expect(BankDeeplinkService.findById('mb')!.canAutofillPayment, isTrue);
+      // Nhóm hỗ trợ điền tự động qua VietQR deeplink (ACB, BIDV, VietinBank, OCB)
       expect(BankDeeplinkService.findById('acb')!.canAutofillPayment, isTrue);
       expect(BankDeeplinkService.findById('bidv')!.canAutofillPayment, isTrue);
       expect(BankDeeplinkService.findById('vietinbank')!.canAutofillPayment, isTrue);
       expect(BankDeeplinkService.findById('ocb')!.canAutofillPayment, isTrue);
 
-      // Nhóm Loại 2 (Ví điện tử hoặc ngân hàng cần xác nhận thủ công)
+      // Nhóm Loại 2 / Không hỗ trợ deeplink điền thông tin (Vietcombank, Techcombank, MB, MoMo, ZaloPay, Viettel Money, TPBank, VPBank, Timo...)
+      expect(BankDeeplinkService.findById('techcombank')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('vcb')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('mb')!.canAutofillPayment, isFalse);
       expect(BankDeeplinkService.findById('momo')!.canAutofillPayment, isFalse);
       expect(BankDeeplinkService.findById('zalopay')!.canAutofillPayment, isFalse);
       expect(BankDeeplinkService.findById('viettelmoney')!.canAutofillPayment, isFalse);

@@ -296,7 +296,7 @@ class _PaymentConfirmationBottomSheetState
         BankDeeplinkService.findByBin(widget.qrData.bankBin);
 
     final isAutofill =
-        _selectedBank == null || _selectedBank!.canAutofillPayment;
+        _selectedBank != null && _selectedBank!.canAutofillPayment;
 
     if (isAutofill) {
       // 1. Kích hoạt Deeplink mở App ngân hàng (autofill STK, số tiền, nội dung)
@@ -356,13 +356,15 @@ class _PaymentConfirmationBottomSheetState
       }
 
       // 5. Kiểm tra ngân sách / mục tiêu tiết kiệm
-      try {
-        await NotificationService.checkAndTriggerNotifications(
-          context,
-          _selectedCategory!.id,
-          DateTime.now(),
-        );
-      } catch (_) {}
+      if (mounted) {
+        try {
+          await NotificationService.checkAndTriggerNotifications(
+            context,
+            _selectedCategory!.id,
+            DateTime.now(),
+          );
+        } catch (_) {}
+      }
 
       if (mounted) {
         Navigator.pop(context, transaction);
