@@ -12,13 +12,16 @@ import '../../../core/utils/vietqr_parser.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/pending_transfer.dart';
 import '../../../data/models/settings_model.dart';
+import '../../../data/models/transaction.dart';
 import '../../../data/services/bank_deeplink_service.dart';
+import '../../../data/services/notification_service.dart';
 import '../../../data/services/pending_transfer_service.dart';
 import '../../../data/services/sheepify_scan_ai_service.dart';
 import '../../../data/services/wallet_service.dart';
 import '../common/sheep_notifications.dart';
 import '../common/sheep_widgets.dart';
 import '../transaction/transaction_category_picker.dart';
+import 'bank_app_picker_modal.dart';
 import 'payment_transfer_assistant_sheet.dart';
 
 class PaymentConfirmationBottomSheet extends StatefulWidget {
@@ -292,52 +295,126 @@ class _PaymentConfirmationBottomSheetState
     final beneficiaryBank =
         BankDeeplinkService.findByBin(widget.qrData.bankBin);
 
-    // 2. Tạo bản ghi giao dịch Chờ xác nhận (Pending).
-    // Số dư ví CHƯA bị trừ và Transaction CHƯA được ghi nhận vào sổ chi tiêu.
-    final pending = await PendingTransferService.createPendingTransfer(
-      amount: amount,
-      note: note,
-      categoryId: _selectedCategory!.id,
-      sendingBankId: _selectedBank?.id,
-      recipientBankBin: widget.qrData.bankBin,
-      recipientBankName: beneficiaryBank?.shortName ?? widget.initialPayeeName,
-      accountNo: widget.qrData.bankAccount ?? '',
-      qrPayload: finalPayload,
-    );
+    final isAutofill =
+        _selectedBank == null || _selectedBank!.canAutofillPayment;
 
-    // 3. Mở App Ngân Hàng qua Deeplink
-    if (_selectedBank != null) {
-      final launched = await BankDeeplinkService.launchBankApp(
-        bank: _selectedBank!,
-        qrPayload: finalPayload,
-        accountNo: widget.qrData.bankAccount,
-        recipientBin: widget.qrData.bankBin,
+    if (isAutofill) {
+      // 1. Kích hoạt Deeplink mở App ngân hàng (autofill STK, số tiền, nội dung)
+      if (_selectedBank != null) {
+        final launched = await BankDeeplinkService.launchBankApp(
+          bank: _selectedBank!,
+          qrPayload: finalPayload,
+          accountNo: widget.qrData.bankAccount,
+          recipientBin: widget.qrData.bankBin,
+          amount: amount,
+          note: note,
+        );
+
+        if (!launched && mounted) {
+          SheepNotifications.showError(
+            context,
+            'Không thể mở ứng dụng ${_selectedBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
+          );
+          return;
+        }
+      }
+
+      // 2. Tìm ví thanh toán liên kết
+      String? resolvedWalletId;
+      if (_selectedBank != null) {
+        try {
+          final wallets = WalletService.getWallets();
+          final match =
+              wallets.firstWhere((w) => w.bankId == _selectedBank!.id);
+          resolvedWalletId = match.id;
+        } catch (_) {}
+      }
+
+      // 3. Tự động ghi chép giao dịch hoàn tất vào sổ chi tiêu
+      final moneyBox = Hive.box<Transaction>(kMoneyBox);
+      final transaction = Transaction(
+        id: Transaction.createId(),
         amount: amount,
         note: note,
+        date: DateTime.now(),
+        isExpense: true,
+        categoryId: _selectedCategory!.id,
+        status: TransactionStatus.completed,
+        walletId: resolvedWalletId,
       );
+      await moneyBox.put(transaction.id, transaction);
 
-      if (!launched && mounted) {
-        SheepNotifications.showError(
-          context,
-          'Không thể mở ứng dụng ${_selectedBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
-        );
-        return;
+      // 4. Tự động khấu trừ số dư ví thanh toán nếu có
+      if (resolvedWalletId != null) {
+        final wallets = WalletService.getWallets();
+        try {
+          final w = wallets.firstWhere((w) => w.id == resolvedWalletId);
+          final newBal =
+              (w.initialBalance - amount).clamp(0.0, double.infinity);
+          await WalletService.adjustBalance(w.id, newBal);
+        } catch (_) {}
       }
 
-      // Hiển thị Trợ lý Chuyển khoản trong chính sheet này để người dùng xác nhận sau khi chuyển
+      // 5. Kiểm tra ngân sách / mục tiêu tiết kiệm
+      try {
+        await NotificationService.checkAndTriggerNotifications(
+          context,
+          _selectedCategory!.id,
+          DateTime.now(),
+        );
+      } catch (_) {}
+
       if (mounted) {
-        setState(() {
-          _pendingTransfer = pending;
-          _savedPayload = finalPayload;
-          _showAssistantStep = true;
-        });
-        return;
+        Navigator.pop(context, transaction);
+        SheepNotifications.showSuccess(
+          context,
+          'Thanh toán thành công! Đã tự động trừ số dư ví & ghi sổ.',
+        );
       }
     } else {
-      // Trường hợp không chọn ngân hàng chuyển (thanh toán trực tiếp)
-      final tx = await PendingTransferService.confirmTransfer(pending.id);
-      if (mounted) {
-        Navigator.pop(context, tx);
+      // LOẠI 2 (Các ngân hàng/ví không hỗ trợ autofill thanh toán: MoMo, ZaloPay, Viettel Money...):
+      // 1. Tạo bản ghi giao dịch Chờ xác nhận (Pending).
+      // Số dư ví CHƯA bị trừ và Transaction CHƯA được tính vào ngân sách.
+      final pending = await PendingTransferService.createPendingTransfer(
+        amount: amount,
+        note: note,
+        categoryId: _selectedCategory!.id,
+        sendingBankId: _selectedBank?.id,
+        recipientBankBin: widget.qrData.bankBin,
+        recipientBankName:
+            beneficiaryBank?.shortName ?? widget.initialPayeeName,
+        accountNo: widget.qrData.bankAccount ?? '',
+        qrPayload: finalPayload,
+      );
+
+      // 2. Mở App Ngân Hàng qua Deeplink
+      if (_selectedBank != null) {
+        final launched = await BankDeeplinkService.launchBankApp(
+          bank: _selectedBank!,
+          qrPayload: finalPayload,
+          accountNo: widget.qrData.bankAccount,
+          recipientBin: widget.qrData.bankBin,
+          amount: amount,
+          note: note,
+        );
+
+        if (!launched && mounted) {
+          SheepNotifications.showError(
+            context,
+            'Không thể mở ứng dụng ${_selectedBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
+          );
+          return;
+        }
+
+        // Hiển thị Trợ lý Chuyển khoản trong chính sheet này để người dùng xác nhận sau khi chuyển
+        if (mounted) {
+          setState(() {
+            _pendingTransfer = pending;
+            _savedPayload = finalPayload;
+            _showAssistantStep = true;
+          });
+          return;
+        }
       }
     }
   }
@@ -747,78 +824,18 @@ class _PaymentConfirmationBottomSheetState
             ),
             const SizedBox(height: SheepSpacing.md),
 
-            // Chọn ứng dụng thanh toán (Bank Selector)
-            Text(
-              'CHỌN APP NGÂN HÀNG / VÍ ĐỂ CHUYỂN TIỀN',
-              style: SheepTextStyles.itemMeta(context).copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: SheepTypeScale.micro,
-              ),
-            ),
-            const SizedBox(height: SheepSpacing.xs),
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: BankDeeplinkService.supportedBanks.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final bank = BankDeeplinkService.supportedBanks[index];
-                  final isSelected = _selectedBank?.id == bank.id;
-
-                  return GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _selectedBank = bank);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? bank.brandColor.withValues(alpha: 0.15)
-                            : AppColors.getSubtleSurface(brightness),
-                        borderRadius: BorderRadius.circular(SheepRadius.pill),
-                        border: Border.all(
-                          color: isSelected
-                              ? bank.brandColor
-                              : AppColors.getBorder(brightness),
-                          width: isSelected ? 1.5 : 1.0,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: bank.brandColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            bank.shortName,
-                            style: TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontSize: SheepTypeScale.label,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
-                              color: isSelected
-                                  ? bank.brandColor
-                                  : AppColors.getTextPrimary(brightness),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+            // Chọn ứng dụng thanh toán (Bank Selector dạng dropdown / bottom sheet)
+            BankAppSelectorTile(
+              bank: _selectedBank,
+              onTap: () {
+                BankAppPickerModal.show(
+                  context: context,
+                  selectedBank: _selectedBank,
+                  onBankSelected: (bank) {
+                    setState(() => _selectedBank = bank);
+                  },
+                );
+              },
             ),
             const SizedBox(height: SheepSpacing.lg),
 

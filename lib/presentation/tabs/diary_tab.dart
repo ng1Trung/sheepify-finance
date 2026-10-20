@@ -677,18 +677,22 @@ class _DiaryTabState extends State<DiaryTab> {
                                                         ? (settings.languageCode == 'vi' ? 'Chờ xác nhận' : 'Pending')
                                                         : (tx.isCancelled
                                                             ? (settings.languageCode == 'vi' ? 'Đã hủy' : 'Cancelled')
-                                                            : null),
+                                                            : (settings.languageCode == 'vi' ? 'Thành công' : 'Completed')),
                                                     badgeColor: tx.isPending
                                                         ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
                                                         : (tx.isCancelled
                                                             ? const Color(0xFFEF4444).withValues(alpha: 0.12)
-                                                            : null),
+                                                            : const Color(0xFF10B981).withValues(alpha: 0.15)),
                                                     badgeTextColor: tx.isPending
                                                         ? const Color(0xFFD97706)
-                                                        : (tx.isCancelled ? const Color(0xFFEF4444) : null),
+                                                        : (tx.isCancelled
+                                                            ? const Color(0xFFEF4444)
+                                                            : const Color(0xFF059669)),
                                                     badgeIcon: tx.isPending
                                                         ? Icons.hourglass_top_rounded
-                                                        : (tx.isCancelled ? Icons.cancel_outlined : null),
+                                                        : (tx.isCancelled
+                                                            ? Icons.cancel_outlined
+                                                            : Icons.check_circle_outline_rounded),
                                                     amountText:
                                                         !settings.hideAmounts
                                                         ? '${cat.effectiveTypeIndex == 0
@@ -2164,48 +2168,53 @@ class _TransactionImageTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (transaction.isPending || transaction.isCancelled)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: (transaction.isPending
-                                ? const Color(0xFFF59E0B)
-                                : const Color(0xFFEF4444))
-                            .withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            transaction.isPending
-                                ? Icons.hourglass_top_rounded
-                                : Icons.cancel_outlined,
-                            size: 10,
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (transaction.isPending
+                              ? const Color(0xFFF59E0B)
+                              : (transaction.isCancelled
+                                  ? const Color(0xFFEF4444)
+                                  : const Color(0xFF10B981)))
+                          .withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          transaction.isPending
+                              ? Icons.hourglass_top_rounded
+                              : (transaction.isCancelled
+                                  ? Icons.cancel_outlined
+                                  : Icons.check_circle_rounded),
+                          size: 10,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          transaction.isPending
+                              ? (settings.languageCode == 'vi' ? 'Chờ' : 'Pending')
+                              : (transaction.isCancelled
+                                  ? (settings.languageCode == 'vi' ? 'Hủy' : 'Cancelled')
+                                  : (settings.languageCode == 'vi' ? 'Xong' : 'Done')),
+                          style: const TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
-                          const SizedBox(width: 3),
-                          Text(
-                            transaction.isPending
-                                ? (settings.languageCode == 'vi' ? 'Chờ' : 'Pending')
-                                : (settings.languageCode == 'vi' ? 'Hủy' : 'Cancelled'),
-                            style: const TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
               ],
             ),
           ),

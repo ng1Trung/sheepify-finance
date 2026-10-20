@@ -93,6 +93,25 @@ void main() {
       expect(uri.toString(), contains('ba=0011001234567@vcb'));
       expect(uri.toString(), contains('url=https://www.vietqr.io/deeplink'));
     });
+
+    test('canAutofillPayment identifies automatic vs manual type 2 banks/wallets', () {
+      // Nhóm tự động điền thông tin (Techcombank, Vietcombank, MB, ACB, BIDV, VietinBank, OCB)
+      expect(BankDeeplinkService.findById('techcombank')!.canAutofillPayment, isTrue);
+      expect(BankDeeplinkService.findById('vcb')!.canAutofillPayment, isTrue);
+      expect(BankDeeplinkService.findById('mb')!.canAutofillPayment, isTrue);
+      expect(BankDeeplinkService.findById('acb')!.canAutofillPayment, isTrue);
+      expect(BankDeeplinkService.findById('bidv')!.canAutofillPayment, isTrue);
+      expect(BankDeeplinkService.findById('vietinbank')!.canAutofillPayment, isTrue);
+      expect(BankDeeplinkService.findById('ocb')!.canAutofillPayment, isTrue);
+
+      // Nhóm Loại 2 (Ví điện tử hoặc ngân hàng cần xác nhận thủ công)
+      expect(BankDeeplinkService.findById('momo')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('zalopay')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('viettelmoney')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('tpb')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('vpbank')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('timo')!.canAutofillPayment, isFalse);
+    });
   });
 
   group('SavedPayee Model Tests', () {

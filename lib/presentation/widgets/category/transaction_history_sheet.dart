@@ -344,14 +344,71 @@ class TransactionHistorySheet extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    noteText,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: SheepTextStyles.itemTitle(context).copyWith(
-                      fontSize: SheepTypeScale.item,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          noteText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: SheepTextStyles.itemTitle(context).copyWith(
+                            fontSize: SheepTypeScale.item,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: tx.isPending
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                              : (tx.isCancelled
+                                  ? const Color(0xFFEF4444).withValues(alpha: 0.12)
+                                  : const Color(0xFF10B981).withValues(alpha: 0.15)),
+                          borderRadius: BorderRadius.circular(SheepRadius.sm),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              tx.isPending
+                                  ? Icons.hourglass_top_rounded
+                                  : (tx.isCancelled
+                                      ? Icons.cancel_outlined
+                                      : Icons.check_circle_outline_rounded),
+                              size: 10,
+                              color: tx.isPending
+                                  ? const Color(0xFFD97706)
+                                  : (tx.isCancelled
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFF059669)),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              tx.isPending
+                                  ? (settings.languageCode == 'vi' ? 'Chờ' : 'Pending')
+                                  : (tx.isCancelled
+                                      ? (settings.languageCode == 'vi' ? 'Hủy' : 'Cancelled')
+                                      : (settings.languageCode == 'vi' ? 'Xong' : 'Done')),
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: tx.isPending
+                                    ? const Color(0xFFD97706)
+                                    : (tx.isCancelled
+                                        ? const Color(0xFFEF4444)
+                                        : const Color(0xFF059669)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
