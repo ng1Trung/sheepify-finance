@@ -82,7 +82,7 @@ void main() {
   });
 
   group('PendingTransferService Workflow Tests', () {
-    test('createPendingTransfer does NOT deduct wallet balance or write to moneyBox', () async {
+    test('createPendingTransfer records pending transaction without deducting wallet balance', () async {
       final initialBalance = WalletService.getWallet('wallet_tcb_test')!.initialBalance;
       expect(initialBalance, 5000000);
 
@@ -104,9 +104,14 @@ void main() {
       final balanceAfterPending = WalletService.getWallet('wallet_tcb_test')!.initialBalance;
       expect(balanceAfterPending, 5000000);
 
-      // 2. Sổ chi tiêu moneyBox chưa có giao dịch này
+      // 2. Sổ chi tiêu moneyBox đã có giao dịch với trạng thái pending
       final moneyBox = Hive.box<Transaction>(kMoneyBox);
-      expect(moneyBox.isEmpty, isTrue);
+      expect(moneyBox.containsKey(pending.id), isTrue);
+      final tx = moneyBox.get(pending.id)!;
+      expect(tx.isPending, isTrue);
+      expect(tx.status, TransactionStatus.pending);
+      expect(tx.walletId, 'wallet_tcb_test');
+      expect(tx.amount, 500000);
 
       // 3. Có trong danh sách getPendingTransfers
       final pendingList = PendingTransferService.getPendingTransfers();
@@ -114,7 +119,7 @@ void main() {
       expect(pendingList.first.id, pending.id);
     });
 
-    test('confirmTransfer records transaction, deducts wallet, and clears pending', () async {
+    test('confirmTransfer marks transaction completed, deducts wallet, and clears pending', () async {
       final pending = await PendingTransferService.createPendingTransfer(
         amount: 1000000,
         note: 'Tra tien phong',
@@ -126,16 +131,23 @@ void main() {
         accountNo: '1234567890',
       );
 
+      // Trước khi xác nhận: status là pending, ví chưa trừ
+      final moneyBox = Hive.box<Transaction>(kMoneyBox);
+      expect(moneyBox.get(pending.id)!.isPending, isTrue);
+      expect(WalletService.getWallet('wallet_tcb_test')!.initialBalance, 5000000);
+
       // Xác nhận đã chuyển tiền thành công
       final tx = await PendingTransferService.confirmTransfer(pending.id);
       expect(tx, isNotNull);
       expect(tx!.amount, 1000000);
       expect(tx.note, 'Tra tien phong');
       expect(tx.isExpense, isTrue);
+      expect(tx.isCompleted, isTrue);
+      expect(tx.status, TransactionStatus.completed);
 
-      // 1. Transaction được lưu vào moneyBox
-      final moneyBox = Hive.box<Transaction>(kMoneyBox);
-      expect(moneyBox.containsKey(tx.id), isTrue);
+      // 1. Transaction trong moneyBox được cập nhật completed
+      final updatedTx = moneyBox.get(pending.id)!;
+      expect(updatedTx.isCompleted, isTrue);
 
       // 2. Số dư ví bị trừ chính xác 1.000.000đ (5.000.000 -> 4.000.000)
       final balanceAfterConfirm = WalletService.getWallet('wallet_tcb_test')!.initialBalance;
@@ -147,7 +159,7 @@ void main() {
       expect(PendingTransferService.getPendingTransfer(pending.id), isNull);
     });
 
-    test('cancelTransfer discards pending without affecting wallet or moneyBox', () async {
+    test('cancelTransfer marks transaction cancelled without deducting wallet', () async {
       final pending = await PendingTransferService.createPendingTransfer(
         amount: 2000000,
         note: 'Giao dich bi huy',
@@ -169,8 +181,11 @@ void main() {
       final currentBalance = WalletService.getWallet('wallet_tcb_test')!.initialBalance;
       expect(currentBalance, 5000000);
 
-      // 3. Không có gì trong moneyBox
-      expect(Hive.box<Transaction>(kMoneyBox).isEmpty, isTrue);
+      // 3. Transaction trong moneyBox được đánh dấu cancelled
+      final moneyBox = Hive.box<Transaction>(kMoneyBox);
+      final tx = moneyBox.get(pending.id)!;
+      expect(tx.isCancelled, isTrue);
+      expect(tx.status, TransactionStatus.cancelled);
     });
   });
 }

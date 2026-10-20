@@ -23,6 +23,7 @@ class CategoryUtil {
       spent = allTransactions
           .where(
             (tx) =>
+                tx.isCompleted &&
                 tx.categoryId == cat.id &&
                 FinancialCycleUtil.isInRange(tx.date, cycleRange),
           )
@@ -30,13 +31,14 @@ class CategoryUtil {
     } else if (goalType == 2) {
       // Goal: all history
       spent = allTransactions
-          .where((tx) => tx.categoryId == cat.id)
+          .where((tx) => tx.isCompleted && tx.categoryId == cat.id)
           .fold(0.0, (sum, tx) => sum + tx.amount);
     } else {
       // Standard income/expense: current financial cycle
       spent = allTransactions
           .where(
             (tx) =>
+                tx.isCompleted &&
                 tx.categoryId == cat.id &&
                 FinancialCycleUtil.isInRange(tx.date, cycleRange),
           )

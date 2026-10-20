@@ -514,7 +514,10 @@ class NotificationService {
   // Calculate current transaction logging streak
   static int _calculateTransactionStreak() {
     final completedDayKeys = <String>{
-      ...Hive.box<Transaction>(kMoneyBox).values.map((tx) {
+      ...Hive.box<Transaction>(kMoneyBox)
+          .values
+          .where((tx) => tx.isCompleted)
+          .map((tx) {
         final day = DateTime(tx.date.year, tx.date.month, tx.date.day);
         return DateFormat('yyyy-MM-dd').format(day);
       }),
@@ -574,6 +577,7 @@ class NotificationService {
       final todayTransactions = txBox.values
           .where(
             (tx) =>
+                tx.isCompleted &&
                 tx.date.year == now.year &&
                 tx.date.month == now.month &&
                 tx.date.day == now.day,
@@ -719,7 +723,7 @@ class NotificationService {
     final txBox = Hive.box<Transaction>(kMoneyBox);
     final sevenDaysAgo = now.subtract(const Duration(days: 7));
     final weekTransactions = txBox.values
-        .where((tx) => tx.date.isAfter(sevenDaysAgo))
+        .where((tx) => tx.isCompleted && tx.date.isAfter(sevenDaysAgo))
         .toList();
 
     final double totalExpense = weekTransactions
@@ -793,7 +797,7 @@ class NotificationService {
   ) async {
     final l10n = L10n.of(context);
     final settings = Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
-    final transactions = Hive.box<Transaction>(kMoneyBox).values.toList();
+    final transactions = Hive.box<Transaction>(kMoneyBox).values.where((tx) => tx.isCompleted).toList();
     final catBox = Hive.box<CategoryModel>(kCatBox);
     final categoriesById = {
       for (final cat in catBox.values) cat.id: cat,

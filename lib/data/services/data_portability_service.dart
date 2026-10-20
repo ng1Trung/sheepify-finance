@@ -129,6 +129,8 @@ class TransactionBackupDto {
   final bool isExpense;
   final String categoryId;
   final String? imagePath;
+  final String status;
+  final String? walletId;
 
   const TransactionBackupDto({
     required this.id,
@@ -138,6 +140,8 @@ class TransactionBackupDto {
     required this.isExpense,
     required this.categoryId,
     this.imagePath,
+    this.status = TransactionStatus.completed,
+    this.walletId,
   });
 
   factory TransactionBackupDto.fromModel(Transaction tx) {
@@ -149,6 +153,8 @@ class TransactionBackupDto {
       isExpense: tx.isExpense,
       categoryId: tx.categoryId,
       imagePath: tx.imagePath,
+      status: tx.status,
+      walletId: tx.walletId,
     );
   }
 
@@ -161,6 +167,8 @@ class TransactionBackupDto {
       isExpense: _asBool(json['isExpense']) ?? true,
       categoryId: json['categoryId']?.toString() ?? '',
       imagePath: _nullableString(json['imagePath']),
+      status: json['status']?.toString() ?? TransactionStatus.completed,
+      walletId: _nullableString(json['walletId']),
     );
   }
 
@@ -173,6 +181,8 @@ class TransactionBackupDto {
       isExpense: isExpense,
       categoryId: categoryId,
       imagePath: restoredImagePath ?? imagePath,
+      status: status,
+      walletId: walletId,
     );
   }
 
@@ -185,6 +195,8 @@ class TransactionBackupDto {
       'isExpense': isExpense,
       'categoryId': categoryId,
       'imagePath': imagePath,
+      'status': status,
+      'walletId': walletId,
     };
   }
 }

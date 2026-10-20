@@ -274,7 +274,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final streakBox = _streakBoxOrNull();
     if (streakBox == null) return;
     for (final tx in Hive.box<Transaction>(kMoneyBox).values) {
-      streakBox.put(_streakCompletedKey(_dayKey(tx.date)), true);
+      if (tx.isCompleted) {
+        streakBox.put(_streakCompletedKey(_dayKey(tx.date)), true);
+      }
     }
   }
 
@@ -1883,7 +1885,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       unawaited(_syncStreakAfterBoxOpen());
     }
     final completedDayKeys = <String>{
-      ...Hive.box<Transaction>(kMoneyBox).values.map((tx) => _dayKey(tx.date)),
+      ...Hive.box<Transaction>(kMoneyBox)
+          .values
+          .where((tx) => tx.isCompleted)
+          .map((tx) => _dayKey(tx.date)),
       if (streakBox != null)
         ...streakBox.keys
             .whereType<String>()
@@ -1987,6 +1992,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       final spent = transactions
           .where(
             (tx) =>
+                tx.isCompleted &&
                 tx.categoryId == category.id &&
                 FinancialCycleUtil.isInRange(tx.date, cycleRange),
           )
@@ -2039,6 +2045,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     double sumForRange(DateTime start, DateTime end, int typeIndex) {
       return transactions
           .where((tx) {
+            if (!tx.isCompleted) return false;
             final category = categoriesById[tx.categoryId];
             final effectiveTypeIndex =
                 category?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
@@ -2105,7 +2112,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
       final initial = category.initialAmount ?? 0.0;
       final saved = transactions
-          .where((tx) => tx.categoryId == category.id)
+          .where((tx) => tx.isCompleted && tx.categoryId == category.id)
           .fold(0.0, (sum, tx) => sum + tx.amount) + initial;
       final progress = saved / target;
       if (progress <= bestProgress) continue;
@@ -2146,7 +2153,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
     final todayTransactions = Hive.box<Transaction>(kMoneyBox).values.where(
-      (tx) => !tx.date.isBefore(today) && tx.date.isBefore(tomorrow),
+      (tx) => tx.isCompleted && !tx.date.isBefore(today) && tx.date.isBefore(tomorrow),
     );
     final todayExpense = todayTransactions
         .where((tx) => tx.isExpense)

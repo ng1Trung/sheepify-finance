@@ -12,6 +12,9 @@ import '../../core/utils/transaction_image_store.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
+import '../../data/services/bank_deeplink_service.dart';
+import '../../data/services/pending_transfer_service.dart';
+import '../../data/services/wallet_service.dart';
 import '../widgets/transaction_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
@@ -613,6 +616,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                                     );
                                                   },
                                                   onDismissed: (_) {
+                                                    if (tx.isPending) {
+                                                      PendingTransferService.cancelTransfer(tx.id);
+                                                    }
                                                     tx.delete();
                                                     NotificationService.checkDailyReminderReschedule();
                                                     SheepNotifications.showSuccess(
@@ -630,7 +636,22 @@ class _DiaryTabState extends State<DiaryTab> {
                                                               ? SheepSpacing.itemGap
                                                               : 0.0),
                                                     ),
-                                                    onTap: () =>
+                                                    onTap: () {
+                                                      if (tx.isPending) {
+                                                        _showPendingTransferActionSheet(
+                                                          context,
+                                                          tx,
+                                                          cat,
+                                                          settings,
+                                                        );
+                                                      } else if (tx.isCancelled) {
+                                                        _showCancelledTransferActionSheet(
+                                                          context,
+                                                          tx,
+                                                          cat,
+                                                          settings,
+                                                        );
+                                                      } else {
                                                         showModalBottomSheet(
                                                           context: context,
                                                           isScrollControlled:
@@ -641,7 +662,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                                               TransactionForm(
                                                                 transaction: tx,
                                                               ),
-                                                        ),
+                                                        );
+                                                      }
+                                                    },
                                                     icon: resolveCategoryIcon(
                                                       cat.iconCode,
                                                     ),
@@ -650,6 +673,22 @@ class _DiaryTabState extends State<DiaryTab> {
                                                         cat.imagePath,
                                                     title: cat.name,
                                                     dateText: tx.note,
+                                                    badgeText: tx.isPending
+                                                        ? (settings.languageCode == 'vi' ? 'Chờ xác nhận' : 'Pending')
+                                                        : (tx.isCancelled
+                                                            ? (settings.languageCode == 'vi' ? 'Đã hủy' : 'Cancelled')
+                                                            : null),
+                                                    badgeColor: tx.isPending
+                                                        ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                                                        : (tx.isCancelled
+                                                            ? const Color(0xFFEF4444).withValues(alpha: 0.12)
+                                                            : null),
+                                                    badgeTextColor: tx.isPending
+                                                        ? const Color(0xFFD97706)
+                                                        : (tx.isCancelled ? const Color(0xFFEF4444) : null),
+                                                    badgeIcon: tx.isPending
+                                                        ? Icons.hourglass_top_rounded
+                                                        : (tx.isCancelled ? Icons.cancel_outlined : null),
                                                     amountText:
                                                         !settings.hideAmounts
                                                         ? '${cat.effectiveTypeIndex == 0
@@ -661,8 +700,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                                             settings
                                                                 .currencyCode,
                                                           ),
-                                                    amountColor:
-                                                        typeVisuals.color,
+                                                    amountColor: tx.isCancelled
+                                                        ? AppColors.getTextSecondary(theme.brightness)
+                                                        : typeVisuals.color,
                                                   ),
                                                 );
                                               }),
@@ -811,6 +851,7 @@ class _DiaryTabState extends State<DiaryTab> {
     double expense = 0;
 
     for (final tx in dayTxs) {
+      if (!tx.isCompleted) continue;
       final cat = catBox.values.firstWhere(
         (c) => c.id == tx.categoryId,
         orElse: () => CategoryModel(
@@ -1240,16 +1281,22 @@ class _DiaryTabState extends State<DiaryTab> {
           category: cat,
           settings: settings,
           onTap: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              isDismissible: true,
-              enableDrag: true,
-              builder: (_) => TransactionForm(
-                transaction: tx,
-                dayTransactions: transactions,
-              ),
-            );
+            if (tx.isPending) {
+              _showPendingTransferActionSheet(context, tx, cat, settings);
+            } else if (tx.isCancelled) {
+              _showCancelledTransferActionSheet(context, tx, cat, settings);
+            } else {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                isDismissible: true,
+                enableDrag: true,
+                builder: (_) => TransactionForm(
+                  transaction: tx,
+                  dayTransactions: transactions,
+                ),
+              );
+            }
           },
         );
       },
@@ -1278,6 +1325,7 @@ class _DiaryTabState extends State<DiaryTab> {
     double previousBalance = 0;
 
     for (final tx in transactions) {
+      if (!tx.isCompleted) continue;
       final cat = categoriesById[tx.categoryId];
       final effectiveType = cat?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
       final inCurrentCycle = FinancialCycleUtil.isInRange(tx.date, currentRange);
@@ -1474,6 +1522,539 @@ class _DiaryTabState extends State<DiaryTab> {
       ),
     );
   }
+
+  void _showPendingTransferActionSheet(
+    BuildContext context,
+    Transaction tx,
+    CategoryModel cat,
+    AppSettings settings,
+  ) {
+    final pending = PendingTransferService.getPendingTransfer(tx.id);
+    final theme = Theme.of(context);
+
+    final sendingBank = pending?.sendingBankId != null
+        ? BankDeeplinkService.findById(pending!.sendingBankId!)
+        : null;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        decoration: BoxDecoration(
+          color: AppColors.getSurface(theme.brightness),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.getBorder(theme.brightness),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.hourglass_top_rounded,
+                    color: Color(0xFFD97706),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Giao dịch chờ xác nhận',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Chưa trừ số dư ví cho đến khi bạn xác nhận',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 12,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.getSubtleSurface(theme.brightness),
+                borderRadius: BorderRadius.circular(SheepRadius.md),
+                border: Border.all(
+                  color: AppColors.getBorder(theme.brightness),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Số tiền:',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                      Text(
+                        '- ${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}',
+                        style: const TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.expense,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Danh mục:',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                      Text(
+                        cat.name,
+                        style: const TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (tx.note.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Ghi chú:',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 13,
+                            color: AppColors.getTextSecondary(theme.brightness),
+                          ),
+                        ),
+                        Flexible(
+                          child: Text(
+                            tx.note,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (pending != null && pending.recipientBankName != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Người nhận:',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 13,
+                            color: AppColors.getTextSecondary(theme.brightness),
+                          ),
+                        ),
+                        Flexible(
+                          child: Text(
+                            '${pending.recipientBankName} (${pending.accountNo})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final updated = await PendingTransferService.confirmTransfer(tx.id);
+                if (context.mounted && updated != null) {
+                  SheepNotifications.showSuccess(
+                    context,
+                    'Giao dịch thành công! Đã trừ số dư ví & cập nhật sổ chi tiêu.',
+                  );
+                }
+              },
+              icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+              label: const Text(
+                'Đã chuyển thành công (Cập nhật ví)',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(SheepRadius.md),
+                ),
+              ),
+            ),
+            if (sendingBank != null && pending != null) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  BankDeeplinkService.launchBankApp(
+                    bank: sendingBank,
+                    qrPayload: pending.qrPayload ?? '',
+                    accountNo: pending.accountNo,
+                    recipientBin: pending.recipientBankBin,
+                    amount: pending.amount,
+                    note: pending.note,
+                  );
+                },
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: Text(
+                  'Mở lại app ${sendingBank.shortName}',
+                  style: const TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(SheepRadius.md),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (dCtx) => SheepConfirmDialog(
+                    title: 'Hủy giao dịch này?',
+                    content: 'Giao dịch sẽ được chuyển sang trạng thái Đã hủy và số dư ví của bạn giữ nguyên vẹn.',
+                    confirmLabel: 'Xác nhận hủy',
+                    onConfirm: () {},
+                  ),
+                );
+                if (confirm == true) {
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  await PendingTransferService.cancelTransfer(tx.id);
+                  if (context.mounted) {
+                    SheepNotifications.showInfo(
+                      context,
+                      'Đã hủy giao dịch. Số dư ví giữ nguyên.',
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.close_rounded, size: 18, color: Color(0xFFEF4444)),
+              label: const Text(
+                'Chưa chuyển / Hủy giao dịch',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCancelledTransferActionSheet(
+    BuildContext context,
+    Transaction tx,
+    CategoryModel cat,
+    AppSettings settings,
+  ) {
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        decoration: BoxDecoration(
+          color: AppColors.getSurface(theme.brightness),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.getBorder(theme.brightness),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.cancel_outlined,
+                    color: Color(0xFFEF4444),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Giao dịch đã hủy',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Giao dịch không tính vào chi tiêu hay số dư ví',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 12,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.getSubtleSurface(theme.brightness),
+                borderRadius: BorderRadius.circular(SheepRadius.md),
+                border: Border.all(
+                  color: AppColors.getBorder(theme.brightness),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Số tiền:',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                      Text(
+                        CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode),
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.lineThrough,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Danh mục:',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                      Text(
+                        cat.name,
+                        style: const TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (tx.note.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Ghi chú:',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 13,
+                            color: AppColors.getTextSecondary(theme.brightness),
+                          ),
+                        ),
+                        Flexible(
+                          child: Text(
+                            tx.note,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                tx.status = TransactionStatus.completed;
+                await tx.save();
+                if (tx.walletId != null) {
+                  final wallets = WalletService.getWallets();
+                  try {
+                    final w = wallets.firstWhere((w) => w.id == tx.walletId);
+                    final newBal = (w.initialBalance - tx.amount).clamp(0.0, double.infinity);
+                    await WalletService.adjustBalance(w.id, newBal);
+                  } catch (_) {}
+                }
+                if (context.mounted) {
+                  SheepNotifications.showSuccess(
+                    context,
+                    'Đã khôi phục thành công giao dịch & cập nhật số dư ví.',
+                  );
+                }
+              },
+              icon: const Icon(Icons.replay_rounded, size: 18),
+              label: const Text(
+                'Khôi phục thành công (Đã chuyển)',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(SheepRadius.md),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await tx.delete();
+                if (context.mounted) {
+                  SheepNotifications.showSuccess(
+                    context,
+                    L10n.of(context).get('delete_success'),
+                  );
+                }
+              },
+              icon: const Icon(LineIcons.trash, size: 18, color: Color(0xFFEF4444)),
+              label: const Text(
+                'Xóa vĩnh viễn giao dịch này',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _TransactionImageTile extends StatelessWidget {
@@ -1583,6 +2164,48 @@ class _TransactionImageTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (transaction.isPending || transaction.isCancelled)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: (transaction.isPending
+                                ? const Color(0xFFF59E0B)
+                                : const Color(0xFFEF4444))
+                            .withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            transaction.isPending
+                                ? Icons.hourglass_top_rounded
+                                : Icons.cancel_outlined,
+                            size: 10,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            transaction.isPending
+                                ? (settings.languageCode == 'vi' ? 'Chờ' : 'Pending')
+                                : (settings.languageCode == 'vi' ? 'Hủy' : 'Cancelled'),
+                            style: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

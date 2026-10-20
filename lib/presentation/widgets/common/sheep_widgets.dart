@@ -383,6 +383,9 @@ class SheepTransactionCard extends StatelessWidget {
   final String amountText;
   final Color amountColor;
   final String? badgeText;
+  final Color? badgeColor;
+  final Color? badgeTextColor;
+  final IconData? badgeIcon;
   final IconData? amountIcon;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry? margin;
@@ -399,6 +402,9 @@ class SheepTransactionCard extends StatelessWidget {
     required this.amountText,
     required this.amountColor,
     this.badgeText,
+    this.badgeColor,
+    this.badgeTextColor,
+    this.badgeIcon,
     this.amountIcon,
     this.onTap,
     this.margin,
@@ -447,15 +453,62 @@ class SheepTransactionCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: Text(
-                                title,
-                                style: SheepTextStyles.itemTitle(context)
-                                    .copyWith(
-                                      fontSize: SheepTypeScale.item,
-                                      fontWeight: FontWeight.w600,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      title,
+                                      style: SheepTextStyles.itemTitle(context)
+                                          .copyWith(
+                                            fontSize: SheepTypeScale.item,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (badgeText != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: badgeColor ??
+                                            const Color(0xFFF59E0B)
+                                                .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(
+                                            SheepRadius.sm),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (badgeIcon != null) ...[
+                                            Icon(
+                                              badgeIcon,
+                                              size: 10,
+                                              color: badgeTextColor ??
+                                                  const Color(0xFFD97706),
+                                            ),
+                                            const SizedBox(width: 3),
+                                          ],
+                                          Text(
+                                            badgeText!,
+                                            style: TextStyle(
+                                              fontFamily: 'Quicksand',
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: badgeTextColor ??
+                                                  const Color(0xFFD97706),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -546,17 +599,59 @@ class SheepTransactionCard extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 2),
-                            FractionallySizedBox(
-                              widthFactor: 0.72,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                dateText,
-                                style: SheepTextStyles.itemMeta(
-                                  context,
-                                ).copyWith(fontSize: SheepTypeScale.body),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    dateText,
+                                    style: SheepTextStyles.itemMeta(
+                                      context,
+                                    ).copyWith(fontSize: SheepTypeScale.body),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (badgeText != null) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: badgeColor ??
+                                          const Color(0xFFF59E0B)
+                                              .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(
+                                          SheepRadius.sm),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (badgeIcon != null) ...[
+                                          Icon(
+                                            badgeIcon,
+                                            size: 10,
+                                            color: badgeTextColor ??
+                                                const Color(0xFFD97706),
+                                          ),
+                                          const SizedBox(width: 3),
+                                        ],
+                                        Text(
+                                          badgeText!,
+                                          style: TextStyle(
+                                            fontFamily: 'Quicksand',
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: badgeTextColor ??
+                                                const Color(0xFFD97706),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
