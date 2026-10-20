@@ -14,7 +14,6 @@ import '../../../data/models/saved_payee.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/bank_deeplink_service.dart';
-import '../../../data/services/notification_service.dart';
 import '../../../data/services/pending_transfer_service.dart';
 import '../../../data/services/sheepify_scan_ai_service.dart';
 import '../../../data/services/wallet_service.dart';
@@ -547,17 +546,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
       await _payeesBox.put(payee.id, payee.toJson());
     }
 
-    // 3. Hiển thị thông báo đẩy chi tiết (Từ đâu -> Đến đâu, Số tiền, Nội dung, Danh mục)
-    await NotificationService.showTransferInitiatedNotification(
-      sendingBankName: _sendingBank?.shortName ?? 'Ví thanh toán',
-      recipientBankName: recipientName,
-      accountNo: accountNo,
-      amount: amount,
-      note: note,
-      categoryName: _selectedCategory?.name,
-    );
-
-    // 4. Mở App ngân hàng qua Deeplink
+    // 3. Mở App ngân hàng qua Deeplink
     if (_sendingBank != null) {
       if (!isAutofill && accountNo.isNotEmpty) {
         try {

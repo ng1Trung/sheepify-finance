@@ -159,60 +159,6 @@ class NotificationService {
     } catch (_) {}
   }
 
-  /// Hiển thị thông báo khi tạo giao dịch chuyển khoản tự động
-  /// Bao gồm: từ đâu đi đâu, số tiền, nội dung, danh mục chi tiêu.
-  static Future<void> showTransferInitiatedNotification({
-    required String sendingBankName,
-    required String recipientBankName,
-    required String accountNo,
-    required double amount,
-    required String note,
-    String? categoryName,
-  }) async {
-    final settings =
-        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
-    if (!settings.enableNotifications) return;
-
-    const int notificationId = 888;
-    final formattedAmount = amount > 0
-        ? '${CurrencyUtil.formatMoney(amount, locale: 'vi_VN')}₫'
-        : '0₫';
-    final buffer = StringBuffer('-$formattedAmount');
-    if (note.isNotEmpty) buffer.write(' • $note');
-    if (categoryName != null && categoryName.isNotEmpty) {
-      buffer.write(' • Danh mục: $categoryName');
-    }
-    if (accountNo.isNotEmpty) buffer.write(' (STK: $accountNo)');
-
-    const androidDetails = AndroidNotificationDetails(
-      'sheepify_transfers',
-      'Chuyển tiền & Thanh toán',
-      channelDescription: 'Thông tin chuyển khoản và thanh toán tự động',
-      importance: Importance.max,
-      priority: Priority.high,
-      ticker: 'Chuyển tiền',
-      icon: '@mipmap/ic_launcher',
-    );
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: false,
-      presentSound: false,
-    );
-    const notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    try {
-      await _localNotificationsPlugin.show(
-        notificationId,
-        'Chuyển tiền: $sendingBankName ➔ $recipientBankName',
-        buffer.toString(),
-        notificationDetails,
-      );
-    } catch (_) {}
-  }
-
   /// Hiển thị thông báo tương tác với giao dịch (Thêm, Sửa, Hủy, Xóa)
   static Future<void> showTransactionActionNotification({
     required TransactionActionType action,

@@ -32,21 +32,6 @@ void main() {
       expect(TransactionActionType.values, contains(TransactionActionType.deleted));
     });
 
-    test('showTransferInitiatedNotification respects enableNotifications false', () async {
-      final settings = AppSettings(enableNotifications: false);
-      await Hive.box<AppSettings>(kSettingsBox).put('current', settings);
-
-      // Should complete without error and return early when notifications are disabled
-      await NotificationService.showTransferInitiatedNotification(
-        sendingBankName: 'Techcombank',
-        recipientBankName: 'TPBank',
-        accountNo: '1234567890',
-        amount: 50000,
-        note: 'Ca phe',
-        categoryName: 'Ăn uống',
-      );
-    });
-
     test('showTransactionActionNotification respects enableNotifications false', () async {
       final settings = AppSettings(enableNotifications: false);
       await Hive.box<AppSettings>(kSettingsBox).put('current', settings);

@@ -13,7 +13,6 @@ import '../../../data/models/category_model.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/bank_deeplink_service.dart';
-import '../../../data/services/notification_service.dart';
 import '../../../data/services/pending_transfer_service.dart';
 import '../../../data/services/sheepify_scan_ai_service.dart';
 import '../../../data/services/wallet_service.dart';
@@ -306,17 +305,7 @@ class _PaymentConfirmationBottomSheetState
       qrPayload: finalPayload,
     );
 
-    // 2. Hiển thị thông báo đẩy chi tiết
-    await NotificationService.showTransferInitiatedNotification(
-      sendingBankName: _selectedBank?.shortName ?? 'Ví thanh toán',
-      recipientBankName: recipientName,
-      accountNo: recipientAccount,
-      amount: amount,
-      note: note,
-      categoryName: _selectedCategory?.name,
-    );
-
-    // 3. Mở App ngân hàng qua Deeplink
+    // 2. Mở App ngân hàng qua Deeplink
     if (_selectedBank != null) {
       if (!isAutofill && recipientAccount.isNotEmpty) {
         try {
