@@ -616,11 +616,18 @@ class _DiaryTabState extends State<DiaryTab> {
                                                     );
                                                   },
                                                   onDismissed: (_) {
+                                                    final note = tx.note;
+                                                    final catName = cat.name;
                                                     if (tx.isPending) {
                                                       PendingTransferService.cancelTransfer(tx.id);
                                                     }
                                                     tx.delete();
                                                     NotificationService.checkDailyReminderReschedule();
+                                                    NotificationService.showTransactionActionNotification(
+                                                      action: TransactionActionType.deleted,
+                                                      note: note,
+                                                      categoryName: catName,
+                                                    );
                                                     SheepNotifications.showSuccess(
                                                       context,
                                                       l10n.get(
@@ -1728,6 +1735,12 @@ class _DiaryTabState extends State<DiaryTab> {
                 Navigator.pop(ctx);
                 final updated = await PendingTransferService.confirmTransfer(tx.id);
                 if (context.mounted && updated != null) {
+                  NotificationService.showTransactionActionNotification(
+                    action: TransactionActionType.updated,
+                    note: tx.note,
+                    amount: tx.amount,
+                    categoryName: cat.name,
+                  );
                   SheepNotifications.showSuccess(
                     context,
                     'Giao dịch thành công! Đã trừ số dư ví & cập nhật sổ chi tiêu.',
@@ -1798,6 +1811,12 @@ class _DiaryTabState extends State<DiaryTab> {
                 if (confirm == true) {
                   if (ctx.mounted) Navigator.pop(ctx);
                   await PendingTransferService.cancelTransfer(tx.id);
+                  NotificationService.showTransactionActionNotification(
+                    action: TransactionActionType.cancelled,
+                    note: tx.note,
+                    amount: tx.amount,
+                    categoryName: cat.name,
+                  );
                   if (context.mounted) {
                     SheepNotifications.showInfo(
                       context,
@@ -2031,8 +2050,15 @@ class _DiaryTabState extends State<DiaryTab> {
             const SizedBox(height: 10),
             TextButton.icon(
               onPressed: () async {
+                final note = tx.note;
+                final catName = cat.name;
                 Navigator.pop(ctx);
                 await tx.delete();
+                NotificationService.showTransactionActionNotification(
+                  action: TransactionActionType.deleted,
+                  note: note,
+                  categoryName: catName,
+                );
                 if (context.mounted) {
                   SheepNotifications.showSuccess(
                     context,

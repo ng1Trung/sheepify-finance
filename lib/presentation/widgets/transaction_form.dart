@@ -401,6 +401,8 @@ class _TransactionFormState extends State<TransactionForm>
     HapticFeedback.mediumImpact();
 
     try {
+      final cat = Hive.box<CategoryModel>(kCatBox).get(_selectedCategoryId);
+
       if (_activeTransaction != null) {
         // Update existing transaction in Hive
         final tx = _activeTransaction!;
@@ -412,6 +414,12 @@ class _TransactionFormState extends State<TransactionForm>
         tx.imagePath = _imagePath;
         tx.save();
         SheepNotifications.showSuccess(context, l10n.get('tx_updated'));
+        NotificationService.showTransactionActionNotification(
+          action: TransactionActionType.updated,
+          note: tx.note,
+          amount: enteredAmount,
+          categoryName: cat?.name,
+        );
       } else {
         // Create and add new transaction to Hive
         final newTx = Transaction(
@@ -425,6 +433,12 @@ class _TransactionFormState extends State<TransactionForm>
         );
         _box.add(newTx);
         SheepNotifications.showSuccess(context, l10n.get('tx_added'));
+        NotificationService.showTransactionActionNotification(
+          action: TransactionActionType.created,
+          note: newTx.note,
+          amount: enteredAmount,
+          categoryName: cat?.name,
+        );
       }
 
       // Check if we hit budget or reached goal

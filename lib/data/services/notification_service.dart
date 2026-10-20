@@ -17,6 +17,13 @@ import '../models/settings_model.dart';
 import '../models/transaction.dart';
 import '../../presentation/widgets/common/sheep_dialogs.dart';
 
+enum TransactionActionType {
+  created,
+  updated,
+  cancelled,
+  deleted,
+}
+
 class NotificationService {
   static final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
@@ -152,6 +159,151 @@ class NotificationService {
     } catch (_) {}
   }
 
+  /// Hiển thị thông báo khi tạo giao dịch chuyển khoản tự động
+  /// Bao gồm: từ đâu đi đâu, số tiền, nội dung, danh mục chi tiêu.
+  static Future<void> showTransferInitiatedNotification({
+    required String sendingBankName,
+    required String recipientBankName,
+    required String accountNo,
+    required double amount,
+    required String note,
+    String? categoryName,
+  }) async {
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    if (!settings.enableNotifications) return;
+
+    const int notificationId = 888;
+    final formattedAmount = amount > 0
+        ? '${CurrencyUtil.formatMoney(amount, locale: 'vi_VN')}₫'
+        : '0₫';
+    final buffer = StringBuffer('-$formattedAmount');
+    if (note.isNotEmpty) buffer.write(' • $note');
+    if (categoryName != null && categoryName.isNotEmpty) {
+      buffer.write(' • Danh mục: $categoryName');
+    }
+    if (accountNo.isNotEmpty) buffer.write(' (STK: $accountNo)');
+
+    const androidDetails = AndroidNotificationDetails(
+      'sheepify_transfers',
+      'Chuyển tiền & Thanh toán',
+      channelDescription: 'Thông tin chuyển khoản và thanh toán tự động',
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'Chuyển tiền',
+      icon: '@mipmap/ic_launcher',
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: false,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    try {
+      await _localNotificationsPlugin.show(
+        notificationId,
+        'Chuyển tiền: $sendingBankName ➔ $recipientBankName',
+        buffer.toString(),
+        notificationDetails,
+      );
+    } catch (_) {}
+  }
+
+  /// Hiển thị thông báo tương tác với giao dịch (Thêm, Sửa, Hủy, Xóa)
+  static Future<void> showTransactionActionNotification({
+    required TransactionActionType action,
+    required String note,
+    double? amount,
+    String? categoryName,
+  }) async {
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    if (!settings.enableNotifications) return;
+
+    final formattedAmount = amount != null && amount > 0
+        ? '${CurrencyUtil.formatMoney(amount, locale: 'vi_VN')}₫'
+        : '';
+
+    String title;
+    final bodyBuffer = StringBuffer();
+
+    switch (action) {
+      case TransactionActionType.created:
+        title = 'Đã thêm giao dịch';
+        if (formattedAmount.isNotEmpty) bodyBuffer.write('-$formattedAmount');
+        if (note.isNotEmpty) {
+          if (bodyBuffer.isNotEmpty) bodyBuffer.write(' • ');
+          bodyBuffer.write(note);
+        }
+        if (categoryName != null && categoryName.isNotEmpty) {
+          if (bodyBuffer.isNotEmpty) bodyBuffer.write(' ');
+          bodyBuffer.write('($categoryName)');
+        }
+        break;
+      case TransactionActionType.updated:
+        title = 'Đã cập nhật giao dịch';
+        if (formattedAmount.isNotEmpty) bodyBuffer.write('-$formattedAmount');
+        if (note.isNotEmpty) {
+          if (bodyBuffer.isNotEmpty) bodyBuffer.write(' • ');
+          bodyBuffer.write(note);
+        }
+        if (categoryName != null && categoryName.isNotEmpty) {
+          if (bodyBuffer.isNotEmpty) bodyBuffer.write(' ');
+          bodyBuffer.write('($categoryName)');
+        }
+        break;
+      case TransactionActionType.cancelled:
+        title = 'Đã hủy giao dịch';
+        if (formattedAmount.isNotEmpty) bodyBuffer.write('-$formattedAmount');
+        if (note.isNotEmpty) {
+          if (bodyBuffer.isNotEmpty) bodyBuffer.write(' • ');
+          bodyBuffer.write(note);
+        }
+        bodyBuffer.write(' (Số dư ví giữ nguyên)');
+        break;
+      case TransactionActionType.deleted:
+        title = 'Đã xóa giao dịch';
+        if (note.isNotEmpty) bodyBuffer.write(note);
+        if (categoryName != null && categoryName.isNotEmpty) {
+          if (bodyBuffer.isNotEmpty) bodyBuffer.write(' ');
+          bodyBuffer.write('($categoryName)');
+        }
+        break;
+    }
+
+    final id = DateTime.now().millisecondsSinceEpoch % 100000;
+    const androidDetails = AndroidNotificationDetails(
+      'sheepify_transactions',
+      'Giao dịch',
+      channelDescription: 'Thông báo tương tác giao dịch chi tiêu',
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      icon: '@mipmap/ic_launcher',
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: false,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    try {
+      await _localNotificationsPlugin.show(
+        id,
+        title,
+        bodyBuffer.toString(),
+        notificationDetails,
+      );
+    } catch (_) {}
+  }
+
   /// Hiển thị thông báo Trợ lý chuyển khoản (Payment Assistant Notification)
   /// Giúp người dùng có thể kéo Notification Center xem ngay STK, số tiền, nội dung
   /// khi đang thao tác trong app ngân hàng (Techcombank, Vietcombank, ...)
@@ -162,6 +314,10 @@ class NotificationService {
     double? amount,
     String? note,
   }) async {
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    if (!settings.enableNotifications) return;
+
     const int paymentNotificationId = 888;
     final formattedAmount = amount != null && amount > 0
         ? '${CurrencyUtil.formatMoney(amount, locale: 'vi_VN')}₫'
@@ -237,6 +393,10 @@ class NotificationService {
     required String body,
     required String payload,
   }) async {
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    if (!settings.enableNotifications) return;
+
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
           'sheepify_alerts',

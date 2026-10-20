@@ -10,7 +10,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_util.dart';
 import '../../../core/utils/vietqr_parser.dart';
 import '../../../data/models/category_model.dart';
-import '../../../data/models/pending_transfer.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/bank_deeplink_service.dart';
@@ -22,7 +21,6 @@ import '../common/sheep_notifications.dart';
 import '../common/sheep_widgets.dart';
 import '../transaction/transaction_category_picker.dart';
 import 'bank_app_picker_modal.dart';
-import 'payment_transfer_assistant_sheet.dart';
 
 class PaymentConfirmationBottomSheet extends StatefulWidget {
   final VietQrModel qrData;
@@ -49,11 +47,6 @@ class _PaymentConfirmationBottomSheetState
   CategoryModel? _selectedCategory;
   late final Box<CategoryModel> _catBox;
   late final Box<AppSettings> _settingsBox;
-
-  // Trạng thái hiển thị Trợ lý Chuyển khoản (cho các app ngân hàng)
-  bool _showAssistantStep = false;
-  PendingTransfer? _pendingTransfer;
-  String? _savedPayload;
 
   // Voice AI State
   late final stt.SpeechToText _speech;
@@ -294,183 +287,72 @@ class _PaymentConfirmationBottomSheetState
 
     final beneficiaryBank =
         BankDeeplinkService.findByBin(widget.qrData.bankBin);
+    final recipientName =
+        beneficiaryBank?.shortName ?? widget.initialPayeeName ?? 'Ngân hàng nhận';
+    final recipientAccount = widget.qrData.bankAccount ?? '';
 
     final isAutofill =
         _selectedBank != null && _selectedBank!.canAutofillPayment;
 
-    if (isAutofill) {
-      // 1. Kích hoạt Deeplink mở App ngân hàng (autofill STK, số tiền, nội dung)
-      if (_selectedBank != null) {
-        final launched = await BankDeeplinkService.launchBankApp(
-          bank: _selectedBank!,
-          qrPayload: finalPayload,
-          accountNo: widget.qrData.bankAccount,
-          recipientBin: widget.qrData.bankBin,
-          amount: amount,
-          note: note,
-        );
+    // 1. Tạo bản ghi giao dịch Chờ xác nhận (Pending)
+    await PendingTransferService.createPendingTransfer(
+      amount: amount,
+      note: note,
+      categoryId: _selectedCategory!.id,
+      sendingBankId: _selectedBank?.id,
+      recipientBankBin: widget.qrData.bankBin,
+      recipientBankName: recipientName,
+      accountNo: recipientAccount,
+      qrPayload: finalPayload,
+    );
 
-        if (!launched && mounted) {
-          SheepNotifications.showError(
-            context,
-            'Không thể mở ứng dụng ${_selectedBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
-          );
-          return;
-        }
-      }
+    // 2. Hiển thị thông báo đẩy chi tiết
+    await NotificationService.showTransferInitiatedNotification(
+      sendingBankName: _selectedBank?.shortName ?? 'Ví thanh toán',
+      recipientBankName: recipientName,
+      accountNo: recipientAccount,
+      amount: amount,
+      note: note,
+      categoryName: _selectedCategory?.name,
+    );
 
-      // 2. Tìm ví thanh toán liên kết
-      String? resolvedWalletId;
-      if (_selectedBank != null) {
+    // 3. Mở App ngân hàng qua Deeplink
+    if (_selectedBank != null) {
+      if (!isAutofill && recipientAccount.isNotEmpty) {
         try {
-          final wallets = WalletService.getWallets();
-          final match =
-              wallets.firstWhere((w) => w.bankId == _selectedBank!.id);
-          resolvedWalletId = match.id;
+          await Clipboard.setData(ClipboardData(text: recipientAccount));
         } catch (_) {}
       }
 
-      // 3. Tự động ghi chép giao dịch hoàn tất vào sổ chi tiêu
-      final moneyBox = Hive.box<Transaction>(kMoneyBox);
-      final transaction = Transaction(
-        id: Transaction.createId(),
-        amount: amount,
-        note: note,
-        date: DateTime.now(),
-        isExpense: true,
-        categoryId: _selectedCategory!.id,
-        status: TransactionStatus.completed,
-        walletId: resolvedWalletId,
-      );
-      await moneyBox.put(transaction.id, transaction);
-
-      // 4. Tự động khấu trừ số dư ví thanh toán nếu có
-      if (resolvedWalletId != null) {
-        final wallets = WalletService.getWallets();
-        try {
-          final w = wallets.firstWhere((w) => w.id == resolvedWalletId);
-          final newBal =
-              (w.initialBalance - amount).clamp(0.0, double.infinity);
-          await WalletService.adjustBalance(w.id, newBal);
-        } catch (_) {}
-      }
-
-      // 5. Kiểm tra ngân sách / mục tiêu tiết kiệm
-      if (mounted) {
-        try {
-          await NotificationService.checkAndTriggerNotifications(
-            context,
-            _selectedCategory!.id,
-            DateTime.now(),
-          );
-        } catch (_) {}
-      }
-
-      if (mounted) {
-        Navigator.pop(context, transaction);
-        SheepNotifications.showSuccess(
-          context,
-          'Thanh toán thành công! Đã tự động trừ số dư ví & ghi sổ.',
-        );
-      }
-    } else {
-      // LOẠI 2 (Các ngân hàng/ví không hỗ trợ autofill thanh toán: MoMo, ZaloPay, Viettel Money...):
-      // 1. Tạo bản ghi giao dịch Chờ xác nhận (Pending).
-      // Số dư ví CHƯA bị trừ và Transaction CHƯA được tính vào ngân sách.
-      final pending = await PendingTransferService.createPendingTransfer(
-        amount: amount,
-        note: note,
-        categoryId: _selectedCategory!.id,
-        sendingBankId: _selectedBank?.id,
-        recipientBankBin: widget.qrData.bankBin,
-        recipientBankName:
-            beneficiaryBank?.shortName ?? widget.initialPayeeName,
-        accountNo: widget.qrData.bankAccount ?? '',
+      final launched = await BankDeeplinkService.launchBankApp(
+        bank: _selectedBank!,
         qrPayload: finalPayload,
+        accountNo: widget.qrData.bankAccount,
+        recipientBin: widget.qrData.bankBin,
+        amount: amount,
+        note: note,
       );
 
-      // 2. Mở App Ngân Hàng qua Deeplink
-      if (_selectedBank != null) {
-        final launched = await BankDeeplinkService.launchBankApp(
-          bank: _selectedBank!,
-          qrPayload: finalPayload,
-          accountNo: widget.qrData.bankAccount,
-          recipientBin: widget.qrData.bankBin,
-          amount: amount,
-          note: note,
+      if (!launched && mounted) {
+        SheepNotifications.showError(
+          context,
+          'Không thể mở ứng dụng ${_selectedBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
         );
-
-        if (!launched && mounted) {
-          SheepNotifications.showError(
-            context,
-            'Không thể mở ứng dụng ${_selectedBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
-          );
-          return;
-        }
-
-        // Hiển thị Trợ lý Chuyển khoản trong chính sheet này để người dùng xác nhận sau khi chuyển
-        if (mounted) {
-          setState(() {
-            _pendingTransfer = pending;
-            _savedPayload = finalPayload;
-            _showAssistantStep = true;
-          });
-          return;
-        }
+        return;
       }
+    }
+
+    if (mounted) {
+      Navigator.pop(context);
+      SheepNotifications.showSuccess(
+        context,
+        'Đã tạo giao dịch chờ xác nhận và mở ${_selectedBank?.shortName ?? 'ngân hàng'}.',
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Nếu đang ở màn hình Trợ lý Chuyển khoản
-    if (_showAssistantStep &&
-        _pendingTransfer != null &&
-        _selectedBank != null) {
-      final beneficiaryBank =
-          BankDeeplinkService.findByBin(widget.qrData.bankBin);
-      return PaymentTransferAssistantSheet(
-        sendingBank: _selectedBank!,
-        recipientBankName:
-            beneficiaryBank?.shortName ?? widget.initialPayeeName ?? 'Ngân hàng nhận',
-        accountNo: widget.qrData.bankAccount ?? '',
-        amount: _pendingTransfer!.amount,
-        note: _pendingTransfer!.note,
-        qrPayload: _savedPayload ?? widget.qrData.rawPayload,
-        pendingId: _pendingTransfer!.id,
-        onConfirmed: () async {
-          final tx = await PendingTransferService.confirmTransfer(_pendingTransfer!.id);
-          if (mounted && context.mounted) {
-            Navigator.pop(context, tx);
-            SheepNotifications.showSuccess(
-              context,
-              'Giao dịch thành công! Đã trừ số dư ví & cập nhật sổ chi tiêu.',
-            );
-          }
-        },
-        onCancelled: () async {
-          await PendingTransferService.cancelTransfer(_pendingTransfer!.id);
-          if (mounted && context.mounted) {
-            Navigator.pop(context, null);
-            SheepNotifications.showInfo(
-              context,
-              'Đã hủy giao dịch. Số dư ví giữ nguyên.',
-            );
-          }
-        },
-        onReopenApp: () {
-          BankDeeplinkService.launchBankApp(
-            bank: _selectedBank!,
-            qrPayload: _savedPayload ?? widget.qrData.rawPayload,
-            accountNo: widget.qrData.bankAccount,
-            recipientBin: widget.qrData.bankBin,
-            amount: _pendingTransfer!.amount,
-            note: _pendingTransfer!.note,
-          );
-        },
-      );
-    }
-
     final theme = Theme.of(context);
     final brightness = theme.brightness;
     final settings =
