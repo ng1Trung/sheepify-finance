@@ -21,6 +21,7 @@ import 'common/sheep_dialogs.dart';
 import '../../core/utils/transaction_image_store.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/sheepify_scan_ai_service.dart';
+import '../../data/services/wallet_service.dart';
 
 class TransactionForm extends StatefulWidget {
   final Transaction? transaction;
@@ -308,6 +309,70 @@ class _TransactionFormState extends State<TransactionForm>
     );
   }
 
+  Widget _buildStatusBadge(Transaction tx) {
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    final isVi = settings.languageCode == 'vi';
+
+    String statusText;
+    Color statusBgColor;
+    Color statusTextColor;
+    IconData statusIcon;
+
+    if (tx.isPending) {
+      statusText = isVi ? 'Chờ xác nhận' : 'Pending';
+      statusBgColor = const Color(0xFFF59E0B).withValues(alpha: 0.15);
+      statusTextColor = const Color(0xFFD97706);
+      statusIcon = Icons.hourglass_top_rounded;
+    } else if (tx.isCancelled) {
+      statusText = isVi ? 'Đã hủy' : 'Cancelled';
+      statusBgColor = const Color(0xFFEF4444).withValues(alpha: 0.12);
+      statusTextColor = const Color(0xFFEF4444);
+      statusIcon = Icons.cancel_outlined;
+    } else {
+      statusText = isVi ? 'Thành công' : 'Completed';
+      statusBgColor = const Color(0xFF10B981).withValues(alpha: 0.15);
+      statusTextColor = const Color(0xFF059669);
+      statusIcon = Icons.check_circle_outline_rounded;
+    }
+
+    String? sourceText;
+    if (tx.walletId != null) {
+      try {
+        final wallet = WalletService.getWallet(tx.walletId!);
+        if (wallet != null) {
+          sourceText = wallet.name;
+        }
+      } catch (_) {}
+    } else {
+      sourceText = isVi ? 'Thủ công' : 'Manual';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: statusBgColor,
+        borderRadius: BorderRadius.circular(SheepRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(statusIcon, size: 13, color: statusTextColor),
+          const SizedBox(width: 4),
+          Text(
+            '$statusText${sourceText != null ? ' • $sourceText' : ''}',
+            style: TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: statusTextColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPickerTitle(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -336,6 +401,8 @@ class _TransactionFormState extends State<TransactionForm>
     HapticFeedback.mediumImpact();
 
     try {
+      final cat = Hive.box<CategoryModel>(kCatBox).get(_selectedCategoryId);
+
       if (_activeTransaction != null) {
         // Update existing transaction in Hive
         final tx = _activeTransaction!;
@@ -347,6 +414,13 @@ class _TransactionFormState extends State<TransactionForm>
         tx.imagePath = _imagePath;
         tx.save();
         SheepNotifications.showSuccess(context, l10n.get('tx_updated'));
+        NotificationService.showTransactionActionNotification(
+          action: TransactionActionType.updated,
+          note: tx.note,
+          amount: enteredAmount,
+          categoryName: cat?.name,
+          isExpense: tx.isExpense,
+        );
       } else {
         // Create and add new transaction to Hive
         final newTx = Transaction(
@@ -357,9 +431,17 @@ class _TransactionFormState extends State<TransactionForm>
           isExpense: _selectedTypeIndex == 0,
           categoryId: _selectedCategoryId!,
           imagePath: _imagePath,
+          status: TransactionStatus.completed,
         );
         _box.add(newTx);
         SheepNotifications.showSuccess(context, l10n.get('tx_added'));
+        NotificationService.showTransactionActionNotification(
+          action: TransactionActionType.created,
+          note: newTx.note,
+          amount: enteredAmount,
+          categoryName: cat?.name,
+          isExpense: newTx.isExpense,
+        );
       }
 
       // Check if we hit budget or reached goal
@@ -446,7 +528,11 @@ class _TransactionFormState extends State<TransactionForm>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildDragHandle(),
-                  const SizedBox(height: SheepSpacing.xl),
+                  if (_activeTransaction != null) ...[
+                    const SizedBox(height: SheepSpacing.sm),
+                    _buildStatusBadge(_activeTransaction!),
+                  ],
+                  const SizedBox(height: SheepSpacing.lg),
                   if (_imageTransactions.length > 1) ...[
                     AspectRatio(
                       aspectRatio: 1 / 0.82,

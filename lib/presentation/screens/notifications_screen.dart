@@ -236,6 +236,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           context,
                           3,
                         ); // Return index 3 to navigate to Categories tab
+                      } else if (type.startsWith('transaction_')) {
+                        Navigator.pop(
+                          context,
+                          0,
+                        ); // Return index 0 to navigate to Diary tab
                       } else {
                         Navigator.pop(context);
                       }
@@ -464,6 +469,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ); // Gold Star
       case 'savings_halfway':
         return _NotifVisual(Icons.trending_up_rounded, AppColors.savings);
+      case 'transaction_confirmed':
+        return const _NotifVisual(
+          Icons.check_circle_outline_rounded,
+          Color(0xFF10B981),
+        );
+      case 'transaction_created':
+        return const _NotifVisual(
+          Icons.add_circle_outline_rounded,
+          Color(0xFF20C997),
+        );
+      case 'transaction_updated':
+        return const _NotifVisual(
+          Icons.edit_note_rounded,
+          Color(0xFF3B82F6),
+        );
+      case 'transaction_cancelled':
+        return const _NotifVisual(
+          Icons.cancel_outlined,
+          Color(0xFFEF4444),
+        );
+      case 'transaction_deleted':
+        return const _NotifVisual(
+          Icons.delete_outline_rounded,
+          AppColors.expense,
+        );
       case 'daily_reminder':
       default:
         return _NotifVisual(Icons.alarm_on_rounded, AppColors.income);

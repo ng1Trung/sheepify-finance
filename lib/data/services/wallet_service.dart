@@ -60,6 +60,17 @@ class WalletService {
     }
   }
 
+  /// Lấy thông tin 1 ví theo ID
+  static WalletModel? getWallet(String walletId) {
+    final raw = _box.get(walletId);
+    if (raw == null) return null;
+    try {
+      return WalletModel.fromJson(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Đặt 1 ví làm mặc định và hủy mặc định ở các ví khác
   static Future<void> setDefaultWallet(String walletId) async {
     final wallets = getWallets();

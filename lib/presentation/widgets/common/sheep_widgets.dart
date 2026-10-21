@@ -383,6 +383,9 @@ class SheepTransactionCard extends StatelessWidget {
   final String amountText;
   final Color amountColor;
   final String? badgeText;
+  final Color? badgeColor;
+  final Color? badgeTextColor;
+  final IconData? badgeIcon;
   final IconData? amountIcon;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry? margin;
@@ -399,6 +402,9 @@ class SheepTransactionCard extends StatelessWidget {
     required this.amountText,
     required this.amountColor,
     this.badgeText,
+    this.badgeColor,
+    this.badgeTextColor,
+    this.badgeIcon,
     this.amountIcon,
     this.onTap,
     this.margin,
@@ -447,15 +453,62 @@ class SheepTransactionCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: Text(
-                                title,
-                                style: SheepTextStyles.itemTitle(context)
-                                    .copyWith(
-                                      fontSize: SheepTypeScale.item,
-                                      fontWeight: FontWeight.w600,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      title,
+                                      style: SheepTextStyles.itemTitle(context)
+                                          .copyWith(
+                                            fontSize: SheepTypeScale.item,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (badgeText != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: badgeColor ??
+                                            const Color(0xFFF59E0B)
+                                                .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(
+                                            SheepRadius.sm),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (badgeIcon != null) ...[
+                                            Icon(
+                                              badgeIcon,
+                                              size: 10,
+                                              color: badgeTextColor ??
+                                                  const Color(0xFFD97706),
+                                            ),
+                                            const SizedBox(width: 3),
+                                          ],
+                                          Text(
+                                            badgeText!,
+                                            style: TextStyle(
+                                              fontFamily: 'Quicksand',
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: badgeTextColor ??
+                                                  const Color(0xFFD97706),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -546,17 +599,59 @@ class SheepTransactionCard extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 2),
-                            FractionallySizedBox(
-                              widthFactor: 0.72,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                dateText,
-                                style: SheepTextStyles.itemMeta(
-                                  context,
-                                ).copyWith(fontSize: SheepTypeScale.body),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    dateText,
+                                    style: SheepTextStyles.itemMeta(
+                                      context,
+                                    ).copyWith(fontSize: SheepTypeScale.body),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (badgeText != null) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: badgeColor ??
+                                          const Color(0xFFF59E0B)
+                                              .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(
+                                          SheepRadius.sm),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (badgeIcon != null) ...[
+                                          Icon(
+                                            badgeIcon,
+                                            size: 10,
+                                            color: badgeTextColor ??
+                                                const Color(0xFFD97706),
+                                          ),
+                                          const SizedBox(width: 3),
+                                        ],
+                                        Text(
+                                          badgeText!,
+                                          style: TextStyle(
+                                            fontFamily: 'Quicksand',
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: badgeTextColor ??
+                                                const Color(0xFFD97706),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
@@ -620,40 +715,38 @@ class SheepDatePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return IntrinsicWidth(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(SheepRadius.xl),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color:
-                backgroundColor ??
-                (theme.brightness == Brightness.light
-                    ? Colors.white
-                    : AppColors.getSurface(theme.brightness)),
-            borderRadius: BorderRadius.circular(SheepRadius.xl),
-            border: border,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              softWrap: false,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppColors.getTextPrimary(theme.brightness),
-              ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SheepRadius.xl),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color:
+              backgroundColor ??
+              (theme.brightness == Brightness.light
+                  ? Colors.white
+                  : AppColors.getSurface(theme.brightness)),
+          borderRadius: BorderRadius.circular(SheepRadius.xl),
+          border: border,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontSize: 14.5,
+              fontWeight: FontWeight.bold,
+              color: AppColors.getTextPrimary(theme.brightness),
             ),
           ),
         ),

@@ -12,12 +12,16 @@ import '../../../core/utils/vietqr_parser.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
+import '../../../data/models/wallet_model.dart';
 import '../../../data/services/bank_deeplink_service.dart';
+import '../../../data/services/notification_service.dart';
+import '../../../data/services/pending_transfer_service.dart';
 import '../../../data/services/sheepify_scan_ai_service.dart';
 import '../../../data/services/wallet_service.dart';
 import '../common/sheep_notifications.dart';
 import '../common/sheep_widgets.dart';
 import '../transaction/transaction_category_picker.dart';
+import 'bank_app_picker_modal.dart';
 
 class PaymentConfirmationBottomSheet extends StatefulWidget {
   final VietQrModel qrData;
@@ -40,10 +44,10 @@ class _PaymentConfirmationBottomSheetState
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
   
+  WalletModel? _selectedWallet;
   BankAppModel? _selectedBank;
   CategoryModel? _selectedCategory;
   late final Box<CategoryModel> _catBox;
-  late final Box<Transaction> _moneyBox;
   late final Box<AppSettings> _settingsBox;
 
   // Voice AI State
@@ -57,7 +61,6 @@ class _PaymentConfirmationBottomSheetState
   void initState() {
     super.initState();
     _catBox = Hive.box<CategoryModel>(kCatBox);
-    _moneyBox = Hive.box<Transaction>(kMoneyBox);
     _settingsBox = Hive.box<AppSettings>(kSettingsBox);
 
     // Điền số tiền từ mã QR nếu có
@@ -73,12 +76,22 @@ class _PaymentConfirmationBottomSheetState
       text: widget.qrData.purpose ?? '',
     );
 
-    // Chọn ngân hàng thanh toán mặc định từ Cài đặt Ví
+    // Chọn ngân hàng thanh toán mặc định từ Ví ngân hàng đã cài đặt trong app (loại bỏ ví tiền mặt)
+    final bankWallets = WalletService.getWallets()
+        .where((w) => w.bankId != null && w.bankId!.trim().isNotEmpty)
+        .toList();
     final defaultWallet = WalletService.getDefaultWallet();
-    if (defaultWallet != null && defaultWallet.bankId != null) {
-      _selectedBank = BankDeeplinkService.findById(defaultWallet.bankId);
+    if (defaultWallet != null &&
+        defaultWallet.bankId != null &&
+        defaultWallet.bankId!.trim().isNotEmpty) {
+      _selectedWallet = defaultWallet;
+    } else if (bankWallets.isNotEmpty) {
+      _selectedWallet = bankWallets.first;
     }
-    _selectedBank ??= BankDeeplinkService.supportedBanks.first;
+
+    if (_selectedWallet != null) {
+      _selectedBank = BankDeeplinkService.findById(_selectedWallet!.bankId);
+    }
 
     // Chọn danh mục mặc định (ưu tiên Ăn uống hoặc danh mục đầu tiên)
     final expenseCategories = _catBox.values
@@ -269,34 +282,19 @@ class _PaymentConfirmationBottomSheetState
       return;
     }
 
+    if (_selectedWallet == null || _selectedBank == null) {
+      SheepNotifications.showError(
+        context,
+        'Vui lòng chọn ví ngân hàng đã cài đặt trong app để thanh toán!',
+      );
+      return;
+    }
+
     final note = _noteController.text.trim().isNotEmpty
         ? _noteController.text.trim()
         : 'Thanh toan VietQR';
 
-    // 1. Tự động lưu giao dịch vào Sheepify Database
-    final transaction = Transaction(
-      id: Transaction.createId(),
-      amount: amount,
-      note: note,
-      date: DateTime.now(),
-      isExpense: true,
-      categoryId: _selectedCategory!.id,
-    );
-
-    await _moneyBox.put(transaction.id, transaction);
-    HapticFeedback.mediumImpact();
-
-    // Cập nhật số dư ví tương ứng
-    final wallets = WalletService.getWallets();
-    try {
-      final matchingWallet = wallets.firstWhere(
-        (w) => w.bankId == _selectedBank?.id,
-      );
-      final newBal = (matchingWallet.initialBalance - amount).clamp(0.0, double.infinity);
-      await WalletService.adjustBalance(matchingWallet.id, newBal);
-    } catch (_) {}
-
-    // 2. Tạo / Cập nhật chuỗi VietQR với số tiền và nội dung đã nhập
+    // 1. Tạo / Cập nhật chuỗi VietQR với số tiền và nội dung đã nhập
     String finalPayload = widget.qrData.rawPayload;
     if (widget.qrData.bankBin != null && widget.qrData.bankAccount != null) {
       finalPayload = VietQrParser.generateVietQr(
@@ -307,19 +305,126 @@ class _PaymentConfirmationBottomSheetState
       );
     }
 
-    // 3. Mở App Ngân Hàng qua Deeplink
+    final beneficiaryBank =
+        BankDeeplinkService.findByBin(widget.qrData.bankBin);
+    final recipientName =
+        beneficiaryBank?.shortName ?? widget.initialPayeeName ?? 'Ngân hàng nhận';
+    final recipientAccount = widget.qrData.bankAccount ?? '';
+
+    final isAutofill =
+        _selectedBank != null && _selectedBank!.canAutofillPayment;
+
+    // 1. Kích hoạt Deeplink mở App ngân hàng TRƯỚC
     if (_selectedBank != null) {
-      await BankDeeplinkService.launchBankApp(
+      if (!isAutofill && recipientAccount.isNotEmpty) {
+        try {
+          await Clipboard.setData(ClipboardData(text: recipientAccount));
+        } catch (_) {}
+      }
+
+      final launched = await BankDeeplinkService.launchBankApp(
         bank: _selectedBank!,
         qrPayload: finalPayload,
         accountNo: widget.qrData.bankAccount,
+        recipientBin: widget.qrData.bankBin,
         amount: amount,
         note: note,
       );
+
+      // Nếu không mở được app ngân hàng -> Báo lỗi và dừng lại, tuyệt đối KHÔNG tạo giao dịch chờ
+      if (!launched) {
+        if (mounted) {
+          SheepNotifications.showError(
+            context,
+            'Không thể mở ứng dụng ${_selectedBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
+          );
+        }
+        return;
+      }
     }
 
-    if (mounted) {
-      Navigator.pop(context, transaction);
+    // 2. Mở app thành công -> Tạo giao dịch và phát thông báo tương ứng
+    if (isAutofill) {
+      // FLOW TỰ ĐỘNG (ACB, BIDV, VietinBank, OCB - Ngân hàng hỗ trợ VietQR Autofill):
+      // Giao dịch được tạo tự động với trạng thái completed và trừ số dư ví
+      final resolvedWalletId = _selectedWallet?.id;
+
+      final moneyBox = Hive.box<Transaction>(kMoneyBox);
+      final transaction = Transaction(
+        id: Transaction.createId(),
+        amount: amount,
+        note: note,
+        date: DateTime.now(),
+        isExpense: true,
+        categoryId: _selectedCategory!.id,
+        status: TransactionStatus.completed,
+        walletId: resolvedWalletId,
+      );
+      await moneyBox.put(transaction.id, transaction);
+
+      if (resolvedWalletId != null) {
+        try {
+          final wallets = WalletService.getWallets();
+          final w = wallets.firstWhere((w) => w.id == resolvedWalletId);
+          final newBal =
+              (w.initialBalance - amount).clamp(0.0, double.infinity);
+          await WalletService.adjustBalance(w.id, newBal);
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        try {
+          await NotificationService.checkAndTriggerNotifications(
+            context,
+            _selectedCategory!.id,
+            DateTime.now(),
+          );
+        } catch (_) {}
+      }
+
+      await NotificationService.showTransactionActionNotification(
+        action: TransactionActionType.created,
+        note: note,
+        amount: amount,
+        categoryName: _selectedCategory?.name,
+      );
+
+      if (mounted) {
+        Navigator.pop(context, transaction);
+        SheepNotifications.showSuccess(
+          context,
+          'Đã thanh toán & ghi sổ chi tiêu thành công!',
+        );
+      }
+    } else {
+      // FLOW THỦ CÔNG / LOẠI 2 (Vietcombank, Techcombank, MB, MoMo, ZaloPay...):
+      // Tạo bản ghi giao dịch Chờ xác nhận (Pending)
+      await PendingTransferService.createPendingTransfer(
+        amount: amount,
+        note: note,
+        categoryId: _selectedCategory!.id,
+        walletId: _selectedWallet?.id,
+        sendingBankId: _selectedBank?.id,
+        recipientBankBin: widget.qrData.bankBin,
+        recipientBankName: recipientName,
+        accountNo: recipientAccount,
+        qrPayload: finalPayload,
+      );
+
+      await NotificationService.showTransactionActionNotification(
+        action: TransactionActionType.created,
+        note: note,
+        amount: amount,
+        categoryName: _selectedCategory?.name,
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+        SheepNotifications.showSuccess(
+          context,
+          'Đã tạo giao dịch chờ xác nhận và mở ${_selectedBank?.shortName ?? 'ngân hàng'}.',
+        );
+      }
     }
   }
 
@@ -680,78 +785,23 @@ class _PaymentConfirmationBottomSheetState
             ),
             const SizedBox(height: SheepSpacing.md),
 
-            // Chọn ứng dụng thanh toán (Bank Selector)
-            Text(
-              'CHỌN APP NGÂN HÀNG / VÍ ĐỂ CHUYỂN TIỀN',
-              style: SheepTextStyles.itemMeta(context).copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: SheepTypeScale.micro,
-              ),
-            ),
-            const SizedBox(height: SheepSpacing.xs),
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: BankDeeplinkService.supportedBanks.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final bank = BankDeeplinkService.supportedBanks[index];
-                  final isSelected = _selectedBank?.id == bank.id;
-
-                  return GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _selectedBank = bank);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? bank.brandColor.withValues(alpha: 0.15)
-                            : AppColors.getSubtleSurface(brightness),
-                        borderRadius: BorderRadius.circular(SheepRadius.pill),
-                        border: Border.all(
-                          color: isSelected
-                              ? bank.brandColor
-                              : AppColors.getBorder(brightness),
-                          width: isSelected ? 1.5 : 1.0,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: bank.brandColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            bank.shortName,
-                            style: TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontSize: SheepTypeScale.label,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
-                              color: isSelected
-                                  ? bank.brandColor
-                                  : AppColors.getTextPrimary(brightness),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+            // Chọn ví ngân hàng thanh toán (Chỉ hiển thị ví ngân hàng đã cài đặt trong app)
+            InstalledWalletSelectorTile(
+              wallet: _selectedWallet,
+              bank: _selectedBank,
+              label: 'CHỌN VÍ THANH TOÁN',
+              onTap: () {
+                InstalledWalletPickerModal.show(
+                  context: context,
+                  selectedWalletId: _selectedWallet?.id,
+                  onWalletSelected: (wallet, bank) {
+                    setState(() {
+                      _selectedWallet = wallet;
+                      _selectedBank = bank;
+                    });
+                  },
+                );
+              },
             ),
             const SizedBox(height: SheepSpacing.lg),
 

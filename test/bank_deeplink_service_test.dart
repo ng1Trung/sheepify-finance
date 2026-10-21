@@ -20,6 +20,34 @@ void main() {
       final momo = BankDeeplinkService.findByBin('momo');
       expect(momo, isNotNull);
       expect(momo!.shortName, 'MoMo');
+
+      final agribank = BankDeeplinkService.findByBin('970405');
+      expect(agribank, isNotNull);
+      expect(agribank!.shortName, 'Agribank');
+
+      final vib = BankDeeplinkService.findByBin('970441');
+      expect(vib, isNotNull);
+      expect(vib!.shortName, 'VIB');
+
+      final stb = BankDeeplinkService.findByBin('970403');
+      expect(stb, isNotNull);
+      expect(stb!.shortName, 'Sacombank');
+
+      final shb = BankDeeplinkService.findByBin('970443');
+      expect(shb, isNotNull);
+      expect(shb!.shortName, 'SHB');
+
+      final hdb = BankDeeplinkService.findByBin('970437');
+      expect(hdb, isNotNull);
+      expect(hdb!.shortName, 'HDBank');
+
+      final lpb = BankDeeplinkService.findByBin('970449');
+      expect(lpb, isNotNull);
+      expect(lpb!.shortName, 'LPBank');
+
+      final viettel = BankDeeplinkService.findByBin('viettelmoney');
+      expect(viettel, isNotNull);
+      expect(viettel!.shortName, 'Viettel Money');
     });
 
     test('Find bank by ID', () {
@@ -38,8 +66,51 @@ void main() {
         expect(bank.shortName.isNotEmpty, isTrue);
         expect(bank.fullName.isNotEmpty, isTrue);
         expect(bank.iosScheme.endsWith('://'), isTrue);
+        expect(bank.allSchemes.every((s) => s.endsWith('://')), isTrue);
         expect(bank.androidPackage.isNotEmpty, isTrue);
+        expect(bank.allAndroidPackages.every((p) => p.isNotEmpty), isTrue);
       }
+    });
+
+    test('Build VietQR deeplink URI for bank transfer', () {
+      final mb = BankDeeplinkService.findById('mb')!;
+      final uri = BankDeeplinkService.buildVietQrDeeplinkUri(
+        bank: mb,
+        accountNo: '0011001234567',
+        recipientBin: '970436', // Vietcombank
+        amount: 150000,
+        note: 'Trả tiền ăn trưa',
+      );
+
+      expect(uri, isNotNull);
+      expect(uri!.host, 'dl.vietqr.io');
+      expect(uri.path, '/pay');
+      expect(uri.queryParameters['app'], 'mb');
+      expect(uri.queryParameters['ba'], '0011001234567@vcb');
+      expect(uri.queryParameters['am'], '150000');
+      expect(uri.queryParameters['tn'], 'Tra tien an trua');
+      expect(uri.queryParameters['url'], 'https://www.vietqr.io/deeplink');
+      expect(uri.toString(), contains('ba=0011001234567@vcb'));
+      expect(uri.toString(), contains('url=https://www.vietqr.io/deeplink'));
+    });
+
+    test('canAutofillPayment identifies automatic vs manual type 2 banks/wallets', () {
+      // Nhóm hỗ trợ điền tự động qua VietQR deeplink (ACB, BIDV, VietinBank, OCB)
+      expect(BankDeeplinkService.findById('acb')!.canAutofillPayment, isTrue);
+      expect(BankDeeplinkService.findById('bidv')!.canAutofillPayment, isTrue);
+      expect(BankDeeplinkService.findById('vietinbank')!.canAutofillPayment, isTrue);
+      expect(BankDeeplinkService.findById('ocb')!.canAutofillPayment, isTrue);
+
+      // Nhóm Loại 2 / Không hỗ trợ deeplink điền thông tin (Vietcombank, Techcombank, MB, MoMo, ZaloPay, Viettel Money, TPBank, VPBank, Timo...)
+      expect(BankDeeplinkService.findById('techcombank')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('vcb')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('mb')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('momo')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('zalopay')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('viettelmoney')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('tpb')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('vpbank')!.canAutofillPayment, isFalse);
+      expect(BankDeeplinkService.findById('timo')!.canAutofillPayment, isFalse);
     });
   });
 

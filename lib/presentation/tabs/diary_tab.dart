@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:line_icons/line_icons.dart';
@@ -12,6 +13,9 @@ import '../../core/utils/transaction_image_store.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
+import '../../data/services/bank_deeplink_service.dart';
+import '../../data/services/pending_transfer_service.dart';
+import '../../data/services/wallet_service.dart';
 import '../widgets/transaction_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
@@ -38,6 +42,8 @@ class DiaryTab extends StatefulWidget {
 class _DiaryTabState extends State<DiaryTab> {
   Set<int> _selectedListTypeIndexes = {}; // empty means all
   Set<int> _selectedTimelineTypeIndexes = {}; // empty means all
+  Set<String> _selectedListStatuses = {}; // empty means all
+  Set<String> _selectedTimelineStatuses = {}; // empty means all
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
@@ -72,8 +78,18 @@ class _DiaryTabState extends State<DiaryTab> {
                   );
             }).toList();
 
-            List<Transaction> filterTransactions(Set<int> selectedTypeIndexes) {
+            List<Transaction> filterTransactions(
+              Set<int> selectedTypeIndexes,
+              Set<String> selectedStatuses,
+            ) {
               return rangeTxs.where((tx) {
+                // 1. Lọc theo trạng thái (status): Tất cả, Chờ xác nhận, Thành công, Đã hủy
+                if (selectedStatuses.isNotEmpty &&
+                    !selectedStatuses.contains(tx.status)) {
+                  return false;
+                }
+
+                // 2. Lọc theo loại danh mục (Chi tiêu, Thu nhập, Tiết kiệm)
                 final cat = catBox.values.firstWhere(
                   (c) => c.id == tx.categoryId,
                   orElse: () => CategoryModel(
@@ -90,9 +106,13 @@ class _DiaryTabState extends State<DiaryTab> {
             }
 
             // 3. Apply each content filter only to its own tab.
-            final displayTxs = filterTransactions(_selectedListTypeIndexes);
+            final displayTxs = filterTransactions(
+              _selectedListTypeIndexes,
+              _selectedListStatuses,
+            );
             final timelineTxs = filterTransactions(
               _selectedTimelineTypeIndexes,
+              _selectedTimelineStatuses,
             );
 
             // 4. Group by date
@@ -188,17 +208,23 @@ class _DiaryTabState extends State<DiaryTab> {
             }
 
             Widget buildTypeFilter({bool compactWhenAll = false}) {
+              final isVi = settings.languageCode == 'vi';
+              final typePrefix = isVi ? 'Loại' : 'Type';
               final labels = [
                 l10n.get('expense'),
                 l10n.get('income'),
                 l10n.get('savings'),
+              ];
+              final typeIcons = [
+                (Icons.arrow_downward_rounded, AppColors.expense),
+                (Icons.arrow_upward_rounded, AppColors.income),
+                (Icons.savings_outlined, AppColors.savings),
               ];
               final selectedTypeIndexes = switch (effectiveViewMode) {
                 1 => _selectedListTypeIndexes,
                 3 => _selectedTimelineTypeIndexes,
                 _ => _selectedListTypeIndexes,
               };
-              const isCompactAllState = false;
 
               void updateSelectedTypeIndexes(Set<int> nextIndexes) {
                 final normalized = nextIndexes.length >= labels.length
@@ -218,10 +244,16 @@ class _DiaryTabState extends State<DiaryTab> {
                 });
               }
 
+              final isTypeFiltered = selectedTypeIndexes.isNotEmpty;
+
               String selectedLabel() {
-                if (selectedTypeIndexes.isEmpty) return l10n.get('all');
-                final sortedIndexes = selectedTypeIndexes.toList()..sort();
-                return sortedIndexes.map((index) => labels[index]).join(', ');
+                if (selectedTypeIndexes.isEmpty) {
+                  return '$typePrefix: ${l10n.get('all')}';
+                }
+                if (selectedTypeIndexes.length == 1) {
+                  return '$typePrefix: ${labels[selectedTypeIndexes.first]}';
+                }
+                return '$typePrefix: (${selectedTypeIndexes.length})';
               }
 
               return PopupMenuTheme(
@@ -237,7 +269,7 @@ class _DiaryTabState extends State<DiaryTab> {
                   ),
                 ),
                 child: PopupMenuButton<int>(
-                  constraints: const BoxConstraints.tightFor(width: 168),
+                  constraints: const BoxConstraints.tightFor(width: 175),
                   offset: const Offset(0, 38),
                   menuPadding: EdgeInsets.zero,
                   padding: const EdgeInsets.all(4),
@@ -261,79 +293,142 @@ class _DiaryTabState extends State<DiaryTab> {
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
-                                  children: indexes.map((index) {
-                                    final isSelected = index == -1
-                                        ? menuSelectedTypeIndexes.isEmpty
-                                        : menuSelectedTypeIndexes.contains(
-                                            index,
-                                          );
-                                    return InkWell(
-                                      borderRadius: BorderRadius.circular(
-                                        SheepRadius.sm,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        10,
+                                        8,
+                                        10,
+                                        6,
                                       ),
-                                      onTap: () {
-                                        final nextIndexes = <int>{
-                                          ...menuSelectedTypeIndexes,
-                                        };
-                                        if (index == -1) {
-                                          nextIndexes.clear();
-                                        } else if (nextIndexes.contains(
-                                          index,
-                                        )) {
-                                          nextIndexes.remove(index);
-                                        } else {
-                                          nextIndexes.add(index);
-                                        }
-                                        menuSelectedTypeIndexes =
-                                            nextIndexes.length >= labels.length
-                                            ? <int>{}
-                                            : nextIndexes;
-                                        updateSelectedTypeIndexes(
-                                          menuSelectedTypeIndexes,
-                                        );
-                                        menuSetState(() {});
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 8,
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              index == -1
-                                                  ? l10n.get('all')
-                                                  : labels[index],
-                                              style:
-                                                  SheepTextStyles.itemMeta(
-                                                    context,
-                                                  ).copyWith(
-                                                    color:
-                                                        AppColors.getTextPrimary(
-                                                          theme.brightness,
-                                                        ),
-                                                    fontSize:
-                                                        SheepTypeScale.label,
-                                                    fontWeight: isSelected
-                                                        ? FontWeight.w700
-                                                        : FontWeight.w500,
-                                                  ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.tune_rounded,
+                                            size: 13,
+                                            color: AppColors.getTextSecondary(
+                                              theme.brightness,
                                             ),
-                                            const SizedBox(width: 8),
-                                            if (isSelected)
-                                              const Icon(
-                                                Icons.check_rounded,
-                                                size: 16,
-                                              )
-                                            else
-                                              const SizedBox(width: 16),
-                                          ],
-                                        ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            isVi
+                                                ? 'LỌC PHÂN LOẠI'
+                                                : 'TYPE FILTER',
+                                            style: SheepTextStyles.itemMeta(
+                                              context,
+                                            ).copyWith(
+                                              color: AppColors.getTextSecondary(
+                                                theme.brightness,
+                                              ),
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 0.6,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    );
-                                  }).toList(),
+                                    ),
+                                    Divider(
+                                      height: 1,
+                                      thickness: 0.5,
+                                      color: AppColors.getBorder(
+                                        theme.brightness,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    ...indexes.map((index) {
+                                      final isSelected = index == -1
+                                          ? menuSelectedTypeIndexes.isEmpty
+                                          : menuSelectedTypeIndexes.contains(
+                                              index,
+                                            );
+                                      final itemIcon = index == -1
+                                          ? Icons.filter_list_rounded
+                                          : typeIcons[index].$1;
+                                      final itemIconColor = index == -1
+                                          ? AppColors.getTextSecondary(
+                                              theme.brightness,
+                                            )
+                                          : typeIcons[index].$2;
+                                      return InkWell(
+                                        borderRadius: BorderRadius.circular(
+                                          SheepRadius.sm,
+                                        ),
+                                        onTap: () {
+                                          HapticFeedback.selectionClick();
+                                          final nextIndexes = <int>{
+                                            ...menuSelectedTypeIndexes,
+                                          };
+                                          if (index == -1) {
+                                            nextIndexes.clear();
+                                          } else if (nextIndexes.contains(
+                                            index,
+                                          )) {
+                                            nextIndexes.remove(index);
+                                          } else {
+                                            nextIndexes.add(index);
+                                          }
+                                          menuSelectedTypeIndexes =
+                                              nextIndexes.length >=
+                                                  labels.length
+                                              ? <int>{}
+                                              : nextIndexes;
+                                          updateSelectedTypeIndexes(
+                                            menuSelectedTypeIndexes,
+                                          );
+                                          menuSetState(() {});
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 8,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                itemIcon,
+                                                size: 16,
+                                                color: itemIconColor,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  index == -1
+                                                      ? l10n.get('all')
+                                                      : labels[index],
+                                                  style:
+                                                      SheepTextStyles.itemMeta(
+                                                        context,
+                                                      ).copyWith(
+                                                        color:
+                                                            AppColors.getTextPrimary(
+                                                              theme.brightness,
+                                                            ),
+                                                        fontSize:
+                                                            SheepTypeScale
+                                                                .label,
+                                                        fontWeight: isSelected
+                                                            ? FontWeight.w700
+                                                            : FontWeight.w500,
+                                                      ),
+                                                ),
+                                              ),
+                                              if (isSelected)
+                                                Icon(
+                                                  Icons.check_rounded,
+                                                  size: 16,
+                                                  color:
+                                                      theme.colorScheme.primary,
+                                                )
+                                              else
+                                                const SizedBox(width: 16),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  ],
                                 ),
                               ),
                             );
@@ -344,38 +439,366 @@ class _DiaryTabState extends State<DiaryTab> {
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
+                      horizontal: 9,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.getSurface(theme.brightness),
+                      color: isTypeFiltered
+                          ? theme.colorScheme.primary.withValues(alpha: 0.12)
+                          : AppColors.getSurface(theme.brightness),
                       borderRadius: BorderRadius.circular(SheepRadius.sm),
                       border: Border.all(
-                        color: AppColors.getBorder(theme.brightness),
+                        color: isTypeFiltered
+                            ? theme.colorScheme.primary.withValues(alpha: 0.45)
+                            : AppColors.getBorder(theme.brightness),
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.tune_rounded, size: 14),
-                        if (!isCompactAllState) ...[
-                          const SizedBox(width: 6),
-                          Text(
+                        Icon(
+                          Icons.tune_rounded,
+                          size: 14,
+                          color: isTypeFiltered
+                              ? theme.colorScheme.primary
+                              : AppColors.getTextSecondary(theme.brightness),
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
                             selectedLabel(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: SheepTextStyles.itemMeta(context).copyWith(
-                              color: AppColors.getTextPrimary(theme.brightness),
+                              color: isTypeFiltered
+                                  ? theme.colorScheme.primary
+                                  : AppColors.getTextPrimary(theme.brightness),
                               fontSize: SheepTypeScale.meta,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: 16,
+                        ),
+                        const SizedBox(width: 3),
+                        Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 16,
+                          color: isTypeFiltered
+                              ? theme.colorScheme.primary
+                              : AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            Widget buildStatusFilter() {
+              final isVi = settings.languageCode == 'vi';
+              final statusPrefix = isVi ? 'Trạng thái' : 'Status';
+              final statusOptions = [
+                (
+                  'all',
+                  isVi ? 'Tất cả' : 'All',
+                  Icons.filter_list_rounded,
+                  AppColors.getTextSecondary(theme.brightness),
+                ),
+                (
+                  TransactionStatus.completed,
+                  isVi ? 'Thành công' : 'Completed',
+                  Icons.check_circle_outline_rounded,
+                  const Color(0xFF10B981),
+                ),
+                (
+                  TransactionStatus.pending,
+                  isVi ? 'Chờ xác nhận' : 'Pending',
+                  Icons.hourglass_top_rounded,
+                  const Color(0xFFF59E0B),
+                ),
+                (
+                  TransactionStatus.cancelled,
+                  isVi ? 'Đã hủy' : 'Cancelled',
+                  Icons.cancel_outlined,
+                  const Color(0xFFEF4444),
+                ),
+              ];
+              const validStatuses = [
+                TransactionStatus.completed,
+                TransactionStatus.pending,
+                TransactionStatus.cancelled,
+              ];
+
+              final selectedStatuses = switch (effectiveViewMode) {
+                1 => _selectedListStatuses,
+                3 => _selectedTimelineStatuses,
+                _ => _selectedListStatuses,
+              };
+
+              void updateSelectedStatuses(Set<String> nextStatuses) {
+                final normalized = nextStatuses.length >= validStatuses.length
+                    ? <String>{}
+                    : nextStatuses;
+                setState(() {
+                  switch (effectiveViewMode) {
+                    case 1:
+                      _selectedListStatuses = normalized;
+                      break;
+                    case 3:
+                      _selectedTimelineStatuses = normalized;
+                      break;
+                    default:
+                      _selectedListStatuses = normalized;
+                  }
+                });
+              }
+
+              final isStatusFiltered = selectedStatuses.isNotEmpty;
+
+              String selectedStatusLabel() {
+                if (selectedStatuses.isEmpty) {
+                  return '$statusPrefix: ${isVi ? 'Tất cả' : 'All'}';
+                }
+                if (selectedStatuses.length == 1) {
+                  final opt = statusOptions.firstWhere(
+                    (o) => o.$1 == selectedStatuses.first,
+                    orElse: () => statusOptions.first,
+                  );
+                  return '$statusPrefix: ${opt.$2}';
+                }
+                return '$statusPrefix: (${selectedStatuses.length})';
+              }
+
+              Color activeStatusColor = theme.colorScheme.primary;
+              IconData activeStatusIcon = Icons.fact_check_outlined;
+              if (selectedStatuses.length == 1) {
+                final opt = statusOptions.firstWhere(
+                  (o) => o.$1 == selectedStatuses.first,
+                  orElse: () => statusOptions.first,
+                );
+                activeStatusIcon = opt.$3;
+                activeStatusColor = opt.$4;
+              } else if (isStatusFiltered) {
+                activeStatusIcon = Icons.fact_check_outlined;
+                activeStatusColor = theme.colorScheme.primary;
+              } else {
+                activeStatusIcon = Icons.fact_check_outlined;
+                activeStatusColor = AppColors.getTextSecondary(theme.brightness);
+              }
+
+              return PopupMenuTheme(
+                data: PopupMenuThemeData(
+                  color: AppColors.getSurface(theme.brightness),
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      color: AppColors.getBorder(theme.brightness),
+                    ),
+                    borderRadius: BorderRadius.circular(SheepRadius.md),
+                  ),
+                ),
+                child: PopupMenuButton<int>(
+                  constraints: const BoxConstraints.tightFor(width: 185),
+                  offset: const Offset(0, 38),
+                  menuPadding: EdgeInsets.zero,
+                  padding: const EdgeInsets.all(4),
+                  itemBuilder: (context) {
+                    var menuSelectedStatuses = <String>{...selectedStatuses};
+                    return [
+                      PopupMenuItem<int>(
+                        enabled: false,
+                        padding: EdgeInsets.zero,
+                        child: StatefulBuilder(
+                          builder: (context, menuSetState) {
+                            return SizedBox(
+                              width: double.infinity,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        10,
+                                        8,
+                                        10,
+                                        6,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.fact_check_outlined,
+                                            size: 13,
+                                            color: AppColors.getTextSecondary(
+                                              theme.brightness,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            isVi
+                                                ? 'LỌC TRẠNG THÁI'
+                                                : 'STATUS FILTER',
+                                            style: SheepTextStyles.itemMeta(
+                                              context,
+                                            ).copyWith(
+                                              color: AppColors.getTextSecondary(
+                                                theme.brightness,
+                                              ),
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 0.6,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Divider(
+                                      height: 1,
+                                      thickness: 0.5,
+                                      color: AppColors.getBorder(
+                                        theme.brightness,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    ...statusOptions.map((opt) {
+                                      final isSelected = opt.$1 == 'all'
+                                          ? menuSelectedStatuses.isEmpty
+                                          : menuSelectedStatuses.contains(
+                                              opt.$1,
+                                            );
+                                      return InkWell(
+                                        borderRadius: BorderRadius.circular(
+                                          SheepRadius.sm,
+                                        ),
+                                        onTap: () {
+                                          HapticFeedback.selectionClick();
+                                          final next = <String>{
+                                            ...menuSelectedStatuses,
+                                          };
+                                          if (opt.$1 == 'all') {
+                                            next.clear();
+                                          } else if (next.contains(opt.$1)) {
+                                            next.remove(opt.$1);
+                                          } else {
+                                            next.add(opt.$1);
+                                          }
+                                          menuSelectedStatuses =
+                                              next.length >=
+                                                  validStatuses.length
+                                              ? <String>{}
+                                              : next;
+                                          updateSelectedStatuses(
+                                            menuSelectedStatuses,
+                                          );
+                                          menuSetState(() {});
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 8,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                opt.$3,
+                                                size: 16,
+                                                color: opt.$4,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  opt.$2,
+                                                  style:
+                                                      SheepTextStyles.itemMeta(
+                                                        context,
+                                                      ).copyWith(
+                                                        color:
+                                                            AppColors.getTextPrimary(
+                                                              theme.brightness,
+                                                            ),
+                                                        fontSize:
+                                                            SheepTypeScale
+                                                                .label,
+                                                        fontWeight: isSelected
+                                                            ? FontWeight.w700
+                                                            : FontWeight.w500,
+                                                      ),
+                                                ),
+                                              ),
+                                              if (isSelected)
+                                                Icon(
+                                                  Icons.check_rounded,
+                                                  size: 16,
+                                                  color:
+                                                      theme.colorScheme.primary,
+                                                )
+                                              else
+                                                const SizedBox(width: 16),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ];
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isStatusFiltered
+                          ? activeStatusColor.withValues(alpha: 0.12)
+                          : AppColors.getSurface(theme.brightness),
+                      borderRadius: BorderRadius.circular(SheepRadius.sm),
+                      border: Border.all(
+                        color: isStatusFiltered
+                            ? activeStatusColor.withValues(alpha: 0.45)
+                            : AppColors.getBorder(theme.brightness),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          activeStatusIcon,
+                          size: 14,
+                          color: isStatusFiltered
+                              ? activeStatusColor
+                              : AppColors.getTextSecondary(theme.brightness),
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            selectedStatusLabel(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: SheepTextStyles.itemMeta(context).copyWith(
+                              color: isStatusFiltered
+                                  ? activeStatusColor
+                                  : AppColors.getTextPrimary(theme.brightness),
+                              fontSize: SheepTypeScale.meta,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: 3),
+                        Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 16,
+                          color: isStatusFiltered
+                              ? activeStatusColor
+                              : AppColors.getTextSecondary(theme.brightness),
+                        ),
                       ],
                     ),
                   ),
@@ -386,14 +809,26 @@ class _DiaryTabState extends State<DiaryTab> {
             Widget buildContentHeader(int count) {
               return Row(
                 children: [
-                  Text(
-                    l10n
-                        .get('num_transactions')
-                        .replaceAll('{count}', '$count'),
-                    style: SheepTextStyles.itemTitle(context),
+                  Expanded(
+                    child: Text(
+                      l10n
+                          .get('num_transactions')
+                          .replaceAll('{count}', '$count'),
+                      style: SheepTextStyles.itemTitle(context),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const Spacer(),
-                  buildTypeFilter(compactWhenAll: true),
+                  const SizedBox(width: 6),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 135),
+                    child: buildStatusFilter(),
+                  ),
+                  const SizedBox(width: 6),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 125),
+                    child: buildTypeFilter(),
+                  ),
                 ],
               );
             }
@@ -613,8 +1048,19 @@ class _DiaryTabState extends State<DiaryTab> {
                                                     );
                                                   },
                                                   onDismissed: (_) {
+                                                    final note = tx.note;
+                                                    final catName = cat.name;
+                                                    if (tx.isPending) {
+                                                      PendingTransferService.cancelTransfer(tx.id);
+                                                    }
                                                     tx.delete();
                                                     NotificationService.checkDailyReminderReschedule();
+                                                    NotificationService.showTransactionActionNotification(
+                                                      action: TransactionActionType.deleted,
+                                                      note: note,
+                                                      amount: tx.amount,
+                                                      categoryName: catName,
+                                                    );
                                                     SheepNotifications.showSuccess(
                                                       context,
                                                       l10n.get(
@@ -630,7 +1076,22 @@ class _DiaryTabState extends State<DiaryTab> {
                                                               ? SheepSpacing.itemGap
                                                               : 0.0),
                                                     ),
-                                                    onTap: () =>
+                                                    onTap: () {
+                                                      if (tx.isPending) {
+                                                        _showPendingTransferActionSheet(
+                                                          context,
+                                                          tx,
+                                                          cat,
+                                                          settings,
+                                                        );
+                                                      } else if (tx.isCancelled) {
+                                                        _showCancelledTransferActionSheet(
+                                                          context,
+                                                          tx,
+                                                          cat,
+                                                          settings,
+                                                        );
+                                                      } else {
                                                         showModalBottomSheet(
                                                           context: context,
                                                           isScrollControlled:
@@ -641,7 +1102,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                                               TransactionForm(
                                                                 transaction: tx,
                                                               ),
-                                                        ),
+                                                        );
+                                                      }
+                                                    },
                                                     icon: resolveCategoryIcon(
                                                       cat.iconCode,
                                                     ),
@@ -650,6 +1113,26 @@ class _DiaryTabState extends State<DiaryTab> {
                                                         cat.imagePath,
                                                     title: cat.name,
                                                     dateText: tx.note,
+                                                    badgeText: tx.isPending
+                                                        ? (settings.languageCode == 'vi' ? 'Chờ xác nhận' : 'Pending')
+                                                        : (tx.isCancelled
+                                                            ? (settings.languageCode == 'vi' ? 'Đã hủy' : 'Cancelled')
+                                                            : (settings.languageCode == 'vi' ? 'Thành công' : 'Completed')),
+                                                    badgeColor: tx.isPending
+                                                        ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                                                        : (tx.isCancelled
+                                                            ? const Color(0xFFEF4444).withValues(alpha: 0.12)
+                                                            : const Color(0xFF10B981).withValues(alpha: 0.15)),
+                                                    badgeTextColor: tx.isPending
+                                                        ? const Color(0xFFD97706)
+                                                        : (tx.isCancelled
+                                                            ? const Color(0xFFEF4444)
+                                                            : const Color(0xFF059669)),
+                                                    badgeIcon: tx.isPending
+                                                        ? Icons.hourglass_top_rounded
+                                                        : (tx.isCancelled
+                                                            ? Icons.cancel_outlined
+                                                            : Icons.check_circle_outline_rounded),
                                                     amountText:
                                                         !settings.hideAmounts
                                                         ? '${cat.effectiveTypeIndex == 0
@@ -661,8 +1144,9 @@ class _DiaryTabState extends State<DiaryTab> {
                                                             settings
                                                                 .currencyCode,
                                                           ),
-                                                    amountColor:
-                                                        typeVisuals.color,
+                                                    amountColor: tx.isCancelled
+                                                        ? AppColors.getTextSecondary(theme.brightness)
+                                                        : typeVisuals.color,
                                                   ),
                                                 );
                                               }),
@@ -811,6 +1295,7 @@ class _DiaryTabState extends State<DiaryTab> {
     double expense = 0;
 
     for (final tx in dayTxs) {
+      if (!tx.isCompleted) continue;
       final cat = catBox.values.firstWhere(
         (c) => c.id == tx.categoryId,
         orElse: () => CategoryModel(
@@ -1240,16 +1725,22 @@ class _DiaryTabState extends State<DiaryTab> {
           category: cat,
           settings: settings,
           onTap: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              isDismissible: true,
-              enableDrag: true,
-              builder: (_) => TransactionForm(
-                transaction: tx,
-                dayTransactions: transactions,
-              ),
-            );
+            if (tx.isPending) {
+              _showPendingTransferActionSheet(context, tx, cat, settings);
+            } else if (tx.isCancelled) {
+              _showCancelledTransferActionSheet(context, tx, cat, settings);
+            } else {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                isDismissible: true,
+                enableDrag: true,
+                builder: (_) => TransactionForm(
+                  transaction: tx,
+                  dayTransactions: transactions,
+                ),
+              );
+            }
           },
         );
       },
@@ -1278,6 +1769,7 @@ class _DiaryTabState extends State<DiaryTab> {
     double previousBalance = 0;
 
     for (final tx in transactions) {
+      if (!tx.isCompleted) continue;
       final cat = categoriesById[tx.categoryId];
       final effectiveType = cat?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
       final inCurrentCycle = FinancialCycleUtil.isInRange(tx.date, currentRange);
@@ -1474,6 +1966,559 @@ class _DiaryTabState extends State<DiaryTab> {
       ),
     );
   }
+
+  void _showPendingTransferActionSheet(
+    BuildContext context,
+    Transaction tx,
+    CategoryModel cat,
+    AppSettings settings,
+  ) {
+    final pending = PendingTransferService.getPendingTransfer(tx.id);
+    final theme = Theme.of(context);
+
+    final sendingBank = pending?.sendingBankId != null
+        ? BankDeeplinkService.findById(pending!.sendingBankId!)
+        : null;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        decoration: BoxDecoration(
+          color: AppColors.getSurface(theme.brightness),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.getBorder(theme.brightness),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.hourglass_top_rounded,
+                    color: Color(0xFFD97706),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Giao dịch chờ xác nhận',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Chưa trừ số dư ví cho đến khi bạn xác nhận',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 12,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.getSubtleSurface(theme.brightness),
+                borderRadius: BorderRadius.circular(SheepRadius.md),
+                border: Border.all(
+                  color: AppColors.getBorder(theme.brightness),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Số tiền:',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                      Text(
+                        '- ${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}',
+                        style: const TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.expense,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Danh mục:',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                      Text(
+                        cat.name,
+                        style: const TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (tx.note.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Ghi chú:',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 13,
+                            color: AppColors.getTextSecondary(theme.brightness),
+                          ),
+                        ),
+                        Flexible(
+                          child: Text(
+                            tx.note,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (pending != null && pending.recipientBankName != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Người nhận:',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 13,
+                            color: AppColors.getTextSecondary(theme.brightness),
+                          ),
+                        ),
+                        Flexible(
+                          child: Text(
+                            '${pending.recipientBankName} (${pending.accountNo})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final updated = await PendingTransferService.confirmTransfer(tx.id);
+                if (context.mounted && updated != null) {
+                  NotificationService.showTransactionActionNotification(
+                    action: TransactionActionType.confirmed,
+                    note: tx.note,
+                    amount: tx.amount,
+                    categoryName: cat.name,
+                  );
+                  SheepNotifications.showSuccess(
+                    context,
+                    'Giao dịch thành công! Đã trừ số dư ví & cập nhật sổ chi tiêu.',
+                  );
+                }
+              },
+              icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+              label: const Text(
+                'Đã chuyển thành công (Cập nhật ví)',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(SheepRadius.md),
+                ),
+              ),
+            ),
+            if (sendingBank != null && pending != null) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  BankDeeplinkService.launchBankApp(
+                    bank: sendingBank,
+                    qrPayload: pending.qrPayload ?? '',
+                    accountNo: pending.accountNo,
+                    recipientBin: pending.recipientBankBin,
+                    amount: pending.amount,
+                    note: pending.note,
+                  );
+                },
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: Text(
+                  'Mở lại app ${sendingBank.shortName}',
+                  style: const TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(SheepRadius.md),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (dCtx) => SheepConfirmDialog(
+                    title: 'Hủy giao dịch này?',
+                    content: 'Giao dịch sẽ được chuyển sang trạng thái Đã hủy và số dư ví của bạn giữ nguyên vẹn.',
+                    confirmLabel: 'Xác nhận hủy',
+                    onConfirm: () {},
+                  ),
+                );
+                if (confirm == true) {
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  await PendingTransferService.cancelTransfer(tx.id);
+                  NotificationService.showTransactionActionNotification(
+                    action: TransactionActionType.cancelled,
+                    note: tx.note,
+                    amount: tx.amount,
+                    categoryName: cat.name,
+                  );
+                  if (context.mounted) {
+                    SheepNotifications.showInfo(
+                      context,
+                      'Đã hủy giao dịch. Số dư ví giữ nguyên.',
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.close_rounded, size: 18, color: Color(0xFFEF4444)),
+              label: const Text(
+                'Chưa chuyển / Hủy giao dịch',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCancelledTransferActionSheet(
+    BuildContext context,
+    Transaction tx,
+    CategoryModel cat,
+    AppSettings settings,
+  ) {
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        decoration: BoxDecoration(
+          color: AppColors.getSurface(theme.brightness),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.getBorder(theme.brightness),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.cancel_outlined,
+                    color: Color(0xFFEF4444),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Giao dịch đã hủy',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Giao dịch không tính vào chi tiêu hay số dư ví',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 12,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.getSubtleSurface(theme.brightness),
+                borderRadius: BorderRadius.circular(SheepRadius.md),
+                border: Border.all(
+                  color: AppColors.getBorder(theme.brightness),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Số tiền:',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                      Text(
+                        CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode),
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.lineThrough,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Danh mục:',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          color: AppColors.getTextSecondary(theme.brightness),
+                        ),
+                      ),
+                      Text(
+                        cat.name,
+                        style: const TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (tx.note.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Ghi chú:',
+                          style: TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 13,
+                            color: AppColors.getTextSecondary(theme.brightness),
+                          ),
+                        ),
+                        Flexible(
+                          child: Text(
+                            tx.note,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Quicksand',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                tx.status = TransactionStatus.completed;
+                await tx.save();
+                if (tx.walletId != null) {
+                  final wallets = WalletService.getWallets();
+                  try {
+                    final w = wallets.firstWhere((w) => w.id == tx.walletId);
+                    final newBal = (w.initialBalance - tx.amount).clamp(0.0, double.infinity);
+                    await WalletService.adjustBalance(w.id, newBal);
+                  } catch (_) {}
+                }
+                if (context.mounted) {
+                  SheepNotifications.showSuccess(
+                    context,
+                    'Đã khôi phục thành công giao dịch & cập nhật số dư ví.',
+                  );
+                }
+              },
+              icon: const Icon(Icons.replay_rounded, size: 18),
+              label: const Text(
+                'Khôi phục thành công (Đã chuyển)',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(SheepRadius.md),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () async {
+                final note = tx.note;
+                final catName = cat.name;
+                Navigator.pop(ctx);
+                await tx.delete();
+                NotificationService.showTransactionActionNotification(
+                  action: TransactionActionType.deleted,
+                  note: note,
+                  amount: tx.amount,
+                  categoryName: catName,
+                );
+                if (context.mounted) {
+                  SheepNotifications.showSuccess(
+                    context,
+                    L10n.of(context).get('delete_success'),
+                  );
+                }
+              },
+              icon: const Icon(LineIcons.trash, size: 18, color: Color(0xFFEF4444)),
+              label: const Text(
+                'Xóa vĩnh viễn giao dịch này',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _TransactionImageTile extends StatelessWidget {
@@ -1580,6 +2625,53 @@ class _TransactionImageTile extends StatelessWidget {
                       imagePath: category.imagePath,
                       backgroundColor: Colors.transparent,
                       borderColor: Colors.transparent,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (transaction.isPending
+                              ? const Color(0xFFF59E0B)
+                              : (transaction.isCancelled
+                                  ? const Color(0xFFEF4444)
+                                  : const Color(0xFF10B981)))
+                          .withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          transaction.isPending
+                              ? Icons.hourglass_top_rounded
+                              : (transaction.isCancelled
+                                  ? Icons.cancel_outlined
+                                  : Icons.check_circle_rounded),
+                          size: 10,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          transaction.isPending
+                              ? (settings.languageCode == 'vi' ? 'Chờ' : 'Pending')
+                              : (transaction.isCancelled
+                                  ? (settings.languageCode == 'vi' ? 'Hủy' : 'Cancelled')
+                                  : (settings.languageCode == 'vi' ? 'Xong' : 'Done')),
+                          style: const TextStyle(
+                            fontFamily: 'Quicksand',
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

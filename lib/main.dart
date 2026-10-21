@@ -39,6 +39,7 @@ void main() async {
   final streakBox = await Hive.openBox(kStreakBox);
   await Hive.openBox<String>(kSavedPayeesBox);
   await Hive.openBox<String>(kWalletsBox);
+  await Hive.openBox<String>(kPendingTransfersBox);
   final notifBox = await Hive.openBox('notifications');
 
   // Clean up any migration flag mistakenly put in the notifications box

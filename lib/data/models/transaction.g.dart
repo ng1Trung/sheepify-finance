@@ -18,19 +18,21 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
     };
     return Transaction(
       id: fields[6] as String?,
-      note: fields[0] as String,
-      amount: fields[1] as double,
-      date: fields[2] as DateTime,
-      isExpense: fields[3] as bool,
-      categoryId: fields[4] as String,
+      note: (fields[0] as String?) ?? '',
+      amount: (fields[1] as num?)?.toDouble() ?? 0.0,
+      date: (fields[2] as DateTime?) ?? DateTime.now(),
+      isExpense: (fields[3] as bool?) ?? true,
+      categoryId: (fields[4] as String?) ?? '',
       imagePath: fields[5] as String?,
+      status: (fields[7] as String?) ?? TransactionStatus.completed,
+      walletId: fields[8] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Transaction obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(6)
       ..write(obj.id)
       ..writeByte(0)
@@ -44,7 +46,11 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(4)
       ..write(obj.categoryId)
       ..writeByte(5)
-      ..write(obj.imagePath);
+      ..write(obj.imagePath)
+      ..writeByte(7)
+      ..write(obj.status)
+      ..writeByte(8)
+      ..write(obj.walletId);
   }
 
   @override

@@ -30,11 +30,12 @@ import 'package:line_icons/line_icons.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_widgets.dart';
-import '../../data/services/notification_service.dart';
 import '../../data/services/bank_deeplink_service.dart';
+import '../../data/services/notification_service.dart';
+import '../../data/services/wallet_service.dart';
 import 'notifications_screen.dart';
-import 'scanner/smart_qr_scanner_screen.dart';
 import 'payment/quick_transfer_screen.dart';
+import 'scanner/smart_qr_scanner_screen.dart';
 import 'wallet/wallet_management_screen.dart';
 
 enum _DrawerInsightType { budget, cycle, savings, today, streak }
@@ -68,6 +69,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   // Smart Payment & Undo state
   Transaction? _pendingPaymentUndoTx;
+  String? _pendingPaymentUndoWalletId;
+  double? _pendingPaymentUndoAmount;
   Timer? _undoPaymentTimer;
   int _undoCountdown = 15;
   String? _lastCheckedClipboard;
@@ -267,7 +270,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final streakBox = _streakBoxOrNull();
     if (streakBox == null) return;
     for (final tx in Hive.box<Transaction>(kMoneyBox).values) {
-      streakBox.put(_streakCompletedKey(_dayKey(tx.date)), true);
+      if (tx.isCompleted) {
+        streakBox.put(_streakCompletedKey(_dayKey(tx.date)), true);
+      }
     }
   }
 
@@ -523,6 +528,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             if (isSingleDiaryDay) ...[
               IconButton(
                 visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 icon: Icon(
                   Icons.arrow_back_ios_new,
                   size: 14,
@@ -535,11 +542,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               ),
               const SizedBox(width: 4),
             ],
-            SheepDatePill(label: dateText, onTap: _pickTime),
+            Flexible(
+              child: SheepDatePill(label: dateText, onTap: _pickTime),
+            ),
             if (isSingleDiaryDay) ...[
               const SizedBox(width: 4),
               IconButton(
                 visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 icon: Icon(
                   Icons.arrow_forward_ios,
                   size: 14,
@@ -636,19 +647,21 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         ),
         title: buildAppBarTitle(),
         actions: [
-          IconButton(
-            tooltip: 'Quét VietQR',
-            icon: Icon(
-              LineIcons.qrcode,
-              color: AppColors.getInteractiveAccent(
-                theme.brightness,
-                headerForeground,
+          if (_currentIndex == 0 || _currentIndex == 1) ...[
+            IconButton(
+              tooltip: 'Quét VietQR',
+              icon: Icon(
+                LineIcons.qrcode,
+                color: AppColors.getInteractiveAccent(
+                  theme.brightness,
+                  headerForeground,
+                ),
+                size: 26,
               ),
-              size: 26,
+              onPressed: _openVietQrScanner,
             ),
-            onPressed: _openVietQrScanner,
-          ),
-          const SizedBox(width: 2),
+            const SizedBox(width: 2),
+          ],
           if (_currentIndex == 2 || _currentIndex == 3 || _currentIndex == 4) ...[
             IconButton(
               tooltip: _currentIndex == 4 ? 'Thêm ví mới' : null,
@@ -982,10 +995,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _onPaymentTransactionCreated(Transaction tx) {
+  void _onPaymentTransactionCreated(Transaction tx, {String? walletId, double? amount}) {
     _undoPaymentTimer?.cancel();
     setState(() {
       _pendingPaymentUndoTx = tx;
+      _pendingPaymentUndoWalletId = walletId;
+      _pendingPaymentUndoAmount = amount;
       _undoCountdown = 15;
       _selectedDate = tx.date;
       _diaryRange = _currentCycleRange(date: tx.date);
@@ -1001,6 +1016,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           _undoCountdown--;
         } else {
           _pendingPaymentUndoTx = null;
+          _pendingPaymentUndoWalletId = null;
+          _pendingPaymentUndoAmount = null;
           timer.cancel();
         }
       });
@@ -1010,12 +1027,33 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Future<void> _undoPaymentTransaction() async {
     if (_pendingPaymentUndoTx == null) return;
     final tx = _pendingPaymentUndoTx!;
+    final walletId = _pendingPaymentUndoWalletId;
+    final refundAmount = _pendingPaymentUndoAmount ?? tx.amount;
+
     _undoPaymentTimer?.cancel();
     setState(() {
       _pendingPaymentUndoTx = null;
+      _pendingPaymentUndoWalletId = null;
+      _pendingPaymentUndoAmount = null;
     });
 
     await Hive.box<Transaction>(kMoneyBox).delete(tx.id);
+    NotificationService.showTransactionActionNotification(
+      action: TransactionActionType.deleted,
+      note: tx.note,
+      amount: tx.amount,
+    );
+
+    // Hoàn lại số dư ví nếu giao dịch đã từng trừ ví
+    if (walletId != null) {
+      try {
+        final wallet = WalletService.getWallet(walletId);
+        if (wallet != null) {
+          await WalletService.adjustBalance(wallet.id, wallet.initialBalance + refundAmount);
+        }
+      } catch (_) {}
+    }
+
     if (mounted) {
       SheepNotifications.showSuccess(
         context,
@@ -1224,7 +1262,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 constraints: const BoxConstraints(),
                 onPressed: () {
                   _undoPaymentTimer?.cancel();
-                  setState(() => _pendingPaymentUndoTx = null);
+                  setState(() {
+                    _pendingPaymentUndoTx = null;
+                    _pendingPaymentUndoWalletId = null;
+                    _pendingPaymentUndoAmount = null;
+                  });
                 },
               ),
             ],
@@ -1532,7 +1574,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       unawaited(_syncStreakAfterBoxOpen());
     }
     final completedDayKeys = <String>{
-      ...Hive.box<Transaction>(kMoneyBox).values.map((tx) => _dayKey(tx.date)),
+      ...Hive.box<Transaction>(kMoneyBox)
+          .values
+          .where((tx) => tx.isCompleted)
+          .map((tx) => _dayKey(tx.date)),
       if (streakBox != null)
         ...streakBox.keys
             .whereType<String>()
@@ -1636,6 +1681,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       final spent = transactions
           .where(
             (tx) =>
+                tx.isCompleted &&
                 tx.categoryId == category.id &&
                 FinancialCycleUtil.isInRange(tx.date, cycleRange),
           )
@@ -1688,6 +1734,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     double sumForRange(DateTime start, DateTime end, int typeIndex) {
       return transactions
           .where((tx) {
+            if (!tx.isCompleted) return false;
             final category = categoriesById[tx.categoryId];
             final effectiveTypeIndex =
                 category?.effectiveTypeIndex ?? (tx.isExpense ? 0 : 1);
@@ -1754,7 +1801,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
       final initial = category.initialAmount ?? 0.0;
       final saved = transactions
-          .where((tx) => tx.categoryId == category.id)
+          .where((tx) => tx.isCompleted && tx.categoryId == category.id)
           .fold(0.0, (sum, tx) => sum + tx.amount) + initial;
       final progress = saved / target;
       if (progress <= bestProgress) continue;
@@ -1795,7 +1842,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
     final todayTransactions = Hive.box<Transaction>(kMoneyBox).values.where(
-      (tx) => !tx.date.isBefore(today) && tx.date.isBefore(tomorrow),
+      (tx) => tx.isCompleted && !tx.date.isBefore(today) && tx.date.isBefore(tomorrow),
     );
     final todayExpense = todayTransactions
         .where((tx) => tx.isExpense)

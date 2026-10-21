@@ -57,6 +57,7 @@ class _StatsTabState extends State<StatsTab> {
         final catBox = Hive.box<CategoryModel>(kCatBox);
         final rangeTransactions = Hive.box<Transaction>(kMoneyBox).values.where(
           (tx) =>
+              tx.isCompleted &&
               !tx.date.isBefore(widget.selectedRange.start) &&
               !tx.date.isAfter(widget.selectedRange.end),
         );
@@ -623,6 +624,7 @@ class _StatsTabState extends State<StatsTab> {
         Hive.box<Transaction>(kMoneyBox).values
             .where(
               (tx) =>
+                  tx.isCompleted &&
                   tx.categoryId == category.id &&
                   !tx.date.isBefore(widget.selectedRange.start) &&
                   !tx.date.isAfter(widget.selectedRange.end),

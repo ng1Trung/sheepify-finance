@@ -2,6 +2,12 @@ import 'package:hive/hive.dart';
 
 part 'transaction.g.dart';
 
+class TransactionStatus {
+  static const String completed = 'completed';
+  static const String pending = 'pending';
+  static const String cancelled = 'cancelled';
+}
+
 @HiveType(typeId: 1)
 class Transaction extends HiveObject {
   static int _idCounter = 0;
@@ -32,6 +38,12 @@ class Transaction extends HiveObject {
   @HiveField(5)
   String? imagePath;
 
+  @HiveField(7, defaultValue: TransactionStatus.completed)
+  String status;
+
+  @HiveField(8)
+  String? walletId;
+
   Transaction({
     String? id,
     required this.note,
@@ -40,5 +52,11 @@ class Transaction extends HiveObject {
     required this.isExpense,
     required this.categoryId,
     this.imagePath,
+    this.status = TransactionStatus.completed,
+    this.walletId,
   }) : id = id ?? '';
+
+  bool get isCompleted => status == TransactionStatus.completed;
+  bool get isPending => status == TransactionStatus.pending;
+  bool get isCancelled => status == TransactionStatus.cancelled;
 }
