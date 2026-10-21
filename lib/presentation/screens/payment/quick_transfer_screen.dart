@@ -14,6 +14,7 @@ import '../../../data/models/saved_payee.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/bank_deeplink_service.dart';
+import '../../../data/services/notification_service.dart';
 import '../../../data/services/pending_transfer_service.dart';
 import '../../../data/services/sheepify_scan_ai_service.dart';
 import '../../../data/services/wallet_service.dart';
@@ -487,24 +488,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
         ? _noteController.text.trim()
         : 'Chuyen tien';
 
-    // 1. Lưu vào danh bạ nếu user chọn
-    if (_savePayee && _recipientBank != null) {
-      final nickname = _payeeNameController.text.trim().isNotEmpty
-          ? _payeeNameController.text.trim()
-          : (_recipientBank!.shortName);
-      final payee = SavedPayee(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        nickname: nickname,
-        bankBin: _recipientBank!.bin,
-        accountNo: accountNo,
-        defaultCategoryId: _selectedCategory?.id,
-        defaultNote: note,
-        createdAt: DateTime.now(),
-      );
-      await _payeesBox.put(payee.id, payee.toJson());
-    }
-
-    // 2. Tạo chuỗi VietQR
+    // 1. Tạo chuỗi VietQR
     final qrPayload = VietQrParser.generateVietQr(
       bankBin: _recipientBank?.bin ?? '',
       bankAccount: accountNo,
@@ -513,40 +497,10 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     );
 
     final recipientName = _recipientBank?.shortName ?? 'Ngân hàng nhận';
-
     final isAutofill =
         _sendingBank != null && _sendingBank!.canAutofillPayment;
 
-    // 1. Tạo bản ghi giao dịch Chờ xác nhận (Pending)
-    await PendingTransferService.createPendingTransfer(
-      amount: amount,
-      note: note,
-      categoryId: _selectedCategory!.id,
-      sendingBankId: _sendingBank?.id,
-      recipientBankBin: _recipientBank?.bin,
-      recipientBankName: recipientName,
-      accountNo: accountNo,
-      qrPayload: qrPayload,
-    );
-
-    // 2. Lưu vào danh bạ nếu user chọn
-    if (_savePayee && _recipientBank != null) {
-      final nickname = _payeeNameController.text.trim().isNotEmpty
-          ? _payeeNameController.text.trim()
-          : (_recipientBank!.shortName);
-      final payee = SavedPayee(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        nickname: nickname,
-        bankBin: _recipientBank!.bin,
-        accountNo: accountNo,
-        defaultCategoryId: _selectedCategory?.id,
-        defaultNote: note,
-        createdAt: DateTime.now(),
-      );
-      await _payeesBox.put(payee.id, payee.toJson());
-    }
-
-    // 3. Mở App ngân hàng qua Deeplink
+    // 2. Kích hoạt Deeplink mở App ngân hàng TRƯỚC
     if (_sendingBank != null) {
       if (!isAutofill && accountNo.isNotEmpty) {
         try {
@@ -563,21 +517,124 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
         note: note,
       );
 
-      if (!launched && mounted) {
-        SheepNotifications.showError(
-          context,
-          'Không thể mở ứng dụng ${_sendingBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
-        );
+      // Nếu không mở được app ngân hàng -> Báo lỗi và dừng lại, tuyệt đối KHÔNG tạo giao dịch chờ
+      if (!launched) {
+        if (mounted) {
+          SheepNotifications.showError(
+            context,
+            'Không thể mở ứng dụng ${_sendingBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
+          );
+        }
         return;
       }
     }
 
-    if (mounted) {
-      Navigator.pop(context);
-      SheepNotifications.showSuccess(
-        context,
-        'Đã tạo giao dịch chờ xác nhận và mở ${_sendingBank?.shortName ?? 'ngân hàng'}.',
+    // 3. Mở app thành công -> Lưu vào danh bạ nếu user chọn
+    if (_savePayee && _recipientBank != null) {
+      final nickname = _payeeNameController.text.trim().isNotEmpty
+          ? _payeeNameController.text.trim()
+          : (_recipientBank!.shortName);
+      final payee = SavedPayee(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        nickname: nickname,
+        bankBin: _recipientBank!.bin,
+        accountNo: accountNo,
+        defaultCategoryId: _selectedCategory?.id,
+        defaultNote: note,
+        createdAt: DateTime.now(),
       );
+      await _payeesBox.put(payee.id, payee.toJson());
+    }
+
+    // 4. Tạo giao dịch và phát thông báo tương ứng
+    if (isAutofill) {
+      // FLOW TỰ ĐỘNG (ACB, BIDV, VietinBank, OCB - Ngân hàng hỗ trợ VietQR Autofill):
+      // Giao dịch được tạo tự động với trạng thái completed và trừ số dư ví
+      String? resolvedWalletId;
+      if (_sendingBank != null) {
+        try {
+          final wallets = WalletService.getWallets();
+          final match =
+              wallets.firstWhere((w) => w.bankId == _sendingBank!.id);
+          resolvedWalletId = match.id;
+        } catch (_) {}
+      }
+
+      final moneyBox = Hive.box<Transaction>(kMoneyBox);
+      final tx = Transaction(
+        id: Transaction.createId(),
+        amount: amount,
+        note: note,
+        date: DateTime.now(),
+        isExpense: true,
+        categoryId: _selectedCategory!.id,
+        status: TransactionStatus.completed,
+        walletId: resolvedWalletId,
+      );
+      await moneyBox.put(tx.id, tx);
+
+      if (resolvedWalletId != null) {
+        try {
+          final wallets = WalletService.getWallets();
+          final w = wallets.firstWhere((w) => w.id == resolvedWalletId);
+          final newBal =
+              (w.initialBalance - amount).clamp(0.0, double.infinity);
+          await WalletService.adjustBalance(w.id, newBal);
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        try {
+          await NotificationService.checkAndTriggerNotifications(
+            context,
+            _selectedCategory!.id,
+            DateTime.now(),
+          );
+        } catch (_) {}
+      }
+
+      await NotificationService.showTransactionActionNotification(
+        action: TransactionActionType.created,
+        note: note,
+        amount: amount,
+        categoryName: _selectedCategory?.name,
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+        SheepNotifications.showSuccess(
+          context,
+          'Đã chuyển tiền & ghi sổ chi tiêu thành công!',
+        );
+      }
+    } else {
+      // FLOW THỦ CÔNG / LOẠI 2 (Vietcombank, Techcombank, MB, MoMo, ZaloPay...):
+      // Tạo bản ghi giao dịch Chờ xác nhận (Pending)
+      await PendingTransferService.createPendingTransfer(
+        amount: amount,
+        note: note,
+        categoryId: _selectedCategory!.id,
+        sendingBankId: _sendingBank?.id,
+        recipientBankBin: _recipientBank?.bin,
+        recipientBankName: recipientName,
+        accountNo: accountNo,
+        qrPayload: qrPayload,
+      );
+
+      await NotificationService.showTransactionActionNotification(
+        action: TransactionActionType.created,
+        note: note,
+        amount: amount,
+        categoryName: _selectedCategory?.name,
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+        SheepNotifications.showSuccess(
+          context,
+          'Đã tạo giao dịch chờ xác nhận và mở ${_sendingBank?.shortName ?? 'ngân hàng'}.',
+        );
+      }
     }
   }
 

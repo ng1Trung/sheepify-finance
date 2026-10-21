@@ -20,6 +20,7 @@ import '../../presentation/widgets/common/sheep_dialogs.dart';
 enum TransactionActionType {
   created,
   updated,
+  confirmed,
   cancelled,
   deleted,
 }
@@ -190,6 +191,18 @@ class NotificationService {
           bodyBuffer.write('($categoryName)');
         }
         break;
+      case TransactionActionType.confirmed:
+        title = 'Đã xác nhận giao dịch';
+        if (formattedAmount.isNotEmpty) bodyBuffer.write('-$formattedAmount');
+        if (note.isNotEmpty) {
+          if (bodyBuffer.isNotEmpty) bodyBuffer.write(' • ');
+          bodyBuffer.write(note);
+        }
+        if (categoryName != null && categoryName.isNotEmpty) {
+          if (bodyBuffer.isNotEmpty) bodyBuffer.write(' ');
+          bodyBuffer.write('($categoryName)');
+        }
+        break;
       case TransactionActionType.updated:
         title = 'Đã cập nhật giao dịch';
         if (formattedAmount.isNotEmpty) bodyBuffer.write('-$formattedAmount');
@@ -226,8 +239,8 @@ class NotificationService {
       'sheepify_transactions',
       'Giao dịch',
       channelDescription: 'Thông báo tương tác giao dịch chi tiêu',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
+      importance: Importance.high,
+      priority: Priority.high,
       icon: '@mipmap/ic_launcher',
     );
     const iosDetails = DarwinNotificationDetails(

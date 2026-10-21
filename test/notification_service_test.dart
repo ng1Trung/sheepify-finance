@@ -25,9 +25,10 @@ void main() {
 
   group('NotificationService Tests', () {
     test('TransactionActionType enum has expected values', () {
-      expect(TransactionActionType.values.length, 4);
+      expect(TransactionActionType.values.length, 5);
       expect(TransactionActionType.values, contains(TransactionActionType.created));
       expect(TransactionActionType.values, contains(TransactionActionType.updated));
+      expect(TransactionActionType.values, contains(TransactionActionType.confirmed));
       expect(TransactionActionType.values, contains(TransactionActionType.cancelled));
       expect(TransactionActionType.values, contains(TransactionActionType.deleted));
     });
@@ -41,6 +42,20 @@ void main() {
           action: action,
           note: 'Test $action',
           amount: 100000,
+          categoryName: 'Ăn uống',
+        );
+      }
+    });
+
+    test('showTransactionActionNotification executes with enableNotifications true without error', () async {
+      final settings = AppSettings(enableNotifications: true);
+      await Hive.box<AppSettings>(kSettingsBox).put('current', settings);
+
+      for (final action in TransactionActionType.values) {
+        await NotificationService.showTransactionActionNotification(
+          action: action,
+          note: 'Test $action',
+          amount: 150000,
           categoryName: 'Ăn uống',
         );
       }

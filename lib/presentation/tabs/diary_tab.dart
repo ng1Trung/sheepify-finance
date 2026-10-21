@@ -1736,7 +1736,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 final updated = await PendingTransferService.confirmTransfer(tx.id);
                 if (context.mounted && updated != null) {
                   NotificationService.showTransactionActionNotification(
-                    action: TransactionActionType.updated,
+                    action: TransactionActionType.confirmed,
                     note: tx.note,
                     amount: tx.amount,
                     categoryName: cat.name,

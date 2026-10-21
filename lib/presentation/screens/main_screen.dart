@@ -1036,6 +1036,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     });
 
     await Hive.box<Transaction>(kMoneyBox).delete(tx.id);
+    NotificationService.showTransactionActionNotification(
+      action: TransactionActionType.deleted,
+      note: tx.note,
+      amount: tx.amount,
+    );
 
     // Hoàn lại số dư ví nếu giao dịch đã từng trừ ví
     if (walletId != null) {

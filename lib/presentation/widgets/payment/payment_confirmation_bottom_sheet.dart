@@ -13,6 +13,7 @@ import '../../../data/models/category_model.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/bank_deeplink_service.dart';
+import '../../../data/services/notification_service.dart';
 import '../../../data/services/pending_transfer_service.dart';
 import '../../../data/services/sheepify_scan_ai_service.dart';
 import '../../../data/services/wallet_service.dart';
@@ -293,19 +294,7 @@ class _PaymentConfirmationBottomSheetState
     final isAutofill =
         _selectedBank != null && _selectedBank!.canAutofillPayment;
 
-    // 1. Tạo bản ghi giao dịch Chờ xác nhận (Pending)
-    await PendingTransferService.createPendingTransfer(
-      amount: amount,
-      note: note,
-      categoryId: _selectedCategory!.id,
-      sendingBankId: _selectedBank?.id,
-      recipientBankBin: widget.qrData.bankBin,
-      recipientBankName: recipientName,
-      accountNo: recipientAccount,
-      qrPayload: finalPayload,
-    );
-
-    // 2. Mở App ngân hàng qua Deeplink
+    // 1. Kích hoạt Deeplink mở App ngân hàng TRƯỚC
     if (_selectedBank != null) {
       if (!isAutofill && recipientAccount.isNotEmpty) {
         try {
@@ -322,21 +311,107 @@ class _PaymentConfirmationBottomSheetState
         note: note,
       );
 
-      if (!launched && mounted) {
-        SheepNotifications.showError(
-          context,
-          'Không thể mở ứng dụng ${_selectedBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
-        );
+      // Nếu không mở được app ngân hàng -> Báo lỗi và dừng lại, tuyệt đối KHÔNG tạo giao dịch chờ
+      if (!launched) {
+        if (mounted) {
+          SheepNotifications.showError(
+            context,
+            'Không thể mở ứng dụng ${_selectedBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
+          );
+        }
         return;
       }
     }
 
-    if (mounted) {
-      Navigator.pop(context);
-      SheepNotifications.showSuccess(
-        context,
-        'Đã tạo giao dịch chờ xác nhận và mở ${_selectedBank?.shortName ?? 'ngân hàng'}.',
+    // 2. Mở app thành công -> Tạo giao dịch và phát thông báo tương ứng
+    if (isAutofill) {
+      // FLOW TỰ ĐỘNG (ACB, BIDV, VietinBank, OCB - Ngân hàng hỗ trợ VietQR Autofill):
+      // Giao dịch được tạo tự động với trạng thái completed và trừ số dư ví
+      String? resolvedWalletId;
+      if (_selectedBank != null) {
+        try {
+          final wallets = WalletService.getWallets();
+          final match =
+              wallets.firstWhere((w) => w.bankId == _selectedBank!.id);
+          resolvedWalletId = match.id;
+        } catch (_) {}
+      }
+
+      final moneyBox = Hive.box<Transaction>(kMoneyBox);
+      final transaction = Transaction(
+        id: Transaction.createId(),
+        amount: amount,
+        note: note,
+        date: DateTime.now(),
+        isExpense: true,
+        categoryId: _selectedCategory!.id,
+        status: TransactionStatus.completed,
+        walletId: resolvedWalletId,
       );
+      await moneyBox.put(transaction.id, transaction);
+
+      if (resolvedWalletId != null) {
+        try {
+          final wallets = WalletService.getWallets();
+          final w = wallets.firstWhere((w) => w.id == resolvedWalletId);
+          final newBal =
+              (w.initialBalance - amount).clamp(0.0, double.infinity);
+          await WalletService.adjustBalance(w.id, newBal);
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        try {
+          await NotificationService.checkAndTriggerNotifications(
+            context,
+            _selectedCategory!.id,
+            DateTime.now(),
+          );
+        } catch (_) {}
+      }
+
+      await NotificationService.showTransactionActionNotification(
+        action: TransactionActionType.created,
+        note: note,
+        amount: amount,
+        categoryName: _selectedCategory?.name,
+      );
+
+      if (mounted) {
+        Navigator.pop(context, transaction);
+        SheepNotifications.showSuccess(
+          context,
+          'Đã thanh toán & ghi sổ chi tiêu thành công!',
+        );
+      }
+    } else {
+      // FLOW THỦ CÔNG / LOẠI 2 (Vietcombank, Techcombank, MB, MoMo, ZaloPay...):
+      // Tạo bản ghi giao dịch Chờ xác nhận (Pending)
+      await PendingTransferService.createPendingTransfer(
+        amount: amount,
+        note: note,
+        categoryId: _selectedCategory!.id,
+        sendingBankId: _selectedBank?.id,
+        recipientBankBin: widget.qrData.bankBin,
+        recipientBankName: recipientName,
+        accountNo: recipientAccount,
+        qrPayload: finalPayload,
+      );
+
+      await NotificationService.showTransactionActionNotification(
+        action: TransactionActionType.created,
+        note: note,
+        amount: amount,
+        categoryName: _selectedCategory?.name,
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+        SheepNotifications.showSuccess(
+          context,
+          'Đã tạo giao dịch chờ xác nhận và mở ${_selectedBank?.shortName ?? 'ngân hàng'}.',
+        );
+      }
     }
   }
 
