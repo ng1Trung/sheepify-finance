@@ -647,19 +647,21 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         ),
         title: buildAppBarTitle(),
         actions: [
-          IconButton(
-            tooltip: 'Quét VietQR',
-            icon: Icon(
-              LineIcons.qrcode,
-              color: AppColors.getInteractiveAccent(
-                theme.brightness,
-                headerForeground,
+          if (_currentIndex == 0 || _currentIndex == 1) ...[
+            IconButton(
+              tooltip: 'Quét VietQR',
+              icon: Icon(
+                LineIcons.qrcode,
+                color: AppColors.getInteractiveAccent(
+                  theme.brightness,
+                  headerForeground,
+                ),
+                size: 26,
               ),
-              size: 26,
+              onPressed: _openVietQrScanner,
             ),
-            onPressed: _openVietQrScanner,
-          ),
-          const SizedBox(width: 2),
+            const SizedBox(width: 2),
+          ],
           if (_currentIndex == 2 || _currentIndex == 3 || _currentIndex == 4) ...[
             IconButton(
               tooltip: _currentIndex == 4 ? 'Thêm ví mới' : null,

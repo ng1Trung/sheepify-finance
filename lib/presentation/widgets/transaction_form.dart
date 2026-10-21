@@ -419,6 +419,7 @@ class _TransactionFormState extends State<TransactionForm>
           note: tx.note,
           amount: enteredAmount,
           categoryName: cat?.name,
+          isExpense: tx.isExpense,
         );
       } else {
         // Create and add new transaction to Hive
@@ -430,6 +431,7 @@ class _TransactionFormState extends State<TransactionForm>
           isExpense: _selectedTypeIndex == 0,
           categoryId: _selectedCategoryId!,
           imagePath: _imagePath,
+          status: TransactionStatus.completed,
         );
         _box.add(newTx);
         SheepNotifications.showSuccess(context, l10n.get('tx_added'));
@@ -438,6 +440,7 @@ class _TransactionFormState extends State<TransactionForm>
           note: newTx.note,
           amount: enteredAmount,
           categoryName: cat?.name,
+          isExpense: newTx.isExpense,
         );
       }
 

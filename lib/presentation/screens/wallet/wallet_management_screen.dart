@@ -13,6 +13,7 @@ import '../../../data/services/bank_deeplink_service.dart';
 import '../../../data/services/wallet_service.dart';
 import '../../widgets/common/sheep_notifications.dart';
 import '../../widgets/common/sheep_widgets.dart';
+import '../../widgets/payment/bank_app_picker_modal.dart';
 
 class WalletManagementScreen extends StatefulWidget {
   final bool isTab;
@@ -121,82 +122,31 @@ class WalletManagementScreen extends StatefulWidget {
                     const SizedBox(height: SheepSpacing.md),
 
                     // Ngân hàng liên kết
-                    Text(
-                      'NGÂN HÀNG HOẶC VÍ LIÊN KẾT',
-                      style: SheepTextStyles.itemMeta(context).copyWith(
-                        fontSize: SheepTypeScale.micro,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.getSubtleSurface(brightness),
-                        borderRadius: BorderRadius.circular(SheepRadius.md),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String?>(
-                          isExpanded: true,
-                          value: selectedBank?.id,
-                          hint: const Text(
-                            'Không liên kết (Tiền mặt / Khác)',
-                            style: TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontSize: 14,
-                            ),
-                          ),
-                          items: [
-                            const DropdownMenuItem<String?>(
-                              value: null,
-                              child: Text(
-                                '💵 Tiền mặt / Ví thủ công',
-                                style: TextStyle(
-                                  fontFamily: 'Quicksand',
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            ...BankDeeplinkService.supportedBanks.map(
-                              (bank) => DropdownMenuItem<String?>(
-                                value: bank.id,
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        color: bank.brandColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      bank.shortName,
-                                      style: const TextStyle(
-                                        fontFamily: 'Quicksand',
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                          onChanged: (val) {
+                    BankAppSelectorTile(
+                      bank: selectedBank,
+                      label: 'NGÂN HÀNG HOẶC VÍ LIÊN KẾT',
+                      onTap: () {
+                        BankAppPickerModal.show(
+                          context: context,
+                          selectedBank: selectedBank,
+                          allowManualOption: true,
+                          title: 'Chọn Ngân Hàng / Ví Liên Kết',
+                          onBankSelected: (bank) {
                             setModalState(() {
-                              selectedBank = val != null
-                                  ? BankDeeplinkService.findById(val)
-                                  : null;
+                              selectedBank = bank;
                               if (!isEditing &&
                                   nameController.text.isEmpty &&
                                   selectedBank != null) {
                                 nameController.text = selectedBank!.shortName;
+                              } else if (!isEditing &&
+                                  nameController.text.isEmpty &&
+                                  selectedBank == null) {
+                                nameController.text = 'Tiền mặt';
                               }
                             });
                           },
-                        ),
-                      ),
+                        );
+                      },
                     ),
                     const SizedBox(height: SheepSpacing.md),
 

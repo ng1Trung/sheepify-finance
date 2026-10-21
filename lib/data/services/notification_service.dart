@@ -160,79 +160,157 @@ class NotificationService {
     } catch (_) {}
   }
 
-  /// Hiển thị thông báo tương tác với giao dịch (Thêm, Sửa, Hủy, Xóa)
+  /// Hiển thị thông báo tương tác với giao dịch (Thêm, Sửa, Xác nhận, Hủy, Xóa)
+  /// Đồng thời lưu vào hòm thư thông báo trong app (Hive.box('notifications'))
   static Future<void> showTransactionActionNotification({
     required TransactionActionType action,
     required String note,
     double? amount,
     String? categoryName,
+    bool isExpense = true,
   }) async {
-    final settings =
-        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
-    if (!settings.enableNotifications) return;
-
     final formattedAmount = amount != null && amount > 0
         ? '${CurrencyUtil.formatMoney(amount, locale: 'vi_VN')}₫'
         : '';
+    final sign = isExpense ? '-' : '+';
+    final signedAmount =
+        formattedAmount.isNotEmpty ? '$sign$formattedAmount' : '';
 
     String title;
     final bodyBuffer = StringBuffer();
+    final inAppContentBuffer = StringBuffer();
 
     switch (action) {
       case TransactionActionType.created:
         title = 'Đã thêm giao dịch';
-        if (formattedAmount.isNotEmpty) bodyBuffer.write('-$formattedAmount');
+        if (signedAmount.isNotEmpty) {
+          bodyBuffer.write(signedAmount);
+          inAppContentBuffer.write('Đã thêm giao dịch <b>$signedAmount</b>');
+        } else {
+          inAppContentBuffer.write('Đã thêm giao dịch mới');
+        }
         if (note.isNotEmpty) {
           if (bodyBuffer.isNotEmpty) bodyBuffer.write(' • ');
           bodyBuffer.write(note);
+          inAppContentBuffer.write(' • <b>$note</b>');
         }
         if (categoryName != null && categoryName.isNotEmpty) {
           if (bodyBuffer.isNotEmpty) bodyBuffer.write(' ');
           bodyBuffer.write('($categoryName)');
+          inAppContentBuffer.write(' ($categoryName)');
         }
         break;
+
       case TransactionActionType.confirmed:
         title = 'Đã xác nhận giao dịch';
-        if (formattedAmount.isNotEmpty) bodyBuffer.write('-$formattedAmount');
+        if (signedAmount.isNotEmpty) {
+          bodyBuffer.write(signedAmount);
+          inAppContentBuffer.write('Đã xác nhận giao dịch <b>$signedAmount</b>');
+        } else {
+          inAppContentBuffer.write('Đã xác nhận giao dịch');
+        }
         if (note.isNotEmpty) {
           if (bodyBuffer.isNotEmpty) bodyBuffer.write(' • ');
           bodyBuffer.write(note);
+          inAppContentBuffer.write(' • <b>$note</b>');
         }
         if (categoryName != null && categoryName.isNotEmpty) {
           if (bodyBuffer.isNotEmpty) bodyBuffer.write(' ');
           bodyBuffer.write('($categoryName)');
+          inAppContentBuffer.write(' ($categoryName)');
         }
         break;
+
       case TransactionActionType.updated:
         title = 'Đã cập nhật giao dịch';
-        if (formattedAmount.isNotEmpty) bodyBuffer.write('-$formattedAmount');
+        if (signedAmount.isNotEmpty) {
+          bodyBuffer.write(signedAmount);
+          inAppContentBuffer.write('Đã cập nhật giao dịch <b>$signedAmount</b>');
+        } else {
+          inAppContentBuffer.write('Đã cập nhật giao dịch');
+        }
         if (note.isNotEmpty) {
           if (bodyBuffer.isNotEmpty) bodyBuffer.write(' • ');
           bodyBuffer.write(note);
+          inAppContentBuffer.write(' • <b>$note</b>');
         }
         if (categoryName != null && categoryName.isNotEmpty) {
           if (bodyBuffer.isNotEmpty) bodyBuffer.write(' ');
           bodyBuffer.write('($categoryName)');
+          inAppContentBuffer.write(' ($categoryName)');
         }
         break;
+
       case TransactionActionType.cancelled:
         title = 'Đã hủy giao dịch';
-        if (formattedAmount.isNotEmpty) bodyBuffer.write('-$formattedAmount');
+        if (formattedAmount.isNotEmpty) {
+          bodyBuffer.write(formattedAmount);
+          inAppContentBuffer.write('Đã hủy giao dịch <b>$formattedAmount</b>');
+        } else {
+          inAppContentBuffer.write('Đã hủy giao dịch');
+        }
         if (note.isNotEmpty) {
           if (bodyBuffer.isNotEmpty) bodyBuffer.write(' • ');
           bodyBuffer.write(note);
+          inAppContentBuffer.write(' • <b>$note</b>');
         }
         bodyBuffer.write(' (Số dư ví giữ nguyên)');
+        inAppContentBuffer.write(' (Số dư ví giữ nguyên)');
         break;
+
       case TransactionActionType.deleted:
         title = 'Đã xóa giao dịch';
-        if (note.isNotEmpty) bodyBuffer.write(note);
+        if (formattedAmount.isNotEmpty) {
+          bodyBuffer.write(formattedAmount);
+          inAppContentBuffer.write('Đã xóa giao dịch <b>$formattedAmount</b>');
+        } else {
+          inAppContentBuffer.write('Đã xóa giao dịch');
+        }
+        if (note.isNotEmpty) {
+          if (bodyBuffer.isNotEmpty) bodyBuffer.write(' • ');
+          bodyBuffer.write(note);
+          inAppContentBuffer.write(' • <b>$note</b>');
+        }
         if (categoryName != null && categoryName.isNotEmpty) {
           if (bodyBuffer.isNotEmpty) bodyBuffer.write(' ');
           bodyBuffer.write('($categoryName)');
+          inAppContentBuffer.write(' ($categoryName)');
         }
         break;
     }
+
+    // 1. Luôn lưu vào lịch sử thông báo trong app (Hive.box('notifications'))
+    try {
+      if (Hive.isBoxOpen('notifications')) {
+        final box = Hive.box('notifications');
+        final notifType = switch (action) {
+          TransactionActionType.created => 'transaction_created',
+          TransactionActionType.confirmed => 'transaction_confirmed',
+          TransactionActionType.updated => 'transaction_updated',
+          TransactionActionType.cancelled => 'transaction_cancelled',
+          TransactionActionType.deleted => 'transaction_deleted',
+        };
+
+        final newNotification = {
+          'id': 'notif_${DateTime.now().microsecondsSinceEpoch}',
+          'title': title,
+          'content': inAppContentBuffer.toString(),
+          'dateTime': DateTime.now().toIso8601String(),
+          'isRead': false,
+          'type': notifType,
+          'action': action.name,
+          'amount': amount,
+          'note': note,
+          'categoryName': categoryName,
+        };
+        await box.add(newNotification);
+      }
+    } catch (_) {}
+
+    // 2. Bắn system notification nếu người dùng bật thông báo trong cài đặt
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    if (!settings.enableNotifications) return;
 
     final id = DateTime.now().millisecondsSinceEpoch % 100000;
     const androidDetails = AndroidNotificationDetails(

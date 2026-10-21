@@ -13,6 +13,7 @@ import '../../../data/models/category_model.dart';
 import '../../../data/models/saved_payee.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
+import '../../../data/models/wallet_model.dart';
 import '../../../data/services/bank_deeplink_service.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../data/services/pending_transfer_service.dart';
@@ -49,6 +50,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
   late final TextEditingController _payeeNameController;
 
   BankAppModel? _recipientBank;
+  WalletModel? _selectedWallet;
   BankAppModel? _sendingBank;
   CategoryModel? _selectedCategory;
   bool _savePayee = false;
@@ -89,12 +91,22 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     }
     _recipientBank ??= BankDeeplinkService.supportedBanks.first;
 
-    // Ngân hàng gửi mặc định lấy từ Ví mặc định
+    // Ngân hàng gửi mặc định lấy từ Ví ngân hàng đã cài đặt trong app (loại bỏ ví tiền mặt)
+    final bankWallets = WalletService.getWallets()
+        .where((w) => w.bankId != null && w.bankId!.trim().isNotEmpty)
+        .toList();
     final defaultWallet = WalletService.getDefaultWallet();
-    if (defaultWallet != null && defaultWallet.bankId != null) {
-      _sendingBank = BankDeeplinkService.findById(defaultWallet.bankId);
+    if (defaultWallet != null &&
+        defaultWallet.bankId != null &&
+        defaultWallet.bankId!.trim().isNotEmpty) {
+      _selectedWallet = defaultWallet;
+    } else if (bankWallets.isNotEmpty) {
+      _selectedWallet = bankWallets.first;
     }
-    _sendingBank ??= BankDeeplinkService.supportedBanks.first;
+
+    if (_selectedWallet != null) {
+      _sendingBank = BankDeeplinkService.findById(_selectedWallet!.bankId);
+    }
 
     // Khởi tạo danh mục
     final expenseCategories = _catBox.values
@@ -484,6 +496,14 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
       return;
     }
 
+    if (_selectedWallet == null || _sendingBank == null) {
+      SheepNotifications.showError(
+        context,
+        'Vui lòng chọn ví ngân hàng đã cài đặt trong app để chuyển tiền!',
+      );
+      return;
+    }
+
     final note = _noteController.text.trim().isNotEmpty
         ? _noteController.text.trim()
         : 'Chuyen tien';
@@ -550,15 +570,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     if (isAutofill) {
       // FLOW TỰ ĐỘNG (ACB, BIDV, VietinBank, OCB - Ngân hàng hỗ trợ VietQR Autofill):
       // Giao dịch được tạo tự động với trạng thái completed và trừ số dư ví
-      String? resolvedWalletId;
-      if (_sendingBank != null) {
-        try {
-          final wallets = WalletService.getWallets();
-          final match =
-              wallets.firstWhere((w) => w.bankId == _sendingBank!.id);
-          resolvedWalletId = match.id;
-        } catch (_) {}
-      }
+      final resolvedWalletId = _selectedWallet?.id;
 
       final moneyBox = Hive.box<Transaction>(kMoneyBox);
       final tx = Transaction(
@@ -614,6 +626,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
         amount: amount,
         note: note,
         categoryId: _selectedCategory!.id,
+        walletId: _selectedWallet?.id,
         sendingBankId: _sendingBank?.id,
         recipientBankBin: _recipientBank?.bin,
         recipientBankName: recipientName,
@@ -1106,16 +1119,20 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
             ),
             const SizedBox(height: SheepSpacing.md),
 
-            // Chọn ứng dụng thanh toán để chuyển (Bank Selector dạng dropdown / bottom sheet)
-            BankAppSelectorTile(
+            // Chọn ví ngân hàng để chuyển (Chỉ hiển thị các ví ngân hàng đã cài đặt trong app)
+            InstalledWalletSelectorTile(
+              wallet: _selectedWallet,
               bank: _sendingBank,
-              label: 'CHỌN APP NGÂN HÀNG ĐỂ CHUYỂN TIỀN',
+              label: 'CHỌN VÍ THANH TOÁN',
               onTap: () {
-                BankAppPickerModal.show(
+                InstalledWalletPickerModal.show(
                   context: context,
-                  selectedBank: _sendingBank,
-                  onBankSelected: (bank) {
-                    setState(() => _sendingBank = bank);
+                  selectedWalletId: _selectedWallet?.id,
+                  onWalletSelected: (wallet, bank) {
+                    setState(() {
+                      _selectedWallet = wallet;
+                      _sendingBank = bank;
+                    });
                   },
                 );
               },

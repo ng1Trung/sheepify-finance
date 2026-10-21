@@ -456,7 +456,7 @@ class TransactionHistorySheet extends StatelessWidget {
     );
     final allCategoryTransactions = Hive.box<Transaction>(
       kMoneyBox,
-    ).values.where((tx) => tx.categoryId == category.id);
+    ).values.where((tx) => tx.categoryId == category.id && tx.isCompleted);
     final initial = category.initialAmount ?? 0.0;
 
     final totalInCycle = allCategoryTransactions

@@ -12,6 +12,7 @@ import '../../../core/utils/vietqr_parser.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
+import '../../../data/models/wallet_model.dart';
 import '../../../data/services/bank_deeplink_service.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../data/services/pending_transfer_service.dart';
@@ -43,6 +44,7 @@ class _PaymentConfirmationBottomSheetState
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
   
+  WalletModel? _selectedWallet;
   BankAppModel? _selectedBank;
   CategoryModel? _selectedCategory;
   late final Box<CategoryModel> _catBox;
@@ -74,12 +76,22 @@ class _PaymentConfirmationBottomSheetState
       text: widget.qrData.purpose ?? '',
     );
 
-    // Chọn ngân hàng thanh toán mặc định từ Cài đặt Ví
+    // Chọn ngân hàng thanh toán mặc định từ Ví ngân hàng đã cài đặt trong app (loại bỏ ví tiền mặt)
+    final bankWallets = WalletService.getWallets()
+        .where((w) => w.bankId != null && w.bankId!.trim().isNotEmpty)
+        .toList();
     final defaultWallet = WalletService.getDefaultWallet();
-    if (defaultWallet != null && defaultWallet.bankId != null) {
-      _selectedBank = BankDeeplinkService.findById(defaultWallet.bankId);
+    if (defaultWallet != null &&
+        defaultWallet.bankId != null &&
+        defaultWallet.bankId!.trim().isNotEmpty) {
+      _selectedWallet = defaultWallet;
+    } else if (bankWallets.isNotEmpty) {
+      _selectedWallet = bankWallets.first;
     }
-    _selectedBank ??= BankDeeplinkService.supportedBanks.first;
+
+    if (_selectedWallet != null) {
+      _selectedBank = BankDeeplinkService.findById(_selectedWallet!.bankId);
+    }
 
     // Chọn danh mục mặc định (ưu tiên Ăn uống hoặc danh mục đầu tiên)
     final expenseCategories = _catBox.values
@@ -270,6 +282,14 @@ class _PaymentConfirmationBottomSheetState
       return;
     }
 
+    if (_selectedWallet == null || _selectedBank == null) {
+      SheepNotifications.showError(
+        context,
+        'Vui lòng chọn ví ngân hàng đã cài đặt trong app để thanh toán!',
+      );
+      return;
+    }
+
     final note = _noteController.text.trim().isNotEmpty
         ? _noteController.text.trim()
         : 'Thanh toan VietQR';
@@ -327,15 +347,7 @@ class _PaymentConfirmationBottomSheetState
     if (isAutofill) {
       // FLOW TỰ ĐỘNG (ACB, BIDV, VietinBank, OCB - Ngân hàng hỗ trợ VietQR Autofill):
       // Giao dịch được tạo tự động với trạng thái completed và trừ số dư ví
-      String? resolvedWalletId;
-      if (_selectedBank != null) {
-        try {
-          final wallets = WalletService.getWallets();
-          final match =
-              wallets.firstWhere((w) => w.bankId == _selectedBank!.id);
-          resolvedWalletId = match.id;
-        } catch (_) {}
-      }
+      final resolvedWalletId = _selectedWallet?.id;
 
       final moneyBox = Hive.box<Transaction>(kMoneyBox);
       final transaction = Transaction(
@@ -391,6 +403,7 @@ class _PaymentConfirmationBottomSheetState
         amount: amount,
         note: note,
         categoryId: _selectedCategory!.id,
+        walletId: _selectedWallet?.id,
         sendingBankId: _selectedBank?.id,
         recipientBankBin: widget.qrData.bankBin,
         recipientBankName: recipientName,
@@ -772,15 +785,20 @@ class _PaymentConfirmationBottomSheetState
             ),
             const SizedBox(height: SheepSpacing.md),
 
-            // Chọn ứng dụng thanh toán (Bank Selector dạng dropdown / bottom sheet)
-            BankAppSelectorTile(
+            // Chọn ví ngân hàng thanh toán (Chỉ hiển thị ví ngân hàng đã cài đặt trong app)
+            InstalledWalletSelectorTile(
+              wallet: _selectedWallet,
               bank: _selectedBank,
+              label: 'CHỌN VÍ THANH TOÁN',
               onTap: () {
-                BankAppPickerModal.show(
+                InstalledWalletPickerModal.show(
                   context: context,
-                  selectedBank: _selectedBank,
-                  onBankSelected: (bank) {
-                    setState(() => _selectedBank = bank);
+                  selectedWalletId: _selectedWallet?.id,
+                  onWalletSelected: (wallet, bank) {
+                    setState(() {
+                      _selectedWallet = wallet;
+                      _selectedBank = bank;
+                    });
                   },
                 );
               },
