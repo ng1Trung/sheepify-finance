@@ -22,7 +22,7 @@ class WalletManagementScreen extends StatefulWidget {
   @override
   State<WalletManagementScreen> createState() => _WalletManagementScreenState();
 
-  static void showAddOrEditWalletDialog(
+  static Future<WalletModel?> showAddOrEditWalletDialog(
     BuildContext context, {
     WalletModel? walletToEdit,
   }) {
@@ -41,7 +41,7 @@ class WalletManagementScreen extends StatefulWidget {
         : null;
     bool isDefault = walletToEdit?.isDefault ?? false;
 
-    showModalBottomSheet(
+    return showModalBottomSheet<WalletModel>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -248,7 +248,7 @@ class WalletManagementScreen extends StatefulWidget {
                         }
 
                         if (context.mounted) {
-                          Navigator.pop(context);
+                          Navigator.pop(context, newWallet);
                           SheepNotifications.showSuccess(
                             context,
                             isEditing

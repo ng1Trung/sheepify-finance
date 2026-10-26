@@ -86,5 +86,21 @@ void main() {
       final total = WalletService.getTotalBalance();
       expect(total >= 15000000, isTrue);
     });
+
+    test('Adding wallet with 0 balance is preserved permanently and never cleared', () async {
+      final zeroBalWallet = WalletModel(
+        id: 'wallet_zero_bal_mb',
+        name: 'MB Bank Chi Tiêu',
+        bankId: 'mb',
+        bankBin: '970422',
+        initialBalance: 0,
+        isDefault: false,
+        createdAt: DateTime.now(),
+      );
+
+      await WalletService.saveWallet(zeroBalWallet);
+      final wallets = WalletService.getWallets();
+      expect(wallets.any((w) => w.id == 'wallet_zero_bal_mb'), isTrue);
+    });
   });
 }

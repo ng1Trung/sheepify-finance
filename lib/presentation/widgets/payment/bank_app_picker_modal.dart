@@ -632,8 +632,8 @@ class _InstalledWalletPickerModalState
         .where((w) => w.bankId != null && w.bankId!.trim().isNotEmpty)
         .toList();
 
-    // Chỉ hiển thị search bar khi danh sách ví vượt quá 1 viewport (cần phải cuộn > 4 ví)
-    final needsScroll = bankWallets.length > 4;
+    // Chỉ hiển thị search bar khi danh sách ví vượt quá 1 viewport (cần phải cuộn >= 4 ví)
+    final needsScroll = bankWallets.length >= 4;
 
     final filteredWallets = bankWallets.where((w) {
       final bank = BankDeeplinkService.findById(w.bankId);
@@ -745,11 +745,24 @@ class _InstalledWalletPickerModalState
                   SheepButton(
                     label: 'Thêm ví ngân hàng mới',
                     backgroundColor: accentColor,
-                    onPressed: () {
-                      Navigator.pop(context);
-                      WalletManagementScreen.showAddOrEditWalletDialog(
+                    onPressed: () async {
+                      final newWallet =
+                          await WalletManagementScreen.showAddOrEditWalletDialog(
                         context,
                       );
+                      if (newWallet != null && mounted) {
+                        if (newWallet.bankId != null &&
+                            newWallet.bankId!.trim().isNotEmpty) {
+                          final bank = BankDeeplinkService.findById(
+                            newWallet.bankId,
+                          );
+                          if (bank != null) {
+                            widget.onWalletSelected(newWallet, bank);
+                            return;
+                          }
+                        }
+                        setState(() {});
+                      }
                     },
                   ),
                 ],
@@ -837,9 +850,71 @@ class _InstalledWalletPickerModalState
       physics: needsScroll
           ? const BouncingScrollPhysics()
           : const NeverScrollableScrollPhysics(),
-      itemCount: wallets.length,
+      itemCount: wallets.length + 1,
       separatorBuilder: (context, index) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
+        if (index == wallets.length) {
+          // Nút thêm ví ngân hàng mới ngay trong danh sách
+          return ListTile(
+            onTap: () async {
+              HapticFeedback.selectionClick();
+              final newWallet =
+                  await WalletManagementScreen.showAddOrEditWalletDialog(
+                context,
+              );
+              if (newWallet != null && mounted) {
+                if (newWallet.bankId != null &&
+                    newWallet.bankId!.trim().isNotEmpty) {
+                  final bank = BankDeeplinkService.findById(newWallet.bankId);
+                  if (bank != null) {
+                    widget.onWalletSelected(newWallet, bank);
+                    return;
+                  }
+                }
+                setState(() {});
+              }
+            },
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(SheepRadius.md),
+              side: BorderSide(
+                color: AppColors.getBorder(brightness),
+              ),
+            ),
+            tileColor: AppColors.getSubtleSurface(brightness),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 4,
+            ),
+            leading: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(SheepRadius.sm),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.add_circle_outline_rounded,
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+            ),
+            title: Text(
+              'Thêm ví ngân hàng mới',
+              style: SheepTextStyles.itemTitle(context).copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            subtitle: Text(
+              'Liên kết thêm tài khoản ngân hàng để chuyển tiền',
+              style: SheepTextStyles.itemMeta(context).copyWith(
+                fontSize: 11.5,
+              ),
+            ),
+          );
+        }
+
         final wallet = wallets[index];
         final bank = BankDeeplinkService.findById(wallet.bankId) ??
             BankDeeplinkService.supportedBanks.first;

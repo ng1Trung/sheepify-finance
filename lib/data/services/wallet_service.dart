@@ -7,27 +7,33 @@ class WalletService {
   static Box<String> get _box => Hive.box<String>(kWalletsBox);
 
   static void ensureOnlyCashDefaultSeeded() {
-    if (_box.isEmpty) {
-      _seedDefaultWallets();
+    if (_box.get('seeded_v2_cash_only') == 'true') {
       return;
     }
-    if (_box.get('seeded_v2_cash_only') != 'true') {
-      final wallets = <WalletModel>[];
-      for (final raw in _box.values) {
-        try {
-          wallets.add(WalletModel.fromJson(raw));
-        } catch (_) {}
-      }
-      final hasOnlyDefaults = wallets.length <= 3 &&
-          wallets.every((w) => w.initialBalance == 0) &&
-          wallets.any((w) => w.id == 'wallet_tcb' || w.id == 'wallet_cash');
 
-      if (hasOnlyDefaults) {
-        _box.clear();
-        _seedDefaultWallets();
-      }
+    if (_box.isEmpty) {
+      _seedDefaultWallets();
       _box.put('seeded_v2_cash_only', 'true');
+      return;
     }
+
+    // Migration cũ: chỉ xóa nếu trong box CHỈ CÓ DUY NHẤT các ví mẫu hệ thống ban đầu (wallet_cash hoặc wallet_tcb).
+    // Tuyệt đối không xóa nếu người dùng đã có bất kỳ ví tự tạo nào khác!
+    final wallets = <WalletModel>[];
+    for (final raw in _box.values) {
+      try {
+        wallets.add(WalletModel.fromJson(raw));
+      } catch (_) {}
+    }
+    final isOnlyOldSystemDefaults = wallets.isNotEmpty &&
+        wallets.every((w) => w.id == 'wallet_tcb' || w.id == 'wallet_cash') &&
+        wallets.every((w) => w.initialBalance == 0);
+
+    if (isOnlyOldSystemDefaults) {
+      _box.clear();
+      _seedDefaultWallets();
+    }
+    _box.put('seeded_v2_cash_only', 'true');
   }
 
   /// Lấy toàn bộ danh sách ví, nếu rỗng thì tạo danh sách mặc định (chỉ có Tiền mặt)
