@@ -12,7 +12,7 @@ import '../../../data/models/settings_model.dart';
 import '../../../data/models/transaction.dart';
 import '../../widgets/common/sheep_notifications.dart';
 import '../../widgets/common/sheep_widgets.dart';
-import '../../widgets/payment/payment_confirmation_bottom_sheet.dart';
+import '../payment/quick_transfer_screen.dart';
 
 class SmartQrScannerScreen extends StatefulWidget {
   const SmartQrScannerScreen({super.key});
@@ -73,21 +73,26 @@ class _SmartQrScannerScreenState extends State<SmartQrScannerScreen>
 
     if (!mounted) return;
 
-    // Mở Bottom Sheet xác nhận thanh toán
-    final result = await showModalBottomSheet<Transaction>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => PaymentConfirmationBottomSheet(qrData: parsed),
+    // Mở màn hình Chuyển tiền & Ghi sổ (dùng lại giao diện chuẩn QuickTransferScreen)
+    final result = await Navigator.push<Transaction>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuickTransferScreen(
+          initialBankBin: parsed.bankBin,
+          initialAccountNo: parsed.bankAccount,
+          initialAmount: parsed.amount,
+          initialNote: parsed.purpose,
+        ),
+      ),
     );
 
     if (!mounted) return;
 
     if (result != null) {
-      // Người dùng đã xác nhận thanh toán -> Trả về kết quả cho màn hình trước
+      // Người dùng đã hoàn thành chuyển tiền & ghi sổ -> Trả về kết quả cho màn hình trước
       Navigator.pop(context, result);
     } else {
-      // Người dùng đóng sheet -> Tiếp tục quét
+      // Người dùng bấm back từ QuickTransferScreen mà chưa chuyển tiền -> Tiếp tục quét
       await _cameraController.start();
       setState(() => _isProcessing = false);
     }

@@ -29,6 +29,7 @@ class QuickTransferScreen extends StatefulWidget {
   final String? initialBankBin;
   final double? initialAmount;
   final String? initialNote;
+  final String? initialPayeeName;
 
   const QuickTransferScreen({
     super.key,
@@ -36,6 +37,7 @@ class QuickTransferScreen extends StatefulWidget {
     this.initialBankBin,
     this.initialAmount,
     this.initialNote,
+    this.initialPayeeName,
   });
 
   @override
@@ -83,7 +85,8 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
           : '',
     );
     _noteController = TextEditingController(text: widget.initialNote ?? '');
-    _payeeNameController = TextEditingController();
+    _payeeNameController =
+        TextEditingController(text: widget.initialPayeeName ?? '');
 
     // Khởi tạo ngân hàng nhận
     if (widget.initialBankBin != null) {
@@ -148,6 +151,20 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     }
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     setState(() => _savedPayees = list);
+
+    // Nếu tên người nhận chưa có và có tài khoản + ngân hàng nhận, thử tìm trong danh bạ
+    if (_payeeNameController.text.trim().isEmpty &&
+        widget.initialAccountNo != null &&
+        widget.initialBankBin != null) {
+      try {
+        final match = list.firstWhere(
+          (p) =>
+              p.accountNo == widget.initialAccountNo &&
+              p.bankBin == widget.initialBankBin,
+        );
+        _payeeNameController.text = match.nickname;
+      } catch (_) {}
+    }
   }
 
   Future<void> _initSpeech() async {
@@ -613,7 +630,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
       );
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(context, tx);
         SheepNotifications.showSuccess(
           context,
           'Đã chuyển tiền & ghi sổ chi tiêu thành công!',
@@ -622,7 +639,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     } else {
       // FLOW THỦ CÔNG / LOẠI 2 (Vietcombank, Techcombank, MB, MoMo, ZaloPay...):
       // Tạo bản ghi giao dịch Chờ xác nhận (Pending)
-      await PendingTransferService.createPendingTransfer(
+      final pending = await PendingTransferService.createPendingTransfer(
         amount: amount,
         note: note,
         categoryId: _selectedCategory!.id,
@@ -634,6 +651,9 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
         qrPayload: qrPayload,
       );
 
+      final moneyBox = Hive.box<Transaction>(kMoneyBox);
+      final tx = moneyBox.get(pending.id);
+
       await NotificationService.showTransactionActionNotification(
         action: TransactionActionType.created,
         note: note,
@@ -642,7 +662,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
       );
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(context, tx);
         SheepNotifications.showSuccess(
           context,
           'Đã tạo giao dịch chờ xác nhận và mở ${_sendingBank?.shortName ?? 'ngân hàng'}.',
