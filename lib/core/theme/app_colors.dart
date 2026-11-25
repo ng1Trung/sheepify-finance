@@ -38,6 +38,7 @@ class AppColors {
   static const Color expense = Color(0xFFEE6055); // Professional Red
   static const Color income = Color(0xFF20C997); // Professional Green
   static const Color savings = Color(0xFF4EA8DE); // Professional Blue
+  static const Color warning = Color(0xFFF59F00); // Nearing a limit
 
   // Backward compatibility constants (Light Mode defaults)
   static const Color bgLight = Color(0xFFFAFAFA);
@@ -62,6 +63,21 @@ class AppColors {
       b == Brightness.light ? const Color(0xFFF5F5F5) : const Color(0xFF242424);
   static Color getSectionHeader(Brightness b) =>
       b == Brightness.light ? const Color(0xFFFAFAFA) : const Color(0xFF202020);
+  static Color getTextMuted(Brightness b) =>
+      b == Brightness.light ? const Color(0xFF9E9E9E) : const Color(0xFF6E6E6E);
+
+  /// Neutral fill for primary actions (Save, Create, FAB). Kept black/white
+  /// on purpose so it never competes with income/expense colours or the
+  /// user's palette.
+  static Color getPrimaryFill(Brightness b) =>
+      b == Brightness.light ? const Color(0xFF111111) : const Color(0xFFF2F2F2);
+  static Color getOnPrimaryFill(Brightness b) =>
+      b == Brightness.light ? Colors.white : const Color(0xFF111111);
+
+  /// Soft tint used behind category / status icons.
+  static Color tint(Color color, Brightness b) =>
+      color.withValues(alpha: b == Brightness.dark ? 0.22 : 0.12);
+
   static Color getInteractiveAccent(Brightness b, Color accent) {
     if (b == Brightness.dark && accent.computeLuminance() < 0.18) {
       return const Color(0xFFF5F5F5);

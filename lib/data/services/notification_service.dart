@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -15,6 +17,7 @@ import '../../core/utils/currency_util.dart';
 import '../models/category_model.dart';
 import '../models/settings_model.dart';
 import '../models/transaction.dart';
+import 'pending_transfer_service.dart';
 import '../../presentation/widgets/common/sheep_dialogs.dart';
 
 enum TransactionActionType {
@@ -131,6 +134,62 @@ class NotificationService {
 
     // 3. Schedule the reminder
     await checkDailyReminderReschedule();
+
+    PendingTransferService.onSettled = (id) {
+      unawaited(cancelPendingTransferReminder(id));
+    };
+  }
+
+  static const String pendingTransferPayloadPrefix = 'pending_transfer:';
+  static const int _paymentAssistantNotificationId = 888;
+
+  static int _pendingReminderId(String pendingId) =>
+      700000 + (pendingId.hashCode & 0x7fffffff) % 100000;
+
+  /// Nudges the user about a transfer they started but never confirmed, in
+  /// case they don't come back to the app on their own.
+  static Future<void> schedulePendingTransferReminder({
+    required String pendingId,
+    required double amount,
+    required String recipient,
+    Duration after = const Duration(minutes: 15),
+  }) async {
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+    if (!settings.enableNotifications) return;
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'sheepify_pending_transfer',
+        'Giao dịch chờ xác nhận',
+        channelDescription: 'Nhắc xác nhận các khoản chuyển tiền đã mở app ngân hàng',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+      ),
+      iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+    );
+    final amountText = '${CurrencyUtil.formatMoney(amount, locale: 'vi_VN')}₫';
+    try {
+      await _localNotificationsPlugin.zonedSchedule(
+        _pendingReminderId(pendingId),
+        'Bạn đã chuyển $amountText chưa?',
+        'Tới $recipient. Chạm để xác nhận, Sheepify sẽ ghi sổ giúp bạn.',
+        tz.TZDateTime.now(tz.local).add(after),
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: '$pendingTransferPayloadPrefix$pendingId',
+      );
+    } catch (_) {}
+  }
+
+  static Future<void> cancelPendingTransferReminder(String pendingId) async {
+    try {
+      await _localNotificationsPlugin.cancel(_pendingReminderId(pendingId));
+      // The "STK / amount" helper is only useful while paying.
+      await _localNotificationsPlugin.cancel(_paymentAssistantNotificationId);
+    } catch (_) {}
   }
 
   // Request notification permissions
@@ -355,7 +414,7 @@ class NotificationService {
         Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     if (!settings.enableNotifications) return;
 
-    const int paymentNotificationId = 888;
+    const int paymentNotificationId = _paymentAssistantNotificationId;
     final formattedAmount = amount != null && amount > 0
         ? '${CurrencyUtil.formatMoney(amount, locale: 'vi_VN')}₫'
         : '';

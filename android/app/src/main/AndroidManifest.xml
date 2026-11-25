@@ -40,7 +40,23 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Share a bank receipt / bill photo to Sheepify to log it -->
+            <intent-filter android:label="Ghi sổ bằng Sheepify">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="image/*"/>
+            </intent-filter>
         </activity>
+        <!-- Reads bank "balance changed" notifications (opt-in, in system settings) -->
+        <service
+            android:name=".BankNotificationListener"
+            android:label="Sheepify: ghi sổ từ thông báo ngân hàng"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
+        </service>
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"

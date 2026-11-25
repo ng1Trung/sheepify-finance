@@ -19,6 +19,9 @@ import '../../data/services/wallet_service.dart';
 import '../widgets/transaction_form.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/common/sheep_widgets.dart';
+import '../widgets/common/sheep_kit.dart';
+import '../widgets/common/sheep_toggles.dart';
+import '../widgets/transaction/transaction_actions.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../../data/services/notification_service.dart';
@@ -126,83 +129,19 @@ class _DiaryTabState extends State<DiaryTab> {
             final sortedDayKeys = grouped.keys.toList()
               ..sort((a, b) => b.compareTo(a));
             Widget buildViewModeSelector() {
-              final options = [
-                (1, l10n.get('list_view')),
-                (3, l10n.get('timeline')),
-              ];
-
               return Padding(
                 padding: const EdgeInsets.fromLTRB(
                   SheepSpacing.page,
-                  12,
+                  0,
                   SheepSpacing.page,
-                  12,
+                  SheepSpacing.md,
                 ),
-                child: Container(
-                  height: 38,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: AppColors.getSubtleSurface(theme.brightness),
-                    borderRadius: BorderRadius.circular(SheepRadius.md),
-                    border: Border.all(
-                      color: AppColors.getBorder(theme.brightness),
-                    ),
-                  ),
-                  child: Row(
-                    children: options.map((option) {
-                      final isSelected = effectiveViewMode == option.$1;
-                      final accent = AppColors.getInteractiveAccent(
-                        theme.brightness,
-                        theme.colorScheme.primary,
-                      );
-                      return Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(SheepRadius.sm),
-                            onTap: () => widget.onViewModeChanged(option.$1),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isSelected ? accent : Colors.transparent,
-                                borderRadius: BorderRadius.circular(
-                                  SheepRadius.sm,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      option.$2,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? AppColors.getOnAccent(
-                                                theme.brightness,
-                                                accent,
-                                              )
-                                            : AppColors.getTextPrimary(
-                                                theme.brightness,
-                                              ),
-                                        fontSize: SheepTypeScale.meta,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
-                                        letterSpacing: 0,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                child: SheepTypeToggle(
+                  isExpense: effectiveViewMode == 1,
+                  leftLabel: l10n.get('list_view'),
+                  rightLabel: l10n.get('timeline'),
+                  onChanged: (isList) =>
+                      widget.onViewModeChanged(isList ? 1 : 3),
                 ),
               );
             }
@@ -807,47 +746,49 @@ class _DiaryTabState extends State<DiaryTab> {
             }
 
             Widget buildContentHeader(int count) {
-              return Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      l10n
-                          .get('num_transactions')
-                          .replaceAll('{count}', '$count'),
-                      style: SheepTextStyles.itemTitle(context),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  SheepSpacing.page + 4,
+                  0,
+                  SheepSpacing.page,
+                  SheepSpacing.sm,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n
+                            .get('num_transactions')
+                            .replaceAll('{count}', '$count'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: SheepTextStyles.itemMeta(context),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 135),
-                    child: buildStatusFilter(),
-                  ),
-                  const SizedBox(width: 6),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 125),
-                    child: buildTypeFilter(),
-                  ),
-                ],
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 150),
+                      child: buildStatusFilter(),
+                    ),
+                    const SizedBox(width: 6),
+                    buildTypeFilter(compactWhenAll: true),
+                  ],
+                ),
               );
             }
+
+            List<Widget> buildTop(int count) => [
+              if (settings.showAvailableBalance)
+                _buildRemainingBalanceCard(context, settings)
+              else
+                const SizedBox(height: SheepSpacing.md),
+              buildViewModeSelector(),
+              buildContentHeader(count),
+            ];
 
             if (effectiveViewMode == 3) {
               return Column(
                 children: [
-                  if (settings.showAvailableBalance)
-                    _buildRemainingBalanceCard(context, settings),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      SheepSpacing.page,
-                      settings.showAvailableBalance ? 0 : 12,
-                      SheepSpacing.page,
-                      0,
-                    ),
-                    child: buildContentHeader(timelineTxs.length),
-                  ),
-                  buildViewModeSelector(),
+                  ...buildTop(timelineTxs.length),
                   Expanded(
                     child: _buildTimelineCalendar(
                       context,
@@ -863,28 +804,16 @@ class _DiaryTabState extends State<DiaryTab> {
             if (displayTxs.isEmpty) {
               return Column(
                 children: [
-                  if (settings.showAvailableBalance)
-                    _buildRemainingBalanceCard(context, settings),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      SheepSpacing.page,
-                      settings.showAvailableBalance ? 0 : 12,
-                      SheepSpacing.page,
-                      0,
-                    ),
-                    child: buildContentHeader(displayTxs.length),
-                  ),
-                  buildViewModeSelector(),
+                  ...buildTop(0),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
                         SheepSpacing.page,
                         0,
                         SheepSpacing.page,
-                        24,
+                        SheepSpacing.xl,
                       ),
                       child: SheepCard(
-                        padding: const EdgeInsets.all(16),
                         child: SheepEmptyState(
                           message: isSingleDay
                               ? l10n.get('no_tx_today')
@@ -897,272 +826,176 @@ class _DiaryTabState extends State<DiaryTab> {
               );
             }
 
+            final categoriesById = {for (final c in catBox.values) c.id: c};
+            final dateLocale = settings.languageCode == 'vi' ? 'vi_VN' : 'en_US';
+
+            Widget buildRow(Transaction tx) {
+              final cat =
+                  categoriesById[tx.categoryId] ??
+                  CategoryModel(
+                    id: '',
+                    name: '?',
+                    iconCode: Icons.help.codePoint,
+                    isExpense: true,
+                  );
+              final typeIndex = cat.effectiveTypeIndex;
+              final typeVisuals = SheepTransactionTypeVisuals.fromTypeIndex(
+                typeIndex,
+              );
+              final catColor = cat.colorValue != null
+                  ? Color(cat.colorValue!)
+                  : typeVisuals.color;
+              final sign = typeIndex == 0
+                  ? '−'
+                  : typeIndex == 1
+                  ? '+'
+                  : '';
+              final amountText = settings.hideAmounts
+                  ? CurrencyUtil.formatMaskedByCurrency(settings.currencyCode)
+                  : '$sign${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}';
+
+              return Dismissible(
+                key: ValueKey(tx.key),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: SheepSpacing.xl),
+                  color: AppColors.tint(AppColors.expense, theme.brightness),
+                  child: const Icon(LineIcons.trash, color: AppColors.expense),
+                ),
+                onDismissed: (_) =>
+                    TransactionActions.deleteWithUndo(context, tx),
+                child: SheepTransactionCard(
+                  onTap: () {
+                    if (tx.isPending) {
+                      _showPendingTransferActionSheet(
+                        context,
+                        tx,
+                        cat,
+                        settings,
+                      );
+                    } else if (tx.isCancelled) {
+                      _showCancelledTransferActionSheet(
+                        context,
+                        tx,
+                        cat,
+                        settings,
+                      );
+                    } else {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => TransactionForm(transaction: tx),
+                      );
+                    }
+                  },
+                  // Only flag the exceptions; "completed" is the norm and
+                  // a badge on every row would just be noise.
+                  badgeText: tx.isPending
+                      ? l10n.get('status_pending')
+                      : tx.isCancelled
+                      ? l10n.get('status_cancelled')
+                      : null,
+                  badgeIcon: tx.isPending
+                      ? Icons.hourglass_top_rounded
+                      : Icons.cancel_outlined,
+                  badgeTextColor: tx.isPending
+                      ? AppColors.warning
+                      : AppColors.getTextSecondary(theme.brightness),
+                  icon: resolveCategoryIcon(cat.iconCode),
+                  iconColor: catColor,
+                  iconImagePath: cat.imagePath,
+                  title: cat.name,
+                  dateText: tx.note,
+                  amountText: amountText,
+                  // Expenses stay neutral so the list isn't a wall of red;
+                  // income / savings keep their colour as a positive cue.
+                  amountColor: tx.isCancelled
+                      ? AppColors.getTextMuted(theme.brightness)
+                      : typeIndex == 0
+                      ? AppColors.getTextPrimary(theme.brightness)
+                      : typeVisuals.color,
+                ),
+              );
+            }
+
+            Widget buildDay(String dayKey) {
+              final dayTxs = grouped[dayKey]!
+                ..sort((a, b) {
+                  final c = b.date.compareTo(a.date);
+                  return c != 0
+                      ? c
+                      : b.key.toString().compareTo(a.key.toString());
+                });
+              double net = 0;
+              for (final tx in dayTxs) {
+                if (!tx.isCompleted) continue; // same rule as the balance card
+                final type =
+                    categoriesById[tx.categoryId]?.effectiveTypeIndex ??
+                    (tx.isExpense ? 0 : 1);
+                if (type == 0) net -= tx.amount;
+                if (type == 1) net += tx.amount;
+              }
+              final netText = settings.hideAmounts
+                  ? CurrencyUtil.formatMaskedByCurrency(settings.currencyCode)
+                  : '${net < 0 ? '−' : (net > 0 ? '+' : '')}${CurrencyUtil.formatByCurrency(net.abs(), settings.currencyCode)}';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: SheepSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              toBeginningOfSentenceCase(
+                                DateFormat(
+                                  'EEEE, dd/MM',
+                                  dateLocale,
+                                ).format(DateTime.parse(dayKey)),
+                              ),
+                              style: SheepTextStyles.dateHeader(context),
+                            ),
+                          ),
+                          if (net != 0)
+                            Text(
+                              netText,
+                              style: SheepTextStyles.amount(
+                                context,
+                                size: SheepTypeScale.meta,
+                                color: AppColors.getTextSecondary(
+                                  theme.brightness,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    SheepGroup(children: dayTxs.map(buildRow).toList()),
+                  ],
+                ),
+              );
+            }
+
             return Column(
               children: [
-                if (settings.showAvailableBalance)
-                  _buildRemainingBalanceCard(context, settings),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    SheepSpacing.page,
-                    settings.showAvailableBalance ? 0 : 12,
-                    SheepSpacing.page,
-                    0,
-                  ),
-                  child: buildContentHeader(displayTxs.length),
-                ),
-                buildViewModeSelector(),
+                ...buildTop(displayTxs.length),
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: ListView.builder(
                     physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        Builder(
-                          builder: (context) {
-                            const topGap = 0.0;
-                            const bottomGap = 24.0;
-
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                SheepSpacing.page,
-                                topGap,
-                                SheepSpacing.page,
-                                bottomGap,
-                              ),
-                              child: SheepCard(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    for (
-                                      var dayIdx = 0;
-                                      dayIdx < sortedDayKeys.length;
-                                      dayIdx++
-                                    ) ...[
-                                      Builder(
-                                        builder: (context) {
-                                          final dKey = sortedDayKeys[dayIdx];
-                                          final dayTxs = grouped[dKey]!;
-                                          dayTxs.sort((a, b) {
-                                            int c = b.date.compareTo(a.date);
-                                            if (c == 0) {
-                                              return b.key.toString().compareTo(
-                                                a.key.toString(),
-                                              );
-                                            }
-                                            return c;
-                                          });
-
-                                          return Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.fromLTRB(
-                                                      0,
-                                                      8,
-                                                      0,
-                                                      10,
-                                                    ),
-                                                child: Text(
-                                                  DateFormat(
-                                                    'EEEE, dd/MM/yyyy',
-                                                    settings.languageCode ==
-                                                            'vi'
-                                                        ? 'vi_VN'
-                                                        : 'en_US',
-                                                  ).format(
-                                                    DateTime.parse(dKey),
-                                                  ),
-                                                  style:
-                                                      SheepTextStyles.dateHeader(
-                                                        context,
-                                                      ),
-                                                ),
-                                              ),
-                                              ...dayTxs.map((tx) {
-                                                final cat = catBox.values
-                                                    .firstWhere(
-                                                      (c) =>
-                                                          c.id == tx.categoryId,
-                                                      orElse: () =>
-                                                          CategoryModel(
-                                                            id: '',
-                                                            name: '?',
-                                                            iconCode: Icons
-                                                                .help
-                                                                .codePoint,
-                                                            isExpense: true,
-                                                          ),
-                                                    );
-                                                final isLastInDay =
-                                                    tx == dayTxs.last;
-                                                final isLastDay =
-                                                    dayIdx ==
-                                                    sortedDayKeys.length - 1;
-                                                final typeVisuals =
-                                                    SheepTransactionTypeVisuals.fromTypeIndex(
-                                                      cat.effectiveTypeIndex,
-                                                    );
-                                                final catColor =
-                                                    cat.colorValue != null
-                                                    ? Color(cat.colorValue!)
-                                                    : AppColors.getTextPrimary(
-                                                        theme.brightness,
-                                                      );
-
-                                                return Dismissible(
-                                                  key: ValueKey(tx.key),
-                                                  direction: DismissDirection
-                                                      .endToStart,
-                                                  background: Container(
-                                                    alignment:
-                                                        Alignment.centerRight,
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                          right: 20,
-                                                        ),
-                                                    child: Icon(
-                                                      LineIcons.trash,
-                                                      color: AppColors.expense,
-                                                    ),
-                                                  ),
-                                                  confirmDismiss: (direction) async {
-                                                    return await showDialog(
-                                                      context: context,
-                                                      builder: (ctx) =>
-                                                          SheepConfirmDialog(
-                                                            title: l10n.get(
-                                                              'delete_confirm_title',
-                                                            ),
-                                                            content: l10n.get(
-                                                              'delete_confirm_msg',
-                                                            ),
-                                                            confirmLabel:
-                                                                l10n.delete,
-                                                            onConfirm: () {},
-                                                          ),
-                                                    );
-                                                  },
-                                                  onDismissed: (_) {
-                                                    final note = tx.note;
-                                                    final catName = cat.name;
-                                                    if (tx.isPending) {
-                                                      PendingTransferService.cancelTransfer(tx.id);
-                                                    }
-                                                    tx.delete();
-                                                    NotificationService.checkDailyReminderReschedule();
-                                                    NotificationService.showTransactionActionNotification(
-                                                      action: TransactionActionType.deleted,
-                                                      note: note,
-                                                      amount: tx.amount,
-                                                      categoryName: catName,
-                                                    );
-                                                    SheepNotifications.showSuccess(
-                                                      context,
-                                                      l10n.get(
-                                                        'delete_success',
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: SheepTransactionCard(
-                                                    margin: EdgeInsets.only(
-                                                      bottom: !isLastInDay
-                                                          ? 8.0
-                                                          : (!isLastDay
-                                                              ? SheepSpacing.itemGap
-                                                              : 0.0),
-                                                    ),
-                                                    onTap: () {
-                                                      if (tx.isPending) {
-                                                        _showPendingTransferActionSheet(
-                                                          context,
-                                                          tx,
-                                                          cat,
-                                                          settings,
-                                                        );
-                                                      } else if (tx.isCancelled) {
-                                                        _showCancelledTransferActionSheet(
-                                                          context,
-                                                          tx,
-                                                          cat,
-                                                          settings,
-                                                        );
-                                                      } else {
-                                                        showModalBottomSheet(
-                                                          context: context,
-                                                          isScrollControlled:
-                                                              true,
-                                                          isDismissible: true,
-                                                          enableDrag: true,
-                                                          builder: (_) =>
-                                                              TransactionForm(
-                                                                transaction: tx,
-                                                              ),
-                                                        );
-                                                      }
-                                                    },
-                                                    icon: resolveCategoryIcon(
-                                                      cat.iconCode,
-                                                    ),
-                                                    iconColor: catColor,
-                                                    iconImagePath:
-                                                        cat.imagePath,
-                                                    title: cat.name,
-                                                    dateText: tx.note,
-                                                    badgeText: tx.isPending
-                                                        ? (settings.languageCode == 'vi' ? 'Chờ xác nhận' : 'Pending')
-                                                        : (tx.isCancelled
-                                                            ? (settings.languageCode == 'vi' ? 'Đã hủy' : 'Cancelled')
-                                                            : (settings.languageCode == 'vi' ? 'Thành công' : 'Completed')),
-                                                    badgeColor: tx.isPending
-                                                        ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
-                                                        : (tx.isCancelled
-                                                            ? const Color(0xFFEF4444).withValues(alpha: 0.12)
-                                                            : const Color(0xFF10B981).withValues(alpha: 0.15)),
-                                                    badgeTextColor: tx.isPending
-                                                        ? const Color(0xFFD97706)
-                                                        : (tx.isCancelled
-                                                            ? const Color(0xFFEF4444)
-                                                            : const Color(0xFF059669)),
-                                                    badgeIcon: tx.isPending
-                                                        ? Icons.hourglass_top_rounded
-                                                        : (tx.isCancelled
-                                                            ? Icons.cancel_outlined
-                                                            : Icons.check_circle_outline_rounded),
-                                                    amountText:
-                                                        !settings.hideAmounts
-                                                        ? '${cat.effectiveTypeIndex == 0
-                                                              ? '-'
-                                                              : cat.effectiveTypeIndex == 2
-                                                              ? ''
-                                                              : '+'}${cat.effectiveTypeIndex == 2 ? '' : ' '}${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}'
-                                                        : CurrencyUtil.formatMaskedByCurrency(
-                                                            settings
-                                                                .currencyCode,
-                                                          ),
-                                                    amountColor: tx.isCancelled
-                                                        ? AppColors.getTextSecondary(theme.brightness)
-                                                        : typeVisuals.color,
-                                                  ),
-                                                );
-                                              }),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                    padding: const EdgeInsets.fromLTRB(
+                      SheepSpacing.page,
+                      SheepSpacing.xs,
+                      SheepSpacing.page,
+                      96, // keep the last row clear of the FAB
                     ),
+                    itemCount: sortedDayKeys.length,
+                    itemBuilder: (context, index) =>
+                        buildDay(sortedDayKeys[index]),
                   ),
                 ),
               ],
@@ -1180,7 +1013,6 @@ class _DiaryTabState extends State<DiaryTab> {
     AppSettings settings,
   ) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final locale = Localizations.localeOf(context).toString();
     final month = DateTime(
       widget.selectedRange.start.year,
@@ -1202,9 +1034,7 @@ class _DiaryTabState extends State<DiaryTab> {
       grouped.putIfAbsent(key, () => []).add(tx);
     }
 
-    final calendarBackground = isDark
-        ? const Color(0xFF1E1D23)
-        : const Color(0xFFF4F0EA);
+    final calendarBackground = AppColors.getSurface(theme.brightness);
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -1219,7 +1049,7 @@ class _DiaryTabState extends State<DiaryTab> {
           padding: const EdgeInsets.fromLTRB(12, 18, 12, 16),
           decoration: BoxDecoration(
             color: calendarBackground,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(SheepRadius.xl),
             border: Border.all(
               color: AppColors.getBorder(
                 theme.brightness,
@@ -1338,9 +1168,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: hasTx
-                        ? (theme.brightness == Brightness.dark
-                              ? const Color(0xFF292830)
-                              : const Color(0xFFF9F7F4))
+                        ? AppColors.getSubtleSurface(theme.brightness)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -1392,7 +1220,12 @@ class _DiaryTabState extends State<DiaryTab> {
         minChildSize: 0.42,
         maxChildSize: 0.95,
         expand: false,
-        builder: (context, controller) {
+        builder: (context, controller) => ValueListenableBuilder(
+          // Rebuild when a transaction of this day is edited, deleted or
+          // restored via undo, so the grid never shows stale items.
+          valueListenable: Hive.box<Transaction>(kMoneyBox).listenable(),
+          builder: (context, box, _) {
+          final dayTxs = _liveDayTransactions(box, date, catBox);
           final theme = Theme.of(context);
           final locale = settings.languageCode == 'vi' ? 'vi_VN' : 'en_US';
           return Container(
@@ -1448,9 +1281,30 @@ class _DiaryTabState extends State<DiaryTab> {
               ),
             ),
           );
-        },
+          },
+        ),
       ),
     );
+  }
+
+  /// Current transactions of [date], honouring the timeline's type filter.
+  List<Transaction> _liveDayTransactions(
+    Box<Transaction> box,
+    DateTime date,
+    Box<CategoryModel> catBox,
+  ) {
+    final typeById = {
+      for (final c in catBox.values) c.id: c.effectiveTypeIndex,
+    };
+    return box.values.where((tx) {
+      final sameDay = tx.date.year == date.year &&
+          tx.date.month == date.month &&
+          tx.date.day == date.day;
+      if (!sameDay) return false;
+      if (_selectedTimelineTypeIndexes.isEmpty) return true;
+      final type = typeById[tx.categoryId] ?? (tx.isExpense ? 0 : 1);
+      return _selectedTimelineTypeIndexes.contains(type);
+    }).toList();
   }
 
   Widget _buildTimelineImageStack(
@@ -1565,7 +1419,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.black,
-                  fontSize: 10,
+                  fontSize: SheepTypeScale.micro,
                   fontWeight: FontWeight.w900,
                   height: 1,
                 ),
@@ -1597,16 +1451,7 @@ class _DiaryTabState extends State<DiaryTab> {
                 : AppColors.savings));
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            categoryColor,
-            categoryColor.withValues(alpha: 0.72),
-          ],
-        ),
-      ),
+      color: categoryColor,
       child: Center(
         child: SheepCategoryIcon(
           icon: category.iconData,
@@ -1835,130 +1680,94 @@ class _DiaryTabState extends State<DiaryTab> {
     final incomeLabel = settings.languageCode == 'vi' ? 'Thu' : 'Income';
     final savingsLabel = settings.languageCode == 'vi' ? 'Tích lũy' : 'Savings';
 
-    final balanceColor = balance >= 0 ? AppColors.income : AppColors.expense;
+    final isVi = settings.languageCode == 'vi';
+    final cycleLabel =
+        '${isVi ? 'Kỳ' : 'Cycle'} ${DateFormat('dd/MM').format(currentRange.start)} – ${DateFormat('dd/MM').format(currentRange.end)}';
+    final secondary = AppColors.getTextSecondary(theme.brightness);
+    final showSign = !settings.hideAmounts;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(SheepSpacing.page, 12, SheepSpacing.page, 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: theme.brightness == Brightness.dark ? theme.cardColor : Colors.white,
-          borderRadius: BorderRadius.circular(SheepRadius.xl),
-          border: Border.all(
-            color: (theme.brightness == Brightness.dark
-                    ? Colors.white
-                    : Colors.black)
-                .withValues(alpha: 0.08),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+    Widget stat(String label, String value, Color color) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: SheepTextStyles.itemMeta(context)),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: SheepTextStyles.amount(context, color: color),
             ),
           ],
         ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        SheepSpacing.page,
+        SheepSpacing.md,
+        SheepSpacing.page,
+        SheepSpacing.md,
+      ),
+      child: SheepCard(
+        padding: const EdgeInsets.fromLTRB(
+          SheepSpacing.lg,
+          SheepSpacing.md + 2,
+          SheepSpacing.lg,
+          SheepSpacing.lg,
+        ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Row 1: Available Balance centered
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '$title: ',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.getTextSecondary(theme.brightness),
-                  ),
-                ),
-                Text(
-                  amountText,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: balanceColor,
-                  ),
-                ),
-              ],
+            // One left-aligned line: the right edge is where the floating
+            // avatar bubble parks, so nothing important lives there.
+            Text(
+              '$title · $cycleLabel',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: SheepTextStyles.itemMeta(context),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              amountText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: SheepTextStyles.amount(
+                context,
+                size: 30,
+                color: balance < 0
+                    ? AppColors.expense
+                    : AppColors.getTextPrimary(theme.brightness),
+              ),
             ),
             if (settings.accumulateBalance && previousBalance != 0) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
-                '(${settings.languageCode == 'vi' ? 'Số dư chu kỳ trước' : 'Previous balance'}: ${previousBalance >= 0 ? '+' : ''}${CurrencyUtil.formatDisplayAmount(previousBalance, settings.currencyCode, isHidden: settings.hideAmounts)})',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.getTextSecondary(theme.brightness),
-                  fontStyle: FontStyle.italic,
+                '${isVi ? 'Gồm số dư kỳ trước' : 'Includes previous balance'} ${previousBalance >= 0 ? '+' : '−'}${CurrencyUtil.formatDisplayAmount(previousBalance.abs(), settings.currencyCode, isHidden: settings.hideAmounts)}',
+                style: SheepTextStyles.itemMeta(context).copyWith(
+                  color: secondary,
                 ),
               ),
             ],
-            const SizedBox(height: 10),
-            // Row 2: Expense (-), Income (+), and Savings with vertical dividers
+            const SizedBox(height: SheepSpacing.md),
+            const Divider(height: 1),
+            const SizedBox(height: SheepSpacing.md),
             Row(
               children: [
-                // Column 1: Chi: -expense
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      '$expenseLabel: -$expenseText',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.expense,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                stat(
+                  incomeLabel,
+                  '${showSign && currentIncome > 0 ? '+' : ''}$incomeText',
+                  AppColors.income,
                 ),
-                // Divider 1
-                Container(
-                  height: 16,
-                  width: 1,
-                  color: (theme.brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black)
-                      .withValues(alpha: 0.12),
+                stat(
+                  expenseLabel,
+                  '${showSign && currentExpense > 0 ? '−' : ''}$expenseText',
+                  AppColors.expense,
                 ),
-                // Column 2: Thu: +income
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      '$incomeLabel: +$incomeText',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.income,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-                // Divider 2
-                Container(
-                  height: 16,
-                  width: 1,
-                  color: (theme.brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black)
-                      .withValues(alpha: 0.12),
-                ),
-                // Column 3: Tích lũy: savings
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      '$savingsLabel: $savingsText',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.savings,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
+                stat(savingsLabel, savingsText, AppColors.savings),
               ],
             ),
           ],
@@ -2029,7 +1838,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       const Text(
                         'Giao dịch chờ xác nhận',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2037,7 +1845,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         'Chưa trừ số dư ví cho đến khi bạn xác nhận',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 12,
                           color: AppColors.getTextSecondary(theme.brightness),
                         ),
@@ -2065,7 +1872,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         'Số tiền:',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 13,
                           color: AppColors.getTextSecondary(theme.brightness),
                         ),
@@ -2073,7 +1879,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         '- ${CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode)}',
                         style: const TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: AppColors.expense,
@@ -2088,7 +1893,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         'Danh mục:',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 13,
                           color: AppColors.getTextSecondary(theme.brightness),
                         ),
@@ -2096,7 +1900,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         cat.name,
                         style: const TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2111,7 +1914,6 @@ class _DiaryTabState extends State<DiaryTab> {
                         Text(
                           'Ghi chú:',
                           style: TextStyle(
-                            fontFamily: 'Quicksand',
                             fontSize: 13,
                             color: AppColors.getTextSecondary(theme.brightness),
                           ),
@@ -2122,7 +1924,6 @@ class _DiaryTabState extends State<DiaryTab> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontFamily: 'Quicksand',
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -2139,7 +1940,6 @@ class _DiaryTabState extends State<DiaryTab> {
                         Text(
                           'Người nhận:',
                           style: TextStyle(
-                            fontFamily: 'Quicksand',
                             fontSize: 13,
                             color: AppColors.getTextSecondary(theme.brightness),
                           ),
@@ -2150,7 +1950,6 @@ class _DiaryTabState extends State<DiaryTab> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontFamily: 'Quicksand',
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                             ),
@@ -2184,7 +1983,6 @@ class _DiaryTabState extends State<DiaryTab> {
               label: const Text(
                 'Đã chuyển thành công (Cập nhật ví)',
                 style: TextStyle(
-                  fontFamily: 'Quicksand',
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -2216,7 +2014,6 @@ class _DiaryTabState extends State<DiaryTab> {
                 label: Text(
                   'Mở lại app ${sendingBank.shortName}',
                   style: const TextStyle(
-                    fontFamily: 'Quicksand',
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -2262,7 +2059,6 @@ class _DiaryTabState extends State<DiaryTab> {
               label: const Text(
                 'Chưa chuyển / Hủy giao dịch',
                 style: TextStyle(
-                  fontFamily: 'Quicksand',
                   fontSize: 13.5,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFFEF4444),
@@ -2335,7 +2131,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       const Text(
                         'Giao dịch đã hủy',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2343,7 +2138,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         'Giao dịch không tính vào chi tiêu hay số dư ví',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 12,
                           color: AppColors.getTextSecondary(theme.brightness),
                         ),
@@ -2371,7 +2165,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         'Số tiền:',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 13,
                           color: AppColors.getTextSecondary(theme.brightness),
                         ),
@@ -2379,7 +2172,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         CurrencyUtil.formatByCurrency(tx.amount, settings.currencyCode),
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           decoration: TextDecoration.lineThrough,
@@ -2395,7 +2187,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         'Danh mục:',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 13,
                           color: AppColors.getTextSecondary(theme.brightness),
                         ),
@@ -2403,7 +2194,6 @@ class _DiaryTabState extends State<DiaryTab> {
                       Text(
                         cat.name,
                         style: const TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2418,7 +2208,6 @@ class _DiaryTabState extends State<DiaryTab> {
                         Text(
                           'Ghi chú:',
                           style: TextStyle(
-                            fontFamily: 'Quicksand',
                             fontSize: 13,
                             color: AppColors.getTextSecondary(theme.brightness),
                           ),
@@ -2429,7 +2218,6 @@ class _DiaryTabState extends State<DiaryTab> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontFamily: 'Quicksand',
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -2466,7 +2254,6 @@ class _DiaryTabState extends State<DiaryTab> {
               label: const Text(
                 'Khôi phục thành công (Đã chuyển)',
                 style: TextStyle(
-                  fontFamily: 'Quicksand',
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -2504,7 +2291,6 @@ class _DiaryTabState extends State<DiaryTab> {
               label: const Text(
                 'Xóa vĩnh viễn giao dịch này',
                 style: TextStyle(
-                  fontFamily: 'Quicksand',
                   fontSize: 13.5,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFFEF4444),
@@ -2665,7 +2451,6 @@ class _TransactionImageTile extends StatelessWidget {
                                   ? (settings.languageCode == 'vi' ? 'Hủy' : 'Cancelled')
                                   : (settings.languageCode == 'vi' ? 'Xong' : 'Done')),
                           style: const TextStyle(
-                            fontFamily: 'Quicksand',
                             fontSize: 9.5,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -2693,16 +2478,7 @@ class _TransactionImageTile extends StatelessWidget {
                 : AppColors.savings));
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            categoryColor,
-            categoryColor.withValues(alpha: 0.72),
-          ],
-        ),
-      ),
+      color: categoryColor,
       child: Center(
         child: SheepCategoryIcon(
           icon: category.iconData,

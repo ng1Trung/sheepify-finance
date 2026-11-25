@@ -18,6 +18,7 @@ import 'common/sheep_widgets.dart';
 import 'common/sheep_notifications.dart';
 import 'common/sheep_dialogs.dart';
 import '../../core/utils/l10n.dart';
+import 'common/sheep_kit.dart';
 
 class CategoryForm extends StatefulWidget {
   final CategoryModel? category;
@@ -450,14 +451,7 @@ class _CategoryFormState extends State<CategoryForm> {
   }
 
   Widget _buildDragHandle() {
-    return Container(
-      width: 40,
-      height: 4,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(SheepRadius.sm),
-      ),
-    );
+    return const SheepDragHandle();
   }
 
   Widget _buildHeaderPreview(L10n l10n) {
@@ -789,7 +783,11 @@ class _CategoryFormState extends State<CategoryForm> {
                                         l10n.locale.languageCode,
                                       ).format(DateTime(2024, m)),
                                 style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: isPast ? Colors.grey[300] : null,
+                                  color: isPast
+                                      ? AppColors.getTextMuted(
+                                          Theme.of(context).brightness,
+                                        )
+                                      : null,
                                 ),
                               ),
                             );
@@ -1259,7 +1257,7 @@ class _CategoryFormState extends State<CategoryForm> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (sheetContext) {
         return SafeArea(
@@ -1268,14 +1266,7 @@ class _CategoryFormState extends State<CategoryForm> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE7DDE1),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
+                const SheepDragHandle(),
                 const SizedBox(height: 14),
                 _CategoryImageActionTile(
                   icon: Icons.image_outlined,
@@ -1391,7 +1382,8 @@ class _CategoryImageActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = enabled ? color : const Color(0xFFB8AEB3);
+    final brightness = Theme.of(context).brightness;
+    final foreground = enabled ? color : AppColors.getTextMuted(brightness);
     return ListTile(
       enabled: enabled,
       minVerticalPadding: 10,
@@ -1400,7 +1392,9 @@ class _CategoryImageActionTile extends StatelessWidget {
       title: Text(
         label,
         style: TextStyle(
-          color: enabled ? const Color(0xFF4D4449) : const Color(0xFFB8AEB3),
+          color: enabled
+              ? AppColors.getTextPrimary(brightness)
+              : AppColors.getTextMuted(brightness),
           fontSize: 16,
           fontWeight: FontWeight.w600,
           letterSpacing: 0,

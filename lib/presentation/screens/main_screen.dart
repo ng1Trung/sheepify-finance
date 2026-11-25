@@ -13,7 +13,7 @@ import '../../core/constants/constants.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/settings_model.dart';
 import '../../data/models/transaction.dart';
-import '../widgets/transaction/add_transaction_suggest_sheet.dart';
+import '../widgets/transaction_form.dart';
 import '../tabs/diary_tab.dart';
 import '../tabs/category_tab.dart';
 import '../tabs/stats_tab.dart';
@@ -25,17 +25,23 @@ import '../../core/utils/currency_util.dart';
 import '../../core/utils/financial_cycle_util.dart';
 import '../../core/utils/l10n.dart';
 
-import 'package:flutter/services.dart';
 import 'package:line_icons/line_icons.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_widgets.dart';
-import '../../data/services/bank_deeplink_service.dart';
+import '../widgets/common/sheep_kit.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/wallet_service.dart';
 import 'notifications_screen.dart';
-import 'payment/quick_transfer_screen.dart';
 import 'scanner/smart_qr_scanner_screen.dart';
+import '../../data/services/pending_transfer_service.dart';
+import '../widgets/payment/pending_transfer_prompt.dart';
+import 'payment/quick_transfer_screen.dart';
+import 'package:quick_actions/quick_actions.dart';
+import '../../core/utils/transaction_image_store.dart';
+import '../../data/services/bank_inbox_service.dart';
+import '../../data/services/sheepify_scan_ai_service.dart';
+import '../widgets/payment/bank_inbox_sheet.dart';
 import 'wallet/wallet_management_screen.dart';
 
 enum _DrawerInsightType { budget, cycle, savings, today, streak }
@@ -73,7 +79,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   double? _pendingPaymentUndoAmount;
   Timer? _undoPaymentTimer;
   int _undoCountdown = 15;
-  String? _lastCheckedClipboard;
 
   static DateTimeRange _dayRange(DateTime date) {
     return DateTimeRange(
@@ -116,12 +121,125 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleNotificationPayload();
+      // Cold start after paying in the bank app: settle it right away.
+      Future.delayed(const Duration(milliseconds: 600), _onAppActive);
     });
+    _setUpHomeShortcuts();
+    BankInboxService.ensureListening();
+    BankInboxService.changes.addListener(_onNativeInboxChange);
+  }
+
+  /// Android reported a bank alert / shared image. Only act while the app is
+  /// on screen; in the background the "Ghi sổ giao dịch này?" notification
+  /// must stay up, and the next resume picks everything up.
+  void _onNativeInboxChange() {
+    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      _onAppActive();
+    }
+  }
+
+  bool _isSyncingInbox = false;
+
+  /// Runs whenever the app comes to the front (or Android reports a new bank
+  /// alert / shared image): settle what happened outside the app.
+  Future<void> _onAppActive() async {
+    if (_isSyncingInbox || !mounted) return;
+    _isSyncingInbox = true;
+    try {
+      final result = await BankInboxService.sync();
+      if (!mounted) return;
+      if (result.autoConfirmed.isNotEmpty) {
+        final total = result.autoConfirmed.fold<double>(
+          0,
+          (sum, tx) => sum + tx.amount,
+        );
+        SheepNotifications.showSuccess(
+          context,
+          'Ngân hàng đã báo trừ ${CurrencyUtil.formatMoney(total, locale: 'vi_VN')}₫, đã tự xác nhận giúp bạn',
+        );
+      }
+
+      final sharedImage = await BankInboxService.takeSharedImage();
+      if (sharedImage != null && mounted) {
+        await _logSharedReceipt(sharedImage);
+        return;
+      }
+
+      final openInbox = await BankInboxService.takeOpenInboxRequest();
+      if (!mounted) return;
+      await PendingTransferPrompt.maybeShow(context);
+      if (mounted && (openInbox || result.added > 0)) {
+        await BankInboxSheet.show(context);
+      }
+    } finally {
+      _isSyncingInbox = false;
+    }
+  }
+
+  /// A receipt / bill image shared to Sheepify from another app.
+  Future<void> _logSharedReceipt(String path) async {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    SheepNotifications.showInfo(context, 'Đang đọc biên lai…');
+    final result = await SheepifyScanAIService.processInvoiceScan(XFile(path));
+    if (!mounted) return;
+    if (result == null) {
+      SheepNotifications.showError(context, 'Không đọc được biên lai này');
+      return;
+    }
+    final storedImage = await TransactionImageStore.saveFromSourcePath(path);
+    if (!mounted) return;
+    await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => TransactionForm(
+        scannedData: result,
+        scannedImagePath: storedImage,
+      ),
+    );
+  }
+
+  /// Long-press the launcher icon -> "Quét QR" / "Chuyển tiền": pay (and log)
+  /// in one step without hunting through the app.
+  void _setUpHomeShortcuts() {
+    const quickActions = QuickActions();
+    quickActions.initialize((type) {
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      if (type == 'scan_qr') {
+        _openVietQrScanner();
+      } else if (type == 'transfer') {
+        _openQuickTransfer();
+      }
+    });
+    quickActions.setShortcutItems(const [
+      ShortcutItem(
+        type: 'scan_qr',
+        localizedTitle: 'Quét QR thanh toán',
+        icon: 'ic_shortcut_qr',
+      ),
+      ShortcutItem(
+        type: 'transfer',
+        localizedTitle: 'Chuyển tiền',
+        icon: 'ic_shortcut_send',
+      ),
+    ]).catchError((_) {});
+  }
+
+  Future<void> _openQuickTransfer() async {
+    final tx = await Navigator.push<Transaction>(
+      context,
+      MaterialPageRoute(builder: (_) => const QuickTransferScreen()),
+    );
+    if (tx != null && mounted) {
+      _onPaymentTransactionCreated(tx);
+    }
   }
 
   @override
   void dispose() {
     _undoPaymentTimer?.cancel();
+    BankInboxService.changes.removeListener(_onNativeInboxChange);
     NotificationService.selectNotificationStream.removeListener(
       _handleNotificationPayload,
     );
@@ -141,6 +259,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
 
+    if (payload.startsWith(NotificationService.pendingTransferPayloadPrefix)) {
+      final id = payload.substring(
+        NotificationService.pendingTransferPayloadPrefix.length,
+      );
+      PendingTransferPrompt.showById(context, id);
+      return;
+    }
+
     if (payload == 'savings_completed' || payload == 'savings_halfway') {
       _selectTab(2); // Tab Tích lũy
     } else if (payload == 'budget_exceeded' || payload == 'budget_threshold') {
@@ -157,7 +283,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _startForegroundTracking();
       unawaited(NotificationService.checkDailyReminderReschedule());
-      _checkClipboardForBankDetails();
+      // Back from the bank app? Ask whether the transfer went through, and
+      // pick up anything the bank reported meanwhile.
+      Future.delayed(const Duration(milliseconds: 400), _onAppActive);
       return;
     }
     if (state == AppLifecycleState.inactive ||
@@ -459,11 +587,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final settings =
         Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     final headerBase = AppColors.getPalette(settings.themePresetName).primary;
-    final headerShade = Color.lerp(
-      headerBase,
-      theme.brightness == Brightness.dark ? Colors.black : Colors.white,
-      theme.brightness == Brightness.dark ? 0.36 : 0.32,
-    );
     final headerForeground = headerBase.computeLuminance() > 0.45
         ? Colors.black
         : Colors.white;
@@ -622,15 +745,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         ),
         surfaceTintColor: Colors.transparent,
         shadowColor: Colors.transparent,
-        flexibleSpace: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [headerBase, headerShade!],
-            ),
-          ),
-        ),
         toolbarHeight: _usesDateRange ? 68 : 60,
         leading: Builder(
           builder: (context) => IconButton(
@@ -746,14 +860,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     shape: BoxShape.circle,
                   ),
                   constraints: const BoxConstraints(
-                    minWidth: 14,
-                    minHeight: 14,
+                    minWidth: 16,
+                    minHeight: 16,
                   ),
                   child: Text(
-                    '$unreadCount',
+                    unreadCount > 9 ? '9+' : '$unreadCount',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 8,
+                      fontSize: SheepTypeScale.micro,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
@@ -773,11 +887,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
     final username = settings.userName ?? 'Jason';
     final headerBase = AppColors.getPalette(settings.themePresetName).primary;
-    final headerShade = Color.lerp(
-      headerBase,
-      Colors.black,
-      theme.brightness == Brightness.dark ? 0.48 : 0.22,
-    )!;
+    // Header text follows the palette's luminance (white on dark palettes,
+    // black on light ones such as Golden Hour).
+    final headerFg = headerBase.computeLuminance() > 0.45
+        ? Colors.black
+        : Colors.white;
     final drawerWidth = MediaQuery.sizeOf(context).width * 0.82;
     final safePadding = MediaQuery.paddingOf(context);
     final streakCount = _calculateTransactionStreak();
@@ -786,26 +900,24 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return Drawer(
       width: drawerWidth,
       elevation: 0,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.getSurface(theme.brightness),
       surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(right: Radius.circular(28)),
+        borderRadius: BorderRadius.horizontal(
+          right: Radius.circular(SheepRadius.sheet),
+        ),
       ),
       child: ClipRRect(
-        borderRadius: const BorderRadius.horizontal(right: Radius.circular(28)),
+        borderRadius: const BorderRadius.horizontal(
+          right: Radius.circular(SheepRadius.sheet),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
               height: 232,
               padding: EdgeInsets.fromLTRB(10, safePadding.top + 20, 10, 10),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [headerBase, headerShade],
-                ),
-              ),
+              color: headerBase,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -818,8 +930,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                           children: [
                             Text(
                               _getGreeting(l10n),
-                              style: const TextStyle(
-                                color: Color(0xDBFFFFFF),
+                              style: TextStyle(
+                                color: headerFg.withValues(alpha: 0.86),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                                 height: 22 / 16,
@@ -831,8 +943,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                               username,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: headerFg,
                                 fontSize: 30,
                                 fontWeight: FontWeight.w700,
                                 height: 36 / 30,
@@ -869,7 +981,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     ],
                   ),
                   const Spacer(),
-                  _DrawerOverviewCard(status: overview),
+                  _DrawerOverviewCard(
+                    status: overview,
+                    foreground: headerFg,
+                  ),
                   const SizedBox(height: 6),
                   ValueListenableBuilder(
                     valueListenable: Hive.box<AppSettings>(
@@ -882,6 +997,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                         children: [
                           Expanded(
                             child: _DrawerCyclePill(
+                              foreground: headerFg,
                               label: _formatCurrentCycleLabel(
                                 context,
                                 currentSettings,
@@ -890,6 +1006,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                           ),
                           const SizedBox(width: 8),
                           _DrawerPrivacyButton(
+                            foreground: headerFg,
                             isHidden: currentSettings.hideAmounts,
                             onPressed: () {
                               currentSettings.hideAmounts =
@@ -959,7 +1076,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                               Container(
                                 height: 1,
                                 margin: const EdgeInsets.symmetric(vertical: 8),
-                                color: const Color(0xFFF0E8EB),
+                                color: AppColors.getBorder(theme.brightness),
                               ),
                               _buildDrawerItem(
                                 context,
@@ -968,12 +1085,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                                 label: l10n.settings,
                               ),
                               const Spacer(),
-                              const Padding(
-                                padding: EdgeInsets.only(left: 12, top: 14),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 12, top: 14),
                                 child: Text(
                                   'Sheepify v1.0.0',
                                   style: TextStyle(
-                                    color: Color(0xFFB8AEB3),
+                                    color: AppColors.getTextMuted(theme.brightness),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                     letterSpacing: 0,
@@ -1037,19 +1154,35 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       _pendingPaymentUndoAmount = null;
     });
 
-    await Hive.box<Transaction>(kMoneyBox).delete(tx.id);
+    // Read the state *before* removing anything: a pending transfer never
+    // touched the wallet, a completed one did.
+    final wasPending = tx.isPending;
+    final wasCompleted = tx.isCompleted;
+    final refundWalletId = walletId ?? tx.walletId;
+
+    if (wasPending) {
+      // Also drops the pending-transfer record so it can't be confirmed later.
+      await PendingTransferService.cancelTransfer(tx.id);
+    }
+    if (tx.isInBox) {
+      await tx.delete();
+    } else {
+      await Hive.box<Transaction>(kMoneyBox).delete(tx.id);
+    }
     NotificationService.showTransactionActionNotification(
       action: TransactionActionType.deleted,
       note: tx.note,
       amount: tx.amount,
     );
 
-    // Hoàn lại số dư ví nếu giao dịch đã từng trừ ví
-    if (walletId != null) {
+    if (wasCompleted && refundWalletId != null) {
       try {
-        final wallet = WalletService.getWallet(walletId);
+        final wallet = WalletService.getWallet(refundWalletId);
         if (wallet != null) {
-          await WalletService.adjustBalance(wallet.id, wallet.initialBalance + refundAmount);
+          await WalletService.adjustBalance(
+            wallet.id,
+            wallet.initialBalance + refundAmount,
+          );
         }
       } catch (_) {}
     }
@@ -1070,92 +1203,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (tx != null && mounted) {
       _onPaymentTransactionCreated(tx);
     }
-  }
-
-  Future<void> _checkClipboardForBankDetails() async {
-    try {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      final text = data?.text?.trim() ?? '';
-      if (text.isEmpty || text == _lastCheckedClipboard) return;
-      _lastCheckedClipboard = text;
-
-      final lower = text.toLowerCase();
-      BankAppModel? detectedBank;
-      for (final bank in BankDeeplinkService.supportedBanks) {
-        if (lower.contains(bank.shortName.toLowerCase()) ||
-            lower.contains(bank.id.toLowerCase())) {
-          detectedBank = bank;
-          break;
-        }
-      }
-
-      final match = RegExp(r'\b\d{8,19}\b').firstMatch(text);
-      if (match != null &&
-          (detectedBank != null || lower.contains('stk') || lower.contains('tk'))) {
-        final stk = match.group(0)!;
-        if (!mounted) return;
-
-        final settings =
-            Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
-        final accentColor =
-            AppColors.getPalette(settings.themePresetName).primary;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor:
-                AppColors.getSurface(Theme.of(context).brightness),
-            elevation: 8,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(SheepRadius.md),
-              side: BorderSide(
-                color: detectedBank?.brandColor ?? accentColor,
-                width: 1.5,
-              ),
-            ),
-            duration: const Duration(seconds: 8),
-            content: Row(
-              children: [
-                Icon(
-                  LineIcons.paperPlane,
-                  color: detectedBank?.brandColor ?? accentColor,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Phát hiện STK: $stk ${detectedBank?.shortName ?? ''}',
-                    style: TextStyle(
-                      fontFamily: 'Quicksand',
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.getTextPrimary(
-                          Theme.of(context).brightness),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            action: SnackBarAction(
-              label: 'Chuyển ngay',
-              textColor: detectedBank?.brandColor ?? accentColor,
-              onPressed: () async {
-                final tx = await Navigator.push<Transaction>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => QuickTransferScreen(
-                      initialAccountNo: stk,
-                      initialBankBin: detectedBank?.bin,
-                    ),
-                  ),
-                );
-                if (tx != null && mounted) {
-                  _onPaymentTransactionCreated(tx);
-                }
-              },
-            ),
-          ),
-        );
-      }
-    } catch (_) {}
   }
 
   Widget _buildUndoPaymentBanner(BuildContext context, Color accentColor) {
@@ -1209,7 +1256,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                         Text(
                           'Đã ghi: -${CurrencyUtil.formatMoney(tx.amount, locale: 'vi_VN')}₫',
                           style: const TextStyle(
-                            fontFamily: 'Quicksand',
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.expense,
@@ -1249,7 +1295,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 child: const Text(
                   'Hoàn tác',
                   style: TextStyle(
-                    fontFamily: 'Quicksand',
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1284,9 +1329,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       isDismissible: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AddTransactionSuggestSheet(
+      builder: (_) => TransactionForm(
         initialDate: DateTime.now(),
-        onTransactionCreated: _onPaymentTransactionCreated,
+        onPaymentTransactionCreated: _onPaymentTransactionCreated,
       ),
     );
 
@@ -1306,7 +1351,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       isDismissible: true,
       enableDrag: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (ctx) => CategoryForm(
         category: null,
@@ -1326,17 +1371,21 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final palette = AppColors.getPalette(settings.themePresetName);
     final accentColor = palette.primary;
 
+    final brightness = Theme.of(context).brightness;
+    final selectedColor = AppColors.getInteractiveAccent(brightness, accentColor);
     final foreground = isSelected
-        ? accentColor
-        : const Color(0xFF5F555A);
+        ? AppColors.getTextPrimary(brightness)
+        : AppColors.getTextSecondary(brightness);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
-        color: isSelected ? accentColor.withValues(alpha: 0.12) : Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
+        color: isSelected
+            ? AppColors.getAccentSurface(brightness, accentColor)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(SheepRadius.md),
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(SheepRadius.md),
           overlayColor: WidgetStateProperty.all(accentColor.withValues(alpha: 0.08)),
           onTap: () {
             _selectTab(index);
@@ -1347,7 +1396,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: foreground),
+                Icon(
+                  icon,
+                  size: 22,
+                  color: isSelected ? selectedColor : foreground,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
@@ -1356,7 +1409,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: foreground,
-                      fontSize: 18,
+                      fontSize: SheepTypeScale.bodyLarge,
                       fontWeight: isSelected
                           ? FontWeight.w600
                           : FontWeight.w500,
@@ -1380,10 +1433,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final hasAvatar = avatarFile != null && avatarFile.existsSync();
     final action = await showModalBottomSheet<_AvatarAction>(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (sheetContext) {
         final theme = Theme.of(sheetContext);
         return SafeArea(
@@ -1392,14 +1441,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE7DDE1),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
+                const SheepDragHandle(),
                 const SizedBox(height: 14),
                 _AvatarActionTile(
                   icon: Icons.account_circle_rounded,
@@ -1698,8 +1740,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             imagePath: category.imagePath,
             title: category.name,
             message: 'vượt ngân sách $overPercent%',
-            color: const Color(0xFFFF5F75),
-            backgroundColor: const Color(0xFFFFEEF2),
+            color: AppColors.expense,
+            backgroundColor: const Color(0x1FEE6055),
           );
         }
       } else if (progressPercent > bestProgress) {
@@ -1760,10 +1802,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         icon: Icons.pie_chart_rounded,
         title: 'Chi tiêu',
         message: '${isLower ? 'ít' : 'nhiều'} hơn $percent% so với kỳ trước',
-        color: isLower ? const Color(0xFF37D58A) : const Color(0xFFFF5F75),
+        color: isLower ? AppColors.income : AppColors.expense,
         backgroundColor: isLower
-            ? const Color(0xFFE9FFF3)
-            : const Color(0xFFFFEEF2),
+            ? const Color(0x1F20C997)
+            : const Color(0x1FEE6055),
       );
     }
 
@@ -1780,8 +1822,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         icon: Icons.pie_chart_rounded,
         title: 'Thu nhập',
         message: 'tăng $percent% so với kỳ trước',
-        color: const Color(0xFF37D58A),
-        backgroundColor: const Color(0xFFE9FFF3),
+        color: AppColors.income,
+        backgroundColor: const Color(0x1F20C997),
       );
     }
 
@@ -1813,8 +1855,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           imagePath: category.imagePath,
           title: 'Mục tiêu ${category.name}',
           message: 'đã hoàn thành 🎉',
-          color: const Color(0xFF37D58A),
-          backgroundColor: const Color(0xFFE9FFF3),
+          color: AppColors.income,
+          backgroundColor: const Color(0x1F20C997),
         );
       } else if (progress >= 0.5) {
         bestStatus = _DrawerOverviewStatus(
@@ -1854,8 +1896,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         icon: Icons.receipt_long_rounded,
         title: 'Hôm nay',
         message: 'chưa có giao dịch nào',
-        color: Color(0xFF37D58A),
-        backgroundColor: Color(0xFFE9FFF3),
+        color: AppColors.income,
+        backgroundColor: Color(0x1F20C997),
       );
     }
 
@@ -1875,8 +1917,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       icon: Icons.local_fire_department_rounded,
       title: 'Streak',
       message: '$streak ngày liên tiếp',
-      color: const Color(0xFF1F7AE0),
-      backgroundColor: const Color(0xDDE8F2FF),
+      color: AppColors.savings,
+      backgroundColor: const Color(0x1F4EA8DE),
     );
   }
 
@@ -1922,24 +1964,28 @@ class _DrawerOverviewStatus {
     this.imagePath,
     required this.title,
     required this.message,
-    this.color = const Color(0xFF1F7AE0),
-    this.backgroundColor = const Color(0xDDE8F2FF),
+    this.color = AppColors.savings,
+    this.backgroundColor = const Color(0x1F4EA8DE),
   });
 }
 
+/// Sits on the coloured drawer header, so it follows the header's
+/// foreground (like the cycle pill) and keeps the status colour only on the
+/// icon. Status colours on a palette background were unreadable.
 class _DrawerOverviewCard extends StatelessWidget {
   final _DrawerOverviewStatus status;
+  final Color foreground;
 
-  const _DrawerOverviewCard({required this.status});
+  const _DrawerOverviewCard({required this.status, required this.foreground});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: status.backgroundColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: status.color.withValues(alpha: 0.16)),
+        color: foreground.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(SheepRadius.md),
+        border: Border.all(color: foreground.withValues(alpha: 0.19)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1949,21 +1995,21 @@ class _DrawerOverviewCard extends StatelessWidget {
             child: SheepCategoryIcon(
               icon: status.icon,
               color: status.color,
-              size: 18,
+              size: 20,
               imagePath: status.imagePath,
-              backgroundColor: status.color.withValues(alpha: 0.1),
-              borderColor: status.color.withValues(alpha: 0.16),
+              backgroundColor: Colors.white,
             ),
           ),
-          const SizedBox(width: 5),
+          const SizedBox(width: 8),
           Expanded(
-            child: RichText(
+            // Text.rich (not RichText) so the app font is inherited.
+            child: Text.rich(
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              text: TextSpan(
+              TextSpan(
                 style: TextStyle(
-                  color: status.color,
-                  fontSize: 11.8,
+                  color: foreground,
+                  fontSize: SheepTypeScale.micro,
                   fontWeight: FontWeight.w600,
                   height: 1.22,
                   letterSpacing: 0,
@@ -2001,7 +2047,8 @@ class _AvatarActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = enabled ? color : const Color(0xFFB8AEB3);
+    final brightness = Theme.of(context).brightness;
+    final foreground = enabled ? color : AppColors.getTextMuted(brightness);
     return ListTile(
       enabled: enabled,
       minVerticalPadding: 10,
@@ -2010,7 +2057,9 @@ class _AvatarActionTile extends StatelessWidget {
       title: Text(
         label,
         style: TextStyle(
-          color: enabled ? const Color(0xFF4D4449) : const Color(0xFFB8AEB3),
+          color: enabled
+              ? AppColors.getTextPrimary(brightness)
+              : AppColors.getTextMuted(brightness),
           fontSize: 16,
           fontWeight: FontWeight.w600,
           letterSpacing: 0,
@@ -2105,7 +2154,7 @@ class _DrawerAvatar extends StatelessWidget {
                         overflow: TextOverflow.clip,
                         style: const TextStyle(
                           color: Color(0xFFFFA726),
-                          fontSize: 10.5,
+                          fontSize: SheepTypeScale.micro,
                           fontWeight: FontWeight.w800,
                           height: 1.1,
                           letterSpacing: 0,
@@ -2124,8 +2173,9 @@ class _DrawerAvatar extends StatelessWidget {
 
 class _DrawerCyclePill extends StatelessWidget {
   final String label;
+  final Color foreground;
 
-  const _DrawerCyclePill({required this.label});
+  const _DrawerCyclePill({required this.label, required this.foreground});
 
   @override
   Widget build(BuildContext context) {
@@ -2133,23 +2183,23 @@ class _DrawerCyclePill extends StatelessWidget {
       height: 28,
       padding: const EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
-        color: const Color(0x24FFFFFF),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0x30FFFFFF)),
+        color: foreground.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(SheepRadius.pill),
+        border: Border.all(color: foreground.withValues(alpha: 0.19)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.date_range_rounded, color: Colors.white, size: 14),
+          Icon(Icons.date_range_rounded, color: foreground, size: 14),
           const SizedBox(width: 5),
           Expanded(
             child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11.5,
+              style: TextStyle(
+                color: foreground,
+                fontSize: SheepTypeScale.micro,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0,
               ),
@@ -2164,19 +2214,23 @@ class _DrawerCyclePill extends StatelessWidget {
 class _DrawerPrivacyButton extends StatelessWidget {
   final bool isHidden;
   final VoidCallback onPressed;
+  final Color foreground;
 
-  const _DrawerPrivacyButton({required this.isHidden, required this.onPressed});
+  const _DrawerPrivacyButton({
+    required this.isHidden,
+    required this.onPressed,
+    required this.foreground,
+  });
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
       onPressed: onPressed,
       icon: Icon(
         isHidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-        color: Colors.white,
+        color: foreground,
         size: 22,
       ),
     );

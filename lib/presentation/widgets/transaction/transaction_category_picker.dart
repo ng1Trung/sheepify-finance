@@ -6,17 +6,23 @@ import '../../../core/constants/constants.dart';
 import '../../../core/utils/l10n.dart';
 import '../common/sheep_toggles.dart';
 import '../common/sheep_widgets.dart';
+import '../common/sheep_kit.dart';
 
 class TransactionCategoryPicker extends StatefulWidget {
   final List<CategoryModel> categories;
   final String? selectedCategoryId;
   final Function(String) onCategorySelected;
 
+  /// Type tab to open on (0 expense, 1 income, 2 savings). Falls back to the
+  /// first category's type when omitted.
+  final int? initialTypeIndex;
+
   const TransactionCategoryPicker({
     super.key,
     required this.categories,
     this.selectedCategoryId,
     required this.onCategorySelected,
+    this.initialTypeIndex,
   });
 
   @override
@@ -30,8 +36,9 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
   @override
   void initState() {
     super.initState();
-    // Initialize based on the first category's type or fallback to 0
-    if (widget.categories.isNotEmpty) {
+    if (widget.initialTypeIndex != null) {
+      _selectedIndex = widget.initialTypeIndex!;
+    } else if (widget.categories.isNotEmpty) {
       _selectedIndex = widget.categories.first.effectiveTypeIndex;
     } else {
       _selectedIndex = 0;
@@ -47,9 +54,11 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
       AppColors.primary,
     );
     return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: SheepSpacing.xl,
-        horizontal: SheepSpacing.page,
+      padding: const EdgeInsets.fromLTRB(
+        SheepSpacing.lg,
+        SheepSpacing.sm + 2,
+        SheepSpacing.lg,
+        SheepSpacing.lg,
       ),
       decoration: BoxDecoration(
         color: AppColors.getSurface(theme.brightness),
@@ -61,11 +70,11 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SheepDragHandle(),
+          const SizedBox(height: SheepSpacing.lg),
           Text(
             l10n.get('choose_category'),
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(letterSpacing: 1),
+            style: SheepTextStyles.sheetTitle(context),
           ),
           const SizedBox(height: SheepSpacing.lg),
 
@@ -96,7 +105,7 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Text(
                       l10n.get('no_category_type', params: {'type': typeName}),
-                      style: const TextStyle(color: Colors.grey),
+                      style: SheepTextStyles.itemMeta(context),
                     ),
                   ),
                 );
@@ -110,71 +119,64 @@ class _TransactionCategoryPickerState extends State<TransactionCategoryPicker> {
                   crossAxisCount: 3,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 2.2,
+                  childAspectRatio: 2.4,
                 ),
                 itemBuilder: (ctx, i) {
                   final c = filteredCats[i];
                   final isSelected = widget.selectedCategoryId == c.id;
                   final categoryColor = c.colorValue != null
                       ? Color(c.colorValue!)
-                      : null;
-                  final selectedColor = categoryColor ?? fallbackSelectedColor;
-                  final selectedTextColor =
-                      selectedColor.computeLuminance() > 0.45
-                      ? Colors.black
-                      : Colors.white;
-                  return GestureDetector(
-                    onTap: () => widget.onCategorySelected(c.id),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
+                      : fallbackSelectedColor;
+                  final brightness = theme.brightness;
+                  final fg = isSelected
+                      ? AppColors.getOnPrimaryFill(brightness)
+                      : AppColors.getTextPrimary(brightness);
+                  return Material(
+                    color: isSelected
+                        ? AppColors.getPrimaryFill(brightness)
+                        : AppColors.getSurface(brightness),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(SheepRadius.lg),
+                      side: BorderSide(
                         color: isSelected
-                            ? selectedColor
-                            : (categoryColor != null
-                                  ? categoryColor.withValues(alpha: 0.12)
-                                  : theme.cardColor),
-                        borderRadius: BorderRadius.circular(SheepRadius.lg),
-                        border: Border.all(
-                          color: isSelected
-                              ? selectedColor
-                              : (categoryColor != null
-                                    ? categoryColor.withValues(alpha: 0.3)
-                                    : AppColors.getBorder(theme.brightness)),
-                          width: 1,
-                        ),
+                            ? Colors.transparent
+                            : AppColors.getBorder(brightness),
                       ),
-                      child: Row(
-                        children: [
-                          SheepCategoryIcon(
-                            icon: c.iconData,
-                            color: isSelected
-                                ? selectedTextColor
-                                : selectedColor,
-                            size: 28,
-                            imagePath: c.imagePath,
-                          ),
-                          const SizedBox(width: SheepSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              c.name,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                fontSize: SheepTypeScale.meta,
-                                color: isSelected
-                                    ? selectedTextColor
-                                    : (categoryColor ??
-                                          theme.textTheme.bodyLarge?.color),
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(SheepRadius.lg),
+                      onTap: () => widget.onCategorySelected(c.id),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          children: [
+                            SheepCategoryIcon(
+                              icon: c.iconData,
+                              color: categoryColor,
+                              size: 30,
+                              imagePath: c.imagePath,
+                              backgroundColor: isSelected
+                                  ? Colors.white.withValues(alpha: 0.9)
+                                  : null,
+                            ),
+                            const SizedBox(width: SheepSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                c.name,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                style: SheepTextStyles.itemTitle(context)
+                                    .copyWith(
+                                      fontSize: SheepTypeScale.label,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: fg,
+                                    ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   );

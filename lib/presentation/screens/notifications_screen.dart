@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/utils/l10n.dart';
 import '../widgets/common/sheep_widgets.dart';
 import '../widgets/common/sheep_dialogs.dart';
+import '../widgets/common/sheep_kit.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -376,12 +377,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     required ThemeData theme,
   }) {
     final isRead = map['isRead'] as bool? ?? false;
-    final isDark = theme.brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.getSurface(theme.brightness),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (sheetContext) {
         return SafeArea(
@@ -391,16 +391,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Top drag handle
-                Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF42404B)
-                        : const Color(0xFFE7DDE1),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
+                const SheepDragHandle(),
                 const SizedBox(height: 18),
                 // Toggle Read/Unread option
                 _NotificationActionTile(

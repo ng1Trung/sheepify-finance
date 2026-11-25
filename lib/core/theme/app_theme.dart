@@ -41,6 +41,16 @@ class AppTheme {
     final baseTextTheme = resolveTextTheme(fontFamily);
 
     final outlineColor = AppColors.getBorder(brightness);
+    final primaryFill = AppColors.getPrimaryFill(brightness);
+    final onPrimaryFill = AppColors.getOnPrimaryFill(brightness);
+    final controlShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(SheepRadius.md),
+    );
+    final buttonText = baseTextTheme.labelLarge?.copyWith(
+      fontWeight: FontWeight.w600,
+      fontSize: SheepTypeScale.bodyLarge,
+      letterSpacing: 0,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -107,30 +117,79 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: interactiveAccent,
-          foregroundColor: interactiveAccent.computeLuminance() > 0.45
-              ? Colors.black
-              : Colors.white,
+          backgroundColor: primaryFill,
+          foregroundColor: onPrimaryFill,
           elevation: 0,
-          minimumSize: const Size.fromHeight(48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(SheepRadius.md),
-          ),
-          textStyle: baseTextTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: SheepTypeScale.bodyLarge,
-          ),
+          minimumSize: const Size.fromHeight(SheepControl.height),
+          shape: controlShape,
+          textStyle: buttonText,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: primaryFill,
+          foregroundColor: onPrimaryFill,
+          minimumSize: const Size(64, SheepControl.height),
+          shape: controlShape,
+          textStyle: buttonText,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: textPrimary,
+          minimumSize: const Size(64, SheepControl.height),
+          side: BorderSide(color: outlineColor),
+          shape: controlShape,
+          textStyle: buttonText,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: textPrimary,
+          minimumSize: const Size(48, SheepControl.height),
+          shape: controlShape,
+          textStyle: buttonText,
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: interactiveAccent,
-        foregroundColor: interactiveAccent.computeLuminance() > 0.45
-            ? Colors.black
-            : Colors.white,
+        backgroundColor: primaryFill,
+        foregroundColor: onPrimaryFill,
+        elevation: 2,
+        focusElevation: 2,
+        hoverElevation: 3,
+        highlightElevation: 3,
+        shape: const CircleBorder(),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: surface,
+        elevation: 0,
+        modalElevation: 0,
+        showDragHandle: false,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(SheepRadius.lg),
+          borderRadius: BorderRadius.circular(SheepRadius.sheet),
         ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: outlineColor,
+        thickness: 1,
+        space: 1,
+      ),
+      listTileTheme: ListTileThemeData(
+        shape: controlShape,
+        iconColor: textSecondary,
+        minVerticalPadding: 12,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

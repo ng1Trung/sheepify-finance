@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../common/sheep_widgets.dart';
 import '../common/sheep_notifications.dart';
 import '../../../../data/services/sheepify_scan_ai_service.dart';
+import '../common/sheep_kit.dart';
 
 class VoiceInputDialog extends StatefulWidget {
   const VoiceInputDialog({super.key});
@@ -199,14 +200,7 @@ class _VoiceInputDialogState extends State<VoiceInputDialog>
             mainAxisSize: MainAxisSize.min,
             children: [
               // Drag handle
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(SheepRadius.sm),
-                ),
-              ),
+              const SheepDragHandle(),
               const SizedBox(height: 16),
               
               Text(

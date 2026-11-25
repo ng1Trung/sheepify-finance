@@ -49,34 +49,25 @@ class SheepConfirmDialog extends StatelessWidget {
           children: [
             // Icon Header
             Container(
-              padding: const EdgeInsets.all(16),
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
-                color: (confirmColor ?? AppColors.expense).withValues(
-                  alpha: 0.1,
-                ),
+                color: AppColors.tint(confirmColor ?? AppColors.expense, brightness),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon ?? LineIcons.trash,
                 color: confirmColor ?? AppColors.expense,
-                size: 32,
+                size: 26,
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Title
+            const SizedBox(height: SheepSpacing.lg),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: SheepTypeScale.title,
-                fontWeight: FontWeight.bold,
-                color: AppColors.getTextPrimary(brightness),
-              ),
+              style: SheepTextStyles.sheetTitle(context),
             ),
-            const SizedBox(height: 12),
-
-            // Content
+            const SizedBox(height: SheepSpacing.sm),
             richContent ??
                 Text(
                   content ?? '',
@@ -87,49 +78,26 @@ class SheepConfirmDialog extends StatelessWidget {
                     height: 1.5,
                   ),
                 ),
-            const SizedBox(height: 32),
-
-            // Actions
+            const SizedBox(height: SheepSpacing.xl),
             Row(
               children: [
                 Expanded(
-                  child: TextButton(
+                  child: SheepButton(
+                    label: cancelLabel.isEmpty ? l10n.cancel : cancelLabel,
+                    variant: SheepButtonVariant.secondary,
                     onPressed: () => Navigator.pop(context, false),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(SheepRadius.lg),
-                      ),
-                    ),
-                    child: Text(
-                      cancelLabel.isEmpty ? l10n.cancel : cancelLabel,
-                      style: TextStyle(
-                        color: AppColors.getTextSecondary(brightness),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: SheepSpacing.md),
                 Expanded(
-                  child: ElevatedButton(
+                  child: SheepButton(
+                    label: confirmLabel.isEmpty ? l10n.confirm : confirmLabel,
+                    backgroundColor: confirmColor ?? AppColors.expense,
+                    foregroundColor: Colors.white,
                     onPressed: () {
                       Navigator.pop(context, true);
                       onConfirm();
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: confirmColor ?? AppColors.expense,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(SheepRadius.lg),
-                      ),
-                    ),
-                    child: Text(
-                      confirmLabel.isEmpty ? l10n.confirm : confirmLabel,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
                   ),
                 ),
               ],
@@ -193,11 +161,7 @@ class SheepGoalDialog extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: SheepTypeScale.amount,
-                fontWeight: FontWeight.bold,
-                color: AppColors.getTextPrimary(brightness),
-              ),
+              style: SheepTextStyles.sheetTitle(context),
             ),
             const SizedBox(height: 12),
             Text.rich(
@@ -219,28 +183,12 @@ class SheepGoalDialog extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: color,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(SheepRadius.xl),
-                  ),
-                ),
-                child: Text(
-                  buttonLabel.isEmpty ? l10n.get('awesome') : buttonLabel,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: SheepTypeScale.bodyLarge,
-                  ),
-                ),
-              ),
+            const SizedBox(height: SheepSpacing.xl),
+            SheepButton(
+              label: buttonLabel.isEmpty ? l10n.get('awesome') : buttonLabel,
+              isFullWidth: true,
+              large: true,
+              onPressed: () => Navigator.pop(context),
             ),
           ],
         ),

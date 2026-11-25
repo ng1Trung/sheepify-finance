@@ -24,6 +24,12 @@ class TransactionImageArea extends StatelessWidget {
   final VoidCallback onNoteLimitExceeded;
   final DateTime? date;
   final bool isActive;
+  final FocusNode? amountFocusNode;
+  final bool autofocusAmount;
+
+  /// Use a shorter, wider card when no photo is attached so the amount
+  /// field isn't pushed down by an empty placeholder.
+  final bool compact;
 
   const TransactionImageArea({
     super.key,
@@ -39,6 +45,9 @@ class TransactionImageArea extends StatelessWidget {
     required this.onNoteLimitExceeded,
     this.date,
     this.isActive = true,
+    this.amountFocusNode,
+    this.autofocusAmount = false,
+    this.compact = false,
   });
 
   @override
@@ -48,8 +57,10 @@ class TransactionImageArea extends StatelessWidget {
     final validImageFile = (imageFile != null && imageFile.existsSync()) ? imageFile : null;
     final l10n = L10n.of(context);
 
+    final useCompact = compact && validImageFile == null;
+
     return AspectRatio(
-      aspectRatio: 1,
+      aspectRatio: useCompact ? 1.45 : 1,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -73,10 +84,10 @@ class TransactionImageArea extends StatelessWidget {
                       validImageFile,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
-                          _buildPlaceholder(hasCategory),
+                          _buildPlaceholder(hasCategory, useCompact),
                     ),
                   )
-                : _buildPlaceholder(hasCategory),
+                : _buildPlaceholder(hasCategory, useCompact),
             if (isActive) ...[
               Positioned.fill(
                 child: IgnorePointer(
@@ -127,40 +138,31 @@ class TransactionImageArea extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceholder(bool hasCategory) {
+  Widget _buildPlaceholder(bool hasCategory, bool useCompact) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: !hasCategory
-              ? [const Color(0xFFBDBDBD), const Color(0xFF757575)]
-              : (categoryColor != null
-                    ? [categoryColor!, categoryColor!.withValues(alpha: 0.72)]
-                    : (selectedIndex == 0
-                          ? [const Color(0xFFC62828), const Color(0xFF8E24AA)]
-                          : (selectedIndex == 1
-                                ? [
-                                    const Color(0xFF2E7D32),
-                                    const Color(0xFF00ACC1),
-                                  ]
-                                : [
-                                    const Color(0xFF1976D2),
-                                    const Color(0xFF00BCD4),
-                                  ]))),
-        ),
+        // Flat colour: the selected category's colour, or neutral grey
+        // until a category is picked.
+        color: !hasCategory
+            ? const Color(0xFF6B6B6B)
+            : (categoryColor ??
+                  SheepTransactionTypeVisuals.fromTypeIndex(selectedIndex).color),
       ),
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 58),
+          padding: EdgeInsets.only(bottom: useCompact ? 104 : 58),
           child: hasCategory
               ? SheepCategoryIcon(
                   icon: selectedCategory!.iconData,
                   color: Colors.white,
-                  size: 64,
+                  size: useCompact ? 44 : 64,
                   imagePath: selectedCategory!.imagePath,
                 )
-              : const Icon(LineIcons.image, size: 46, color: Colors.white),
+              : Icon(
+                  LineIcons.image,
+                  size: useCompact ? 36 : 46,
+                  color: Colors.white,
+                ),
         ),
       ),
     );
@@ -212,13 +214,15 @@ class TransactionImageArea extends StatelessWidget {
                 Expanded(
                   child: TextField(
                     controller: amountController,
-                    autofocus: false,
-                    showCursor: false,
+                    focusNode: amountFocusNode,
+                    autofocus: autofocusAmount,
+                    showCursor: true,
+                    cursorColor: Colors.white,
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: contentColor,
-                      fontSize: 24,
+                      fontSize: 34,
                       fontWeight: FontWeight.bold,
                     ),
                     decoration: InputDecoration(
@@ -232,7 +236,7 @@ class TransactionImageArea extends StatelessWidget {
                       hintText: '0',
                       hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: Colors.white38,
-                        fontSize: 24,
+                        fontSize: 34,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

@@ -26,6 +26,8 @@ import '../widgets/common/sheep_dialogs.dart';
 import '../widgets/common/sheep_notifications.dart';
 import '../widgets/common/sheep_toggles.dart';
 import '../widgets/common/sheep_widgets.dart';
+import '../widgets/common/sheep_kit.dart';
+import '../widgets/payment/bank_listener_tile.dart';
 
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key});
@@ -213,6 +215,10 @@ class SettingsTab extends StatelessWidget {
                       ),
                     ),
                     _buildDivider(),
+                    BankListenerTile(
+                      titleStyle: _settingsRowTitleStyle(context),
+                    ),
+                    _buildDivider(),
                     _buildSettingsActionRow(
                       context,
                       title: l10n.get('backup_data'),
@@ -322,7 +328,7 @@ class SettingsTab extends StatelessWidget {
               Center(
                 child: Text(
                   'Sheepify v1.1.0',
-                  style: theme.textTheme.labelSmall?.copyWith(fontSize: 11),
+                  style: theme.textTheme.labelSmall?.copyWith(fontSize: SheepTypeScale.micro),
                 ),
               ),
             ],
@@ -339,7 +345,7 @@ class SettingsTab extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: BoxDecoration(
         color: AppColors.getSectionHeader(brightness),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
         border: Border(
           bottom: BorderSide(color: AppColors.getBorder(brightness)),
         ),
@@ -620,7 +626,7 @@ class SettingsTab extends StatelessWidget {
     return showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (context) => SafeArea(
         child: Padding(
@@ -687,7 +693,7 @@ class SettingsTab extends StatelessWidget {
     return showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (context) => SafeArea(
         child: Padding(
@@ -781,7 +787,7 @@ class SettingsTab extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (context) => SafeArea(
         child: Padding(
@@ -820,7 +826,7 @@ class SettingsTab extends StatelessWidget {
     return showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (context) => SafeArea(
         child: Padding(
@@ -872,7 +878,7 @@ class SettingsTab extends StatelessWidget {
     return showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (sheetContext) => SafeArea(
         child: Padding(
@@ -1253,7 +1259,7 @@ class SettingsTab extends StatelessWidget {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (sheetContext) {
         final theme = Theme.of(sheetContext);
@@ -1263,14 +1269,7 @@ class SettingsTab extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE7DDE1),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
+                const SheepDragHandle(),
                 const SizedBox(height: 14),
                 _AvatarActionTile(
                   icon: Icons.account_circle_rounded,

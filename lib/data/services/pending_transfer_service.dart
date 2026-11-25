@@ -117,6 +117,14 @@ class PendingTransferService {
       } catch (_) {}
     }
 
+    // Already settled (double tap, confirmed from another screen, or
+    // cancelled meanwhile): never touch the wallet a second time.
+    if (transaction != null && !transaction.isPending) {
+      await _forget(pendingId);
+      return transaction.isCompleted ? transaction : null;
+    }
+    if (transaction == null && pending == null) return null;
+
     if (transaction != null) {
       transaction.status = TransactionStatus.completed;
       transaction.date = DateTime.now();
@@ -148,13 +156,15 @@ class PendingTransferService {
             w.id == targetWalletId ||
             (targetBankId != null && w.bankId == targetBankId),
       );
-      final newBal =
-          (matchingWallet.initialBalance - amount).clamp(0.0, double.infinity);
-      await WalletService.adjustBalance(matchingWallet.id, newBal);
+      // No clamp: a wallet that goes negative should show it, not hide it.
+      await WalletService.adjustBalance(
+        matchingWallet.id,
+        matchingWallet.initialBalance - amount,
+      );
     } catch (_) {}
 
     // 3. Xóa khỏi danh sách Pending
-    await _box.delete(pendingId);
+    await _forget(pendingId);
 
     return transaction;
   }
@@ -162,6 +172,17 @@ class PendingTransferService {
   /// HỦY GIAO DỊCH CHỜ (Người dùng không chuyển hoặc giao dịch thất bại):
   /// Cập nhật Transaction sang status = 'cancelled'.
   /// Xóa khỏi danh sách Pending. Số dư ví hoàn toàn không bị trừ.
+  /// Called once a transfer is confirmed or cancelled (e.g. to drop its
+  /// reminder notification). Set by the notification layer.
+  static void Function(String pendingId)? onSettled;
+
+  static Future<void> _forget(String pendingId) async {
+    await _box.delete(pendingId);
+    try {
+      onSettled?.call(pendingId);
+    } catch (_) {}
+  }
+
   static Future<void> cancelTransfer(String pendingId) async {
     final moneyBox = Hive.box<Transaction>(kMoneyBox);
     Transaction? transaction = moneyBox.get(pendingId);
@@ -171,12 +192,25 @@ class PendingTransferService {
       } catch (_) {}
     }
 
-    if (transaction != null) {
+    // Only a pending transfer can be cancelled; a completed one already
+    // moved money and must be deleted / refunded instead.
+    if (transaction != null && transaction.isPending) {
       transaction.status = TransactionStatus.cancelled;
       await transaction.save();
     }
 
-    await _box.delete(pendingId);
+    await _forget(pendingId);
+  }
+
+  /// Pending transfers created in the last [within], newest first. Used to
+  /// ask "did it go through?" when the user comes back from the bank app.
+  static List<PendingTransfer> recentPending({
+    Duration within = const Duration(hours: 24),
+  }) {
+    final cutoff = DateTime.now().subtract(within);
+    return getPendingTransfers()
+        .where((p) => p.createdAt.isAfter(cutoff))
+        .toList();
   }
 
   /// ValueListenable để UI lắng nghe thay đổi các giao dịch Pending theo thời gian thực

@@ -262,6 +262,8 @@ class VietQrParser {
   }
 
   static void _appendTlv(StringBuffer buffer, String tag, String value) {
+    // Lengths are two digits; anything longer would corrupt the payload.
+    if (value.length > 99) value = value.substring(0, 99);
     final lengthStr = value.length.toString().padLeft(2, '0');
     buffer.write('$tag$lengthStr$value');
   }
