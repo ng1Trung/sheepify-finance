@@ -6,7 +6,9 @@ import '../../core/constants/constants.dart';
 import '../../core/utils/category_image_store.dart';
 import '../../core/utils/category_util.dart';
 import '../../core/utils/currency_util.dart';
+import '../../core/utils/transaction_image_store.dart';
 import '../../data/models/category_model.dart';
+import '../../data/services/notification_service.dart';
 import '../../data/models/settings_model.dart';
 import '../../data/models/transaction.dart';
 import '../widgets/category_form.dart';
@@ -143,8 +145,21 @@ class _CategoryTabState extends State<CategoryTab> {
               onDismissed: (_) async {
                 final name = cat.name;
                 final imagePath = cat.imagePath;
+                // The confirm dialog promises the category's transactions go
+                // too, so remove them instead of leaving "?" orphans behind.
+                final relatedTxs = Hive.box<Transaction>(kMoneyBox).values
+                    .where((tx) => tx.categoryId == cat.id)
+                    .toList();
+                for (final tx in relatedTxs) {
+                  final txImage = tx.imagePath;
+                  await tx.delete();
+                  await TransactionImageStore.deleteStoredRef(txImage);
+                }
                 await cat.delete();
                 await CategoryImageStore.deleteStoredRef(imagePath);
+                if (relatedTxs.isNotEmpty) {
+                  await NotificationService.checkDailyReminderReschedule();
+                }
                 if (!context.mounted) return;
                 SheepNotifications.showSuccess(
                   context,
@@ -210,7 +225,7 @@ class _CategoryTabState extends State<CategoryTab> {
                                 l10n.overBudget.toUpperCase(),
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 8,
+                                  fontSize: SheepTypeScale.micro,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -236,7 +251,7 @@ class _CategoryTabState extends State<CategoryTab> {
                                 l10n.targetAchieved.toUpperCase(),
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 8,
+                                  fontSize: SheepTypeScale.micro,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -359,7 +374,7 @@ class _CategoryTabState extends State<CategoryTab> {
                   child: Text(
                     infoLabel,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
+                      fontSize: SheepTypeScale.micro,
                       color: (typeIndex == 0 && remaining < 0)
                           ? AppColors.expense
                           : (typeIndex == 2 && remaining <= 0)
@@ -375,7 +390,7 @@ class _CategoryTabState extends State<CategoryTab> {
                     flex: 5,
                     child: Text(
                       goalSubtitle,
-                      style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
+                      style: theme.textTheme.labelSmall?.copyWith(fontSize: SheepTypeScale.micro),
                       textAlign: TextAlign.right,
                       // Removed ellipsis to try to show more
                     ),
@@ -431,7 +446,7 @@ class _CategoryTabState extends State<CategoryTab> {
       isDismissible: true,
       enableDrag: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SheepRadius.sheet)),
       ),
       builder: (_) => CategoryForm(
         category: category,

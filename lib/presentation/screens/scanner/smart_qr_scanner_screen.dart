@@ -50,8 +50,13 @@ class _SmartQrScannerScreenState extends State<SmartQrScannerScreen>
     super.dispose();
   }
 
-  Future<void> _handleBarcodeDetected(String rawValue) async {
-    if (_isProcessing || !mounted) return;
+  Future<void> _handleBarcodeDetected(
+    String rawValue, {
+    bool fromGallery = false,
+  }) async {
+    // The gallery path has already raised `_isProcessing` (to stop the live
+    // camera from firing meanwhile), so it must not be bounced by it.
+    if ((_isProcessing && !fromGallery) || !mounted) return;
     setState(() => _isProcessing = true);
 
     final parsed = VietQrParser.parse(rawValue);
@@ -82,6 +87,7 @@ class _SmartQrScannerScreenState extends State<SmartQrScannerScreen>
           initialAccountNo: parsed.bankAccount,
           initialAmount: parsed.amount,
           initialNote: parsed.purpose,
+          initialQrPayload: parsed.rawPayload,
         ),
       ),
     );
@@ -110,7 +116,7 @@ class _SmartQrScannerScreenState extends State<SmartQrScannerScreen>
       if (barcodeCapture != null && barcodeCapture.barcodes.isNotEmpty) {
         final rawValue = barcodeCapture.barcodes.first.rawValue;
         if (rawValue != null && rawValue.isNotEmpty) {
-          await _handleBarcodeDetected(rawValue);
+          await _handleBarcodeDetected(rawValue, fromGallery: true);
           return;
         }
       }
@@ -123,7 +129,8 @@ class _SmartQrScannerScreenState extends State<SmartQrScannerScreen>
       }
     } catch (e) {
       if (mounted) {
-        SheepNotifications.showError(context, 'Lỗi đọc ảnh: $e');
+        debugPrint('QR gallery scan failed: $e');
+        SheepNotifications.showError(context, 'Không đọc được ảnh này');
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -247,7 +254,6 @@ class _SmartQrScannerScreenState extends State<SmartQrScannerScreen>
                         const Text(
                           'Quét VietQR',
                           style: TextStyle(
-                            fontFamily: 'Quicksand',
                             fontSize: SheepTypeScale.item,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -283,7 +289,6 @@ class _SmartQrScannerScreenState extends State<SmartQrScannerScreen>
                       'Hướng camera vào mã VietQR để tự động ghi sổ & thanh toán',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontFamily: 'Quicksand',
                         fontSize: SheepTypeScale.label,
                         fontWeight: FontWeight.w600,
                         color: Colors.white.withValues(alpha: 0.85),
@@ -322,7 +327,6 @@ class _SmartQrScannerScreenState extends State<SmartQrScannerScreen>
                           Text(
                             'Chọn ảnh QR từ Thư viện',
                             style: TextStyle(
-                              fontFamily: 'Quicksand',
                               fontSize: SheepTypeScale.label,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,

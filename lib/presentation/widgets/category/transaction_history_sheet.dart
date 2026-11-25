@@ -13,6 +13,7 @@ import '../../../data/models/transaction.dart';
 import '../common/sheep_widgets.dart';
 import '../../../core/utils/l10n.dart';
 import '../transaction_form.dart';
+import '../common/sheep_kit.dart';
 
 class TransactionHistorySheet extends StatelessWidget {
   final CategoryModel category;
@@ -74,14 +75,7 @@ class TransactionHistorySheet extends StatelessWidget {
   }
 
   Widget _buildDragHandle() {
-    return Container(
-      width: 40,
-      height: 4,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(SheepRadius.sm),
-      ),
-    );
+    return const SheepDragHandle();
   }
 
   Widget _buildHeader(BuildContext context, Color catColor, double total) {
@@ -395,7 +389,6 @@ class TransactionHistorySheet extends StatelessWidget {
                                       ? (settings.languageCode == 'vi' ? 'Hủy' : 'Cancelled')
                                       : (settings.languageCode == 'vi' ? 'Xong' : 'Done')),
                               style: TextStyle(
-                                fontFamily: 'Quicksand',
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: tx.isPending
@@ -594,7 +587,7 @@ class TransactionHistorySheet extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 10,
+                    fontSize: SheepTypeScale.micro,
                     fontWeight: FontWeight.bold,
                     color: AppColors.savings,
                     letterSpacing: 1,
@@ -657,14 +650,14 @@ class TransactionHistorySheet extends StatelessWidget {
                 Text(
                   footerLeft,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: SheepTypeScale.micro,
                     color: Theme.of(context).hintColor,
                   ),
                 ),
                 Text(
                   footerRight,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: SheepTypeScale.micro,
                     color: Theme.of(context).hintColor,
                   ),
                 ),

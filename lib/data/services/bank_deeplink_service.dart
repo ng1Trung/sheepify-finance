@@ -305,6 +305,79 @@ class BankDeeplinkService {
   ];
 
   /// Tìm ngân hàng theo mã BIN Napas
+  /// NAPAS member banks by BIN. Only used to *name* a recipient bank; the
+  /// app list above stays the set of bank apps we can open.
+  static const Map<String, String> napasBankNames = {
+    '970436': 'Vietcombank',
+    '970407': 'Techcombank',
+    '970422': 'MB Bank',
+    '970423': 'TPBank',
+    '970432': 'VPBank',
+    '970416': 'ACB',
+    '970418': 'BIDV',
+    '970415': 'VietinBank',
+    '970405': 'Agribank',
+    '970403': 'Sacombank',
+    '970443': 'SHB',
+    '970437': 'HDBank',
+    '970449': 'LPBank',
+    '970441': 'VIB',
+    '970448': 'OCB',
+    '970426': 'MSB',
+    '970440': 'SeABank',
+    '970431': 'Eximbank',
+    '970428': 'Nam A Bank',
+    '970412': 'PVcomBank',
+    '970452': 'KienlongBank',
+    '970438': 'BaoViet Bank',
+    '970409': 'Bac A Bank',
+    '970400': 'Saigonbank',
+    '970454': 'BVBank',
+    '970427': 'VietABank',
+    '970429': 'SCB',
+    '970425': 'ABBANK',
+    '970433': 'VietBank',
+    '970419': 'NCB',
+    '970430': 'PGBank',
+    '970406': 'DongA Bank',
+    '970414': 'OceanBank',
+    '970408': 'GPBank',
+    '970434': 'Indovina Bank',
+    '970439': 'Public Bank',
+    '970421': 'VRB',
+    '970457': 'Woori Bank',
+    '970424': 'Shinhan Bank',
+    '970442': 'Hong Leong Bank',
+    '970458': 'UOB',
+    '963388': 'Timo',
+    '546034': 'CAKE',
+  };
+
+  /// Display name for a recipient BIN, whether or not we have its app.
+  static String? bankNameForBin(String? bin) {
+    if (bin == null || bin.trim().isEmpty) return null;
+    return findByBin(bin)?.shortName ?? napasBankNames[bin.trim()];
+  }
+
+  /// Every bank a VietQR transfer can go *to*: (bin, name), apps we know
+  /// first, then the rest of NAPAS alphabetically. Wallet-only ids such as
+  /// "momo" are not NAPAS BINs and are left out.
+  static List<(String, String)> recipientDirectory() {
+    final seen = <String>{};
+    final list = <(String, String)>[];
+    for (final bank in supportedBanks) {
+      if (RegExp(r'^\d{6}$').hasMatch(bank.bin) && seen.add(bank.bin)) {
+        list.add((bank.bin, bank.shortName));
+      }
+    }
+    final rest = napasBankNames.entries
+        .where((e) => !seen.contains(e.key))
+        .map((e) => (e.key, e.value))
+        .toList()
+      ..sort((a, b) => a.$2.compareTo(b.$2));
+    return [...list, ...rest];
+  }
+
   static BankAppModel? findByBin(String? bin) {
     if (bin == null || bin.isEmpty) return null;
     try {
@@ -464,11 +537,12 @@ class BankDeeplinkService {
     // Khi đang trong app ngân hàng, người dùng chỉ cần vuốt thanh thông báo xuống
     // là thấy ngay STK, số tiền, nội dung mà không phải chuyển qua lại giữa các app.
     if (resolvedAccountNo != null && resolvedAccountNo.isNotEmpty) {
-      final recipientBank = findByBin(resolvedRecipientBin) ?? findById(resolvedRecipientBin);
+      final recipientName = bankNameForBin(resolvedRecipientBin) ??
+          findById(resolvedRecipientBin)?.shortName;
       try {
         await NotificationService.showPaymentAssistantNotification(
           bankName: bank.shortName,
-          recipientBankName: recipientBank?.shortName ?? 'Ngân hàng nhận',
+          recipientBankName: recipientName ?? 'Ngân hàng nhận',
           accountNo: resolvedAccountNo,
           amount: resolvedAmount,
           note: resolvedNote,

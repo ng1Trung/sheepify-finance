@@ -15,6 +15,10 @@ import '../../core/utils/currency_util.dart';
 import 'common/sheep_widgets.dart';
 import 'transaction/transaction_image_area.dart';
 import 'transaction/transaction_category_picker.dart';
+import 'transaction/transaction_actions.dart';
+import 'transaction/voice_input_dialog.dart';
+import 'common/sheep_toggles.dart';
+import 'common/sheep_kit.dart';
 
 import 'common/sheep_notifications.dart';
 import 'common/sheep_dialogs.dart';
@@ -22,6 +26,8 @@ import '../../core/utils/transaction_image_store.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/sheepify_scan_ai_service.dart';
 import '../../data/services/wallet_service.dart';
+import '../screens/payment/quick_transfer_screen.dart';
+import '../screens/scanner/smart_qr_scanner_screen.dart';
 
 class TransactionForm extends StatefulWidget {
   final Transaction? transaction;
@@ -30,6 +36,10 @@ class TransactionForm extends StatefulWidget {
   final ScannedTransactionModel? scannedData;
   final String? scannedImagePath;
 
+  /// Called with the transaction a VietQR scan / quick transfer produced, so
+  /// the host screen can show its undo banner.
+  final ValueChanged<Transaction>? onPaymentTransactionCreated;
+
   const TransactionForm({
     super.key,
     this.transaction,
@@ -37,6 +47,7 @@ class TransactionForm extends StatefulWidget {
     this.dayTransactions,
     this.scannedData,
     this.scannedImagePath,
+    this.onPaymentTransactionCreated,
   });
 
   @override
@@ -48,6 +59,7 @@ class _TransactionFormState extends State<TransactionForm>
   static const int _noteMaxLength = 50;
   final _noteController = TextEditingController();
   final _amountController = TextEditingController();
+  final _amountFocusNode = FocusNode();
   late final AnimationController _noteShakeController;
   late final Animation<double> _noteShakeAnimation;
 
@@ -60,6 +72,34 @@ class _TransactionFormState extends State<TransactionForm>
   Transaction? _activeTransaction;
   List<Transaction> _imageTransactions = [];
   PageController? _pageController;
+  int _currentPage = 0;
+  bool _isProcessingScan = false;
+
+  // Values the active transaction had when it was loaded, used to detect
+  // unsaved edits before switching to another transaction in the carousel.
+  String _origAmountText = '';
+  String _origNote = '';
+  DateTime? _origDate;
+  String? _origCategoryId;
+  String? _origImagePath;
+
+  bool get _isEditing => _activeTransaction != null;
+
+  bool get _isDirty =>
+      _isEditing &&
+      (_amountController.text != _origAmountText ||
+          _noteController.text != _origNote ||
+          _selectedDate != _origDate ||
+          _selectedCategoryId != _origCategoryId ||
+          _imagePath != _origImagePath);
+
+  void _captureSnapshot() {
+    _origAmountText = _amountController.text;
+    _origNote = _noteController.text;
+    _origDate = _selectedDate;
+    _origCategoryId = _selectedCategoryId;
+    _origImagePath = _imagePath;
+  }
   static const int _loopFactor = 10000;
 
   int get _loopItemCount => _imageTransactions.length * _loopFactor;
@@ -72,6 +112,7 @@ class _TransactionFormState extends State<TransactionForm>
         if (initialPageIndex == -1) initialPageIndex = 0;
       }
       final int middlePage = (_loopFactor ~/ 2) * _imageTransactions.length + initialPageIndex;
+      _currentPage = middlePage;
       _pageController = PageController(
         viewportFraction: 0.82,
         initialPage: middlePage,
@@ -135,61 +176,9 @@ class _TransactionFormState extends State<TransactionForm>
         _selectedTypeIndex = cat.effectiveTypeIndex;
       } catch (_) {}
     } else if (widget.scannedData != null) {
-      // Initialize state with pre-filled AI scanned/parsed data
-      final data = widget.scannedData!;
-      
-      final settings =
-          Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
-      
-      _amountController.text = data.amount > 0
-          ? CurrencyUtil.formatNumber(
-              data.amount.toDouble(),
-              locale: settings.languageCode == 'vi' ? 'vi_VN' : 'en_US',
-            )
-          : '';
-      _noteController.text = data.note;
-      
       _selectedDate = widget.initialDate ?? DateTime.now();
-      if (data.date != 'TODAY') {
-        final parsedDate = DateTime.tryParse(data.date);
-        if (parsedDate != null) {
-          _selectedDate = parsedDate;
-        }
-      }
-      
-      _imagePath = widget.scannedImagePath;
       _selectedTypeIndex = 0; // Default Expense
-      
-      // Match category
-      final catName = data.category.toLowerCase().trim();
-      CategoryModel? matchedCat;
-      for (final cat in _catBox.values) {
-        if (cat.name.toLowerCase().trim() == catName) {
-          matchedCat = cat;
-          break;
-        }
-      }
-
-      if (matchedCat != null) {
-        _selectedCategoryId = matchedCat.id;
-        _selectedTypeIndex = matchedCat.effectiveTypeIndex;
-      } else {
-        // Fallback mapping
-        final mapping = {
-          'ăn uống': 'cat_eat',
-          'mua sắm': 'cat_shop',
-          'hóa đơn': 'cat_bill',
-          'hoá đơn': 'cat_bill',
-        };
-        final targetId = mapping[catName];
-        if (targetId != null && _catBox.containsKey(targetId)) {
-          _selectedCategoryId = targetId;
-          final cat = _catBox.get(targetId);
-          if (cat != null) {
-            _selectedTypeIndex = cat.effectiveTypeIndex;
-          }
-        }
-      }
+      _applyScannedData(widget.scannedData!, imageRef: widget.scannedImagePath);
     } else {
       // Default state for new transaction
       _selectedDate = widget.initialDate ?? DateTime.now();
@@ -197,6 +186,8 @@ class _TransactionFormState extends State<TransactionForm>
       _imagePath = null;
       _amountController.text = ''; // Start empty to show hint '0'
     }
+
+    if (_isEditing) _captureSnapshot();
 
     // Refresh state on each character typed to update visual feedback
     _amountController.addListener(() => setState(() {}));
@@ -206,6 +197,7 @@ class _TransactionFormState extends State<TransactionForm>
   @override
   void dispose() {
     _pageController?.dispose();
+    _amountFocusNode.dispose();
     _noteShakeController.dispose();
     _noteController.dispose();
     _amountController.dispose();
@@ -215,6 +207,220 @@ class _TransactionFormState extends State<TransactionForm>
   void _shakeNoteField() {
     HapticFeedback.selectionClick();
     _noteShakeController.forward(from: 0);
+  }
+
+  /// Fills the form from an AI scan / voice result. Fields the AI could not
+  /// determine keep their current value. Wrap in setState once built.
+  void _applyScannedData(ScannedTransactionModel data, {String? imageRef}) {
+    final settings =
+        Hive.box<AppSettings>(kSettingsBox).get('current') ?? AppSettings();
+
+    if (data.amount > 0) {
+      _amountController.text = CurrencyUtil.formatNumber(
+        data.amount.toDouble(),
+        locale: settings.languageCode == 'vi' ? 'vi_VN' : 'en_US',
+      );
+    }
+    if (data.note.isNotEmpty) {
+      _noteController.text = data.note;
+    }
+    if (data.date != 'TODAY') {
+      final parsedDate = DateTime.tryParse(data.date);
+      if (parsedDate != null) _selectedDate = parsedDate;
+    }
+    if (imageRef != null) _imagePath = imageRef;
+
+    final catName = data.category.toLowerCase().trim();
+    CategoryModel? matchedCat;
+    for (final cat in _catBox.values) {
+      if (cat.name.toLowerCase().trim() == catName) {
+        matchedCat = cat;
+        break;
+      }
+    }
+    if (matchedCat == null) {
+      const mapping = {
+        'ăn uống': 'cat_eat',
+        'mua sắm': 'cat_shop',
+        'hóa đơn': 'cat_bill',
+        'hoá đơn': 'cat_bill',
+      };
+      final targetId = mapping[catName];
+      if (targetId != null) {
+        for (final cat in _catBox.values) {
+          if (cat.id == targetId) {
+            matchedCat = cat;
+            break;
+          }
+        }
+      }
+    }
+    if (matchedCat != null) {
+      _selectedCategoryId = matchedCat.id;
+      _selectedTypeIndex = matchedCat.effectiveTypeIndex;
+    }
+  }
+
+  void _changeType(int typeIndex) {
+    if (typeIndex == _selectedTypeIndex) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedTypeIndex = typeIndex;
+      final current = _selectedCategory;
+      if (current != null && current.effectiveTypeIndex != typeIndex) {
+        _selectedCategoryId = null;
+      }
+    });
+  }
+
+  CategoryModel? get _selectedCategory {
+    if (_selectedCategoryId == null) return null;
+    for (final c in _catBox.values) {
+      if (c.id == _selectedCategoryId) return c;
+    }
+    return null;
+  }
+
+  /// Categories of the current type, most used first.
+  List<CategoryModel> _quickCategories() {
+    final usage = <String, int>{};
+    for (final tx in _box.values) {
+      usage[tx.categoryId] = (usage[tx.categoryId] ?? 0) + 1;
+    }
+    final cats = _catBox.values
+        .where((c) => c.effectiveTypeIndex == _selectedTypeIndex)
+        .toList()
+      ..sort((a, b) => (usage[b.id] ?? 0).compareTo(usage[a.id] ?? 0));
+    return cats.take(8).toList();
+  }
+
+  Future<void> _scanReceipt() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final l10n = L10n.of(context);
+    final theme = Theme.of(context);
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            _buildDragHandle(),
+            _buildPickerTitle(context, l10n.get('scan_source_title')),
+            ListTile(
+              leading: Icon(LineIcons.camera, color: theme.primaryColor),
+              title: Text(l10n.takePhoto),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: Icon(LineIcons.image, color: theme.primaryColor),
+              title: Text(l10n.chooseGallery),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    try {
+      final pickedFile = await ImagePicker().pickImage(source: source);
+      if (pickedFile == null || !mounted) return;
+
+      setState(() => _isProcessingScan = true);
+      final result = await SheepifyScanAIService.processInvoiceScan(pickedFile);
+      if (!mounted) return;
+
+      if (result == null) {
+        setState(() => _isProcessingScan = false);
+        SheepNotifications.showError(context, l10n.get('scan_failed'));
+        return;
+      }
+
+      final storedImageRef = await TransactionImageStore.saveFromSourcePath(
+        pickedFile.path,
+      );
+      if (!mounted) return;
+      setState(() {
+        _isProcessingScan = false;
+        _applyScannedData(result, imageRef: storedImageRef);
+      });
+    } catch (e) {
+      debugPrint('Sheepify scan failed: $e');
+      if (!mounted) return;
+      setState(() => _isProcessingScan = false);
+      SheepNotifications.showError(context, l10n.get('scan_failed'));
+    }
+  }
+
+  Future<void> _openVoiceInput() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final result = await showModalBottomSheet<ScannedTransactionModel>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const VoiceInputDialog(),
+    );
+    if (result == null || !mounted) return;
+    setState(() => _applyScannedData(result));
+  }
+
+  Future<bool> _confirmDiscardChanges() async {
+    final l10n = L10n.of(context);
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => SheepConfirmDialog(
+        title: l10n.get('discard_changes_title'),
+        content: l10n.get('discard_changes_msg'),
+        confirmLabel: l10n.get('discard'),
+        cancelLabel: l10n.get('keep_editing'),
+        confirmColor: AppColors.expense,
+        onConfirm: () {},
+      ),
+    );
+    return discard == true;
+  }
+
+  Future<void> _handlePageChanged(int index) async {
+    final target = _imageTransactions[index % _imageTransactions.length];
+    if (target.key == _activeTransaction?.key) {
+      _currentPage = index;
+      return;
+    }
+    if (_isDirty && !await _confirmDiscardChanges()) {
+      if (mounted && _effectivePageController.hasClients) {
+        _effectivePageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    _currentPage = index;
+    _setActiveTransaction(target, fromPageSwipe: true);
+  }
+
+  Future<void> _requestSwitchTo(Transaction tx) async {
+    if (tx.key == _activeTransaction?.key) return;
+    if (_isDirty && !await _confirmDiscardChanges()) return;
+    if (!mounted) return;
+    _setActiveTransaction(tx);
+  }
+
+  void _deleteActiveTransaction() {
+    final tx = _activeTransaction;
+    if (tx == null) return;
+    HapticFeedback.mediumImpact();
+    TransactionActions.deleteWithUndo(context, tx);
+    Navigator.of(context).pop();
   }
 
 
@@ -298,16 +504,7 @@ class _TransactionFormState extends State<TransactionForm>
     }
   }
 
-  Widget _buildDragHandle() {
-    return Container(
-      width: 40,
-      height: 4,
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(SheepRadius.sm),
-      ),
-    );
-  }
+  Widget _buildDragHandle() => const SheepDragHandle();
 
   Widget _buildStatusBadge(Transaction tx) {
     final settings =
@@ -362,7 +559,6 @@ class _TransactionFormState extends State<TransactionForm>
           Text(
             '$statusText${sourceText != null ? ' • $sourceText' : ''}',
             style: TextStyle(
-              fontFamily: 'Quicksand',
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
               color: statusTextColor,
@@ -375,12 +571,15 @@ class _TransactionFormState extends State<TransactionForm>
 
   Widget _buildPickerTitle(BuildContext context, String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Text(
-        title,
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(letterSpacing: 1.5),
+      padding: const EdgeInsets.fromLTRB(
+        SheepSpacing.lg,
+        SheepSpacing.lg,
+        SheepSpacing.lg,
+        SheepSpacing.sm,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(title, style: SheepTextStyles.sheetTitle(context)),
       ),
     );
   }
@@ -388,15 +587,21 @@ class _TransactionFormState extends State<TransactionForm>
   // Validate and persist transaction data
   Future<void> _submit() async {
     final l10n = L10n.of(context);
-    if (_selectedCategoryId == null) {
-      SheepNotifications.showError(context, l10n.get('error_select_category'));
-      return;
-    }
-
     final double enteredAmount = _amountController.text.isEmpty
         ? 0.0
         : CurrencyParsing.parseAmount(_amountController.text);
-    if (enteredAmount < 0) return;
+    if (enteredAmount <= 0) {
+      HapticFeedback.heavyImpact();
+      SheepNotifications.showError(context, l10n.get('error_amount_required'));
+      _amountFocusNode.requestFocus();
+      return;
+    }
+
+    if (_selectedCategoryId == null) {
+      SheepNotifications.showError(context, l10n.get('error_select_category'));
+      _showCategoryPicker();
+      return;
+    }
 
     HapticFeedback.mediumImpact();
 
@@ -460,10 +665,8 @@ class _TransactionFormState extends State<TransactionForm>
       }
     } catch (e) {
       if (mounted) {
-        SheepNotifications.showError(
-          context,
-          '${l10n.get('error_prefix')}: $e',
-        );
+        debugPrint('Sheepify save failed: $e');
+        SheepNotifications.showError(context, l10n.get('error_prefix'));
       }
     }
   }
@@ -480,6 +683,7 @@ class _TransactionFormState extends State<TransactionForm>
       backgroundColor: Colors.transparent,
       builder: (_) => TransactionCategoryPicker(
         categories: cats,
+        initialTypeIndex: _selectedTypeIndex,
         selectedCategoryId: _selectedCategoryId,
         onCategorySelected: (id) {
           final selected = _catBox.values.firstWhere((c) => c.id == id);
@@ -528,10 +732,28 @@ class _TransactionFormState extends State<TransactionForm>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildDragHandle(),
-                  if (_activeTransaction != null) ...[
-                    const SizedBox(height: SheepSpacing.sm),
-                    _buildStatusBadge(_activeTransaction!),
+                  // Status pill only when it says something: a pending /
+                  // cancelled transfer, or which wallet paid.
+                  if (_activeTransaction != null &&
+                      (!_activeTransaction!.isCompleted ||
+                          _activeTransaction!.walletId != null)) ...[
+                    const SizedBox(height: SheepSpacing.md),
+                    Center(child: _buildStatusBadge(_activeTransaction!)),
                   ],
+                  const SizedBox(height: SheepSpacing.lg),
+                  if (!_isEditing) ...[
+                    _buildSmartEntryRow(),
+                    const SizedBox(height: SheepSpacing.md),
+                  ],
+                  SheepTripleToggle(
+                    selectedIndex: _selectedTypeIndex,
+                    onChanged: _changeType,
+                    labels: [
+                      L10n.of(context).expense,
+                      L10n.of(context).income,
+                      L10n.of(context).savings,
+                    ],
+                  ),
                   const SizedBox(height: SheepSpacing.lg),
                   if (_imageTransactions.length > 1) ...[
                     AspectRatio(
@@ -540,10 +762,7 @@ class _TransactionFormState extends State<TransactionForm>
                         controller: _effectivePageController,
                         itemCount: _loopItemCount,
                         clipBehavior: Clip.none,
-                        onPageChanged: (index) {
-                          final realIndex = index % _imageTransactions.length;
-                          _setActiveTransaction(_imageTransactions[realIndex], fromPageSwipe: true);
-                        },
+                        onPageChanged: _handlePageChanged,
                         itemBuilder: (context, index) {
                           final realIndex = index % _imageTransactions.length;
                           final tx = _imageTransactions[realIndex];
@@ -576,6 +795,8 @@ class _TransactionFormState extends State<TransactionForm>
                                 onNoteLimitExceeded: _shakeNoteField,
                                 date: tx.date,
                                 isActive: isCurrent,
+                                amountFocusNode:
+                                    isCurrent ? _amountFocusNode : null,
                               ),
                             ),
                           );
@@ -600,9 +821,17 @@ class _TransactionFormState extends State<TransactionForm>
                       onNoteLimitExceeded: _shakeNoteField,
                       date: _selectedDate,
                       isActive: true,
+                      amountFocusNode: _amountFocusNode,
+                      autofocusAmount:
+                          !_isEditing && widget.scannedData == null,
+                      compact: !_isEditing,
                     ),
                   ],
-                  const SizedBox(height: SheepSpacing.lg),
+                  if (!_isEditing) ...[
+                    const SizedBox(height: SheepSpacing.lg),
+                    _buildQuickCategories(),
+                  ],
+                  const SizedBox(height: SheepSpacing.md),
                   _buildMetaControls(selectedCategory),
                   const SizedBox(height: SheepSpacing.xl),
                   _buildActionButtons(),
@@ -610,11 +839,134 @@ class _TransactionFormState extends State<TransactionForm>
               ),
             ),
           ),
-
+          if (_isProcessingScan) _buildScanOverlay(),
         ],
       ),
     );
-}
+  }
+
+  Widget _buildScanOverlay() {
+    final theme = Theme.of(context);
+    final accent = AppColors.getInteractiveAccent(
+      theme.brightness,
+      theme.colorScheme.primary,
+    );
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.45),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(SheepRadius.sheet),
+          ),
+        ),
+        child: Center(
+          child: Card(
+            color: AppColors.getSurface(theme.brightness),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(SheepRadius.xl),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(accent),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    L10n.of(context).get('scanning'),
+                    textAlign: TextAlign.center,
+                    style: SheepTextStyles.itemTitle(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Leaves the form for a payment flow (VietQR scan / quick transfer). The
+  /// payment screen records its own transaction, which is handed back to
+  /// the host screen.
+  Future<void> _openPaymentFlow(Widget screen) async {
+    if (_isDirty && !await _confirmDiscardChanges()) return;
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    final onCreated = widget.onPaymentTransactionCreated;
+    navigator.pop();
+    final tx = await navigator.push<Transaction>(
+      MaterialPageRoute(builder: (_) => screen),
+    );
+    if (tx != null) onCreated?.call(tx);
+  }
+
+  Widget _buildSmartEntryRow() {
+    final l10n = L10n.of(context);
+    final items = [
+      (LineIcons.qrcode, l10n.get('qr_short'),
+          () => _openPaymentFlow(const SmartQrScannerScreen())),
+      (Icons.send_rounded, l10n.get('transfer_short'),
+          () => _openPaymentFlow(const QuickTransferScreen())),
+      (Icons.document_scanner_rounded, l10n.get('receipt_short'), _scanReceipt),
+      (Icons.mic_rounded, l10n.get('voice_short'), _openVoiceInput),
+    ];
+    return Row(
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) const SizedBox(width: SheepSpacing.sm),
+          Expanded(
+            child: _SmartEntryButton(
+              icon: items[i].$1,
+              label: items[i].$2,
+              onTap: items[i].$3,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildQuickCategories() {
+    final theme = Theme.of(context);
+    final cats = _quickCategories();
+    if (cats.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: cats.length,
+        separatorBuilder: (_, _) => const SizedBox(width: SheepSpacing.sm),
+        itemBuilder: (context, index) {
+          final cat = cats[index];
+          final color = cat.colorValue != null
+              ? Color(cat.colorValue!)
+              : AppColors.getInteractiveAccent(
+                  theme.brightness,
+                  theme.colorScheme.primary,
+                );
+          return SheepChip(
+            label: cat.name,
+            selected: cat.id == _selectedCategoryId,
+            leading: SheepCategoryIcon(
+              icon: cat.iconData,
+              color: color,
+              size: 28,
+              imagePath: cat.imagePath,
+            ),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _selectedCategoryId = cat.id);
+            },
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildMetaControls(CategoryModel? selectedCategory) {
     return Row(
@@ -734,117 +1086,32 @@ class _TransactionFormState extends State<TransactionForm>
   }
 
   Widget _buildActionButtons() {
-    final theme = Theme.of(context);
-    final accent = AppColors.getInteractiveAccent(
-      theme.brightness,
-      theme.colorScheme.primary,
-    );
-
-    return SizedBox(
-      height: 86,
-      width: double.infinity,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildCircleActionButton(
-                icon: Icons.photo_library_rounded,
-                label: L10n.of(context).uploadImage,
-                color: AppColors.getTextSecondary(theme.brightness),
-                onTap: _pickImage,
-                size: 62,
-              ),
-              const SizedBox(width: 40),
-              const SizedBox(width: 78), // Placeholder for primary button
-              const SizedBox(
-                width: 102,
-              ), // Balance: 40 (gap) + 62 (photo button size)
-            ],
+    final l10n = L10n.of(context);
+    return Row(
+      children: [
+        SheepIconButton(
+          icon: Icons.add_photo_alternate_outlined,
+          tooltip: l10n.uploadImage,
+          onPressed: _pickImage,
+        ),
+        const SizedBox(width: SheepSpacing.md),
+        Expanded(
+          child: SheepButton(
+            label: _isEditing ? l10n.get('save_edit') : l10n.get('add_transaction'),
+            large: true,
+            onPressed: _submit,
           ),
-          _buildCircleActionButton(
-            icon: Icons.check_rounded,
-            label: _activeTransaction == null
-                ? L10n.of(context).get('create')
-                : L10n.of(context).save,
-            color: accent,
-            onTap: _submit,
-            size: 78,
-            isPrimary: true,
+        ),
+        if (_isEditing) ...[
+          const SizedBox(width: SheepSpacing.md),
+          SheepIconButton(
+            icon: Icons.delete_outline_rounded,
+            tooltip: l10n.get('delete_tx'),
+            color: AppColors.expense,
+            onPressed: _deleteActiveTransaction,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCircleActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback? onTap,
-    required double size,
-    bool isPrimary = false,
-  }) {
-    final theme = Theme.of(context);
-    final isEnabled = onTap != null;
-    final buttonColor = isPrimary
-        ? color
-        : AppColors.getSubtleSurface(theme.brightness);
-    final iconColor = isPrimary
-        ? AppColors.getOnAccent(theme.brightness, color)
-        : AppColors.getTextSecondary(theme.brightness);
-
-    Widget buttonContent = Container(
-      width: isPrimary ? size - 14 : size,
-      height: isPrimary ? size - 14 : size,
-      decoration: BoxDecoration(
-        color: buttonColor,
-        shape: BoxShape.circle,
-        border: isPrimary
-            ? null
-            : Border.all(
-                color: AppColors.getBorder(theme.brightness),
-                width: 1,
-              ),
-        boxShadow: isPrimary
-            ? [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.22),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
-      ),
-      child: Icon(icon, color: iconColor, size: isPrimary ? 30 : 26),
-    );
-
-    if (isPrimary) {
-      buttonContent = Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: color.withValues(alpha: 0.38), width: 3.0),
-        ),
-        child: buttonContent,
-      );
-    }
-
-    return Semantics(
-      button: true,
-      label: label,
-      enabled: isEnabled,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 160),
-          opacity: isEnabled ? 1 : 0.45,
-          child: buttonContent,
-        ),
-      ),
+      ],
     );
   }
 
@@ -866,6 +1133,7 @@ class _TransactionFormState extends State<TransactionForm>
       } catch (_) {}
       _selectedCategoryId = tx.categoryId;
       _imagePath = tx.imagePath;
+      _captureSnapshot();
     });
 
     if (!fromPageSwipe) {
@@ -936,11 +1204,7 @@ class _TransactionFormState extends State<TransactionForm>
               }
 
               return GestureDetector(
-                onTap: () {
-                  if (tx.key != _activeTransaction?.key) {
-                    _setActiveTransaction(tx);
-                  }
-                },
+                onTap: () => _requestSwitchTo(tx),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: AnimatedContainer(
@@ -1003,6 +1267,50 @@ class _TransactionPill extends StatelessWidget {
             border: Border.all(color: borderColor),
           ),
           child: Center(child: child),
+        ),
+      ),
+    );
+  }
+}
+
+class _SmartEntryButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _SmartEntryButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return Material(
+      color: AppColors.getSubtleSurface(brightness),
+      borderRadius: BorderRadius.circular(SheepRadius.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(SheepRadius.md),
+        child: SizedBox(
+          height: 64,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 22, color: AppColors.getTextPrimary(brightness)),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: SheepTextStyles.itemMeta(context).copyWith(
+                  color: AppColors.getTextPrimary(brightness),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

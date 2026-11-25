@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'sheep_widgets.dart';
 import '../../../core/theme/app_colors.dart';
@@ -33,11 +32,38 @@ class SheepNotifications {
     );
   }
 
+  /// Success toast with an inline action (e.g. "Undo"). Stays a bit longer
+  /// so the user has time to react.
+  static void showWithAction(
+    BuildContext context,
+    String message, {
+    required String actionLabel,
+    required VoidCallback onAction,
+  }) {
+    _show(
+      context,
+      message,
+      backgroundColor: AppColors.primary,
+      icon: Icons.check_circle_outline,
+      actionLabel: actionLabel,
+      onAction: onAction,
+      duration: const Duration(seconds: 5),
+    );
+  }
+
+  static void _dismissCurrent() {
+    _currentOverlay?.remove();
+    _currentOverlay = null;
+  }
+
   static void _show(
     BuildContext context,
     String message, {
     required Color backgroundColor,
     required IconData icon,
+    String? actionLabel,
+    VoidCallback? onAction,
+    Duration duration = const Duration(seconds: 3),
   }) {
     // Remove current overlay if exists
     _currentOverlay?.remove();
@@ -49,18 +75,21 @@ class SheepNotifications {
         message: message,
         backgroundColor: backgroundColor,
         icon: icon,
-        onDismiss: () {
-          _currentOverlay?.remove();
-          _currentOverlay = null;
-        },
+        actionLabel: actionLabel,
+        onAction: onAction == null
+            ? null
+            : () {
+                _dismissCurrent();
+                onAction();
+              },
+        onDismiss: _dismissCurrent,
       ),
     );
 
     _currentOverlay = entry;
     overlay.insert(entry);
 
-    // Auto dismiss after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(duration, () {
       if (_currentOverlay == entry) {
         entry.remove();
         _currentOverlay = null;
@@ -74,12 +103,16 @@ class _TopNotificationWidget extends StatefulWidget {
   final Color backgroundColor;
   final IconData icon;
   final VoidCallback onDismiss;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   const _TopNotificationWidget({
     required this.message,
     required this.backgroundColor,
     required this.icon,
     required this.onDismiss,
+    this.actionLabel,
+    this.onAction,
   });
 
   @override
@@ -161,20 +194,17 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
           color: Colors.transparent,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(SheepRadius.xl),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
+            child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: SheepSpacing.lg,
                   vertical: SheepSpacing.md,
                 ),
                 decoration: BoxDecoration(
-                  color: widget.backgroundColor.withValues(alpha: isDark ? 0.85 : 0.92),
+                  color: widget.backgroundColor,
                   borderRadius: BorderRadius.circular(SheepRadius.xl),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.25),
-                    width: 1.5,
-                  ),
+                  border: isDark
+                      ? Border.all(color: Colors.white.withValues(alpha: 0.12))
+                      : null,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.08),
@@ -215,6 +245,26 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
                         ),
                       ),
                     ),
+                    if (widget.actionLabel != null &&
+                        widget.onAction != null) ...[
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: widget.onAction,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.white.withValues(alpha: 0.18),
+                          minimumSize: const Size(64, 36),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(SheepRadius.pill),
+                          ),
+                        ),
+                        child: Text(
+                          widget.actionLabel!,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.close_rounded),
@@ -227,7 +277,6 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
                   ],
                 ),
               ),
-            ),
           ),
         ),
       ),

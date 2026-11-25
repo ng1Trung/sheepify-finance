@@ -303,7 +303,6 @@ class _BankAppPickerModalState extends State<BankAppPickerModal> {
                                     )
                                     .toUpperCase(),
                                 style: TextStyle(
-                                  fontFamily: 'Quicksand',
                                   fontWeight: FontWeight.w800,
                                   fontSize: 12,
                                   color: bank.brandColor,
@@ -341,7 +340,6 @@ class _BankAppPickerModalState extends State<BankAppPickerModal> {
                                         ? 'Tự động'
                                         : 'Xác nhận',
                                     style: TextStyle(
-                                      fontFamily: 'Quicksand',
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                       color: bank.canAutofillPayment
@@ -445,7 +443,6 @@ class BankAppSelectorTile extends StatelessWidget {
                             .substring(0, bank!.shortName.length.clamp(1, 3))
                             .toUpperCase(),
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
                           color: bank!.brandColor,
@@ -488,7 +485,6 @@ class BankAppSelectorTile extends StatelessWidget {
                                       ? 'Tự động'
                                       : 'Xác nhận',
                                   style: TextStyle(
-                                    fontFamily: 'Quicksand',
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                     color: bank!.canAutofillPayment
@@ -960,7 +956,6 @@ class _InstalledWalletPickerModalState
                   )
                   .toUpperCase(),
               style: TextStyle(
-                fontFamily: 'Quicksand',
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
                 color: bank.brandColor,
@@ -993,7 +988,6 @@ class _InstalledWalletPickerModalState
                   child: const Text(
                     'Mặc định',
                     style: TextStyle(
-                      fontFamily: 'Quicksand',
                       fontSize: 9.5,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFFD97706),
@@ -1016,7 +1010,6 @@ class _InstalledWalletPickerModalState
                 child: Text(
                   bank.canAutofillPayment ? 'Tự động' : 'Xác nhận',
                   style: TextStyle(
-                    fontFamily: 'Quicksand',
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: bank.canAutofillPayment
@@ -1134,7 +1127,6 @@ class InstalledWalletSelectorTile extends StatelessWidget {
                             .substring(0, bank!.shortName.length.clamp(1, 3))
                             .toUpperCase(),
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontWeight: FontWeight.w800,
                           fontSize: 12.5,
                           color: bank!.brandColor,
@@ -1181,7 +1173,6 @@ class InstalledWalletSelectorTile extends StatelessWidget {
                                       ? 'Tự động'
                                       : 'Xác nhận',
                                   style: TextStyle(
-                                    fontFamily: 'Quicksand',
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                     color: bank!.canAutofillPayment

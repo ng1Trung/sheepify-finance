@@ -99,7 +99,6 @@ class WalletManagementScreen extends StatefulWidget {
                     TextField(
                       controller: nameController,
                       style: TextStyle(
-                        fontFamily: 'Quicksand',
                         fontSize: SheepTypeScale.item,
                         fontWeight: FontWeight.w600,
                         color: AppColors.getTextPrimary(brightness),
@@ -155,7 +154,6 @@ class WalletManagementScreen extends StatefulWidget {
                       controller: balanceController,
                       keyboardType: TextInputType.number,
                       style: TextStyle(
-                        fontFamily: 'Quicksand',
                         fontSize: SheepTypeScale.bodyLarge,
                         fontWeight: FontWeight.w800,
                         color: AppColors.getTextPrimary(brightness),
@@ -169,7 +167,6 @@ class WalletManagementScreen extends StatefulWidget {
                         hintText: '0',
                         suffixText: '₫',
                         suffixStyle: const TextStyle(
-                          fontFamily: 'Quicksand',
                           fontWeight: FontWeight.w700,
                         ),
                         filled: true,
@@ -194,7 +191,6 @@ class WalletManagementScreen extends StatefulWidget {
                       title: Text(
                         'Đặt làm ví thanh toán mặc định ⭐',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: SheepTypeScale.label,
                           fontWeight: FontWeight.w700,
                           color: AppColors.getTextPrimary(brightness),
@@ -336,7 +332,6 @@ class WalletManagementScreen extends StatefulWidget {
                 autofocus: true,
                 keyboardType: TextInputType.number,
                 style: TextStyle(
-                  fontFamily: 'Quicksand',
                   fontSize: SheepTypeScale.headline,
                   fontWeight: FontWeight.w800,
                   color: AppColors.getTextPrimary(brightness),
@@ -345,7 +340,6 @@ class WalletManagementScreen extends StatefulWidget {
                   labelText: 'SỐ DƯ CHÍNH XÁC HIỆN TẠI',
                   suffixText: '₫',
                   suffixStyle: const TextStyle(
-                    fontFamily: 'Quicksand',
                     fontWeight: FontWeight.w700,
                   ),
                   filled: true,
@@ -437,7 +431,6 @@ class _WalletManagementScreenState extends State<WalletManagementScreen> {
                         Text(
                           'TỔNG TÀI SẢN KHẢ DỤNG',
                           style: TextStyle(
-                            fontFamily: 'Quicksand',
                             fontSize: SheepTypeScale.micro,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.5,
@@ -457,7 +450,6 @@ class _WalletManagementScreenState extends State<WalletManagementScreen> {
                           child: Text(
                             '${wallets.length} ví',
                             style: const TextStyle(
-                              fontFamily: 'Quicksand',
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
@@ -470,7 +462,6 @@ class _WalletManagementScreenState extends State<WalletManagementScreen> {
                     Text(
                       '${CurrencyUtil.formatMoney(totalBalance, locale: 'vi_VN')} ₫',
                       style: const TextStyle(
-                        fontFamily: 'Quicksand',
                         fontSize: SheepTypeScale.amountLarge,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
@@ -480,7 +471,6 @@ class _WalletManagementScreenState extends State<WalletManagementScreen> {
                     Text(
                       'Tự động đồng bộ số dư khi quét QR hoặc chuyển tiền',
                       style: TextStyle(
-                        fontFamily: 'Quicksand',
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.75),
                       ),
@@ -529,7 +519,6 @@ class _WalletManagementScreenState extends State<WalletManagementScreen> {
                                       .substring(0, 3)
                                       .toUpperCase(),
                                   style: TextStyle(
-                                    fontFamily: 'Quicksand',
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
                                     color: walletColor,
@@ -569,7 +558,6 @@ class _WalletManagementScreenState extends State<WalletManagementScreen> {
                                       child: Text(
                                         'Mặc định',
                                         style: TextStyle(
-                                          fontFamily: 'Quicksand',
                                           fontSize: 9,
                                           fontWeight: FontWeight.w800,
                                           color: accentColor,
@@ -591,7 +579,6 @@ class _WalletManagementScreenState extends State<WalletManagementScreen> {
                               Text(
                                 '${CurrencyUtil.formatMoney(wallet.initialBalance, locale: 'vi_VN')} ₫',
                                 style: TextStyle(
-                                  fontFamily: 'Quicksand',
                                   fontSize: SheepTypeScale.item,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.getTextPrimary(brightness),
@@ -712,7 +699,6 @@ class _WalletManagementScreenState extends State<WalletManagementScreen> {
                 label: Text(
                   'Thêm ví / tài khoản khác',
                   style: TextStyle(
-                    fontFamily: 'Quicksand',
                     fontWeight: FontWeight.w700,
                     color: accentColor,
                   ),
@@ -753,7 +739,6 @@ class _WalletManagementScreenState extends State<WalletManagementScreen> {
         title: Text(
           'Quản lý Ví & Tài khoản',
           style: TextStyle(
-            fontFamily: 'Quicksand',
             fontWeight: FontWeight.w700,
             fontSize: SheepTypeScale.title,
             color: AppColors.getTextPrimary(brightness),

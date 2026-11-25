@@ -16,10 +16,12 @@ import '../../../data/models/transaction.dart';
 import '../../../data/models/wallet_model.dart';
 import '../../../data/services/bank_deeplink_service.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../data/services/payment_prefs_service.dart';
 import '../../../data/services/pending_transfer_service.dart';
 import '../../../data/services/sheepify_scan_ai_service.dart';
 import '../../../data/services/wallet_service.dart';
 import '../../widgets/common/sheep_notifications.dart';
+import '../../widgets/common/sheep_kit.dart';
 import '../../widgets/common/sheep_widgets.dart';
 import '../../widgets/payment/bank_app_picker_modal.dart';
 import '../../widgets/transaction/transaction_category_picker.dart';
@@ -31,6 +33,9 @@ class QuickTransferScreen extends StatefulWidget {
   final String? initialNote;
   final String? initialPayeeName;
 
+  /// The VietQR string that was scanned, kept as-is for the record.
+  final String? initialQrPayload;
+
   const QuickTransferScreen({
     super.key,
     this.initialAccountNo,
@@ -38,6 +43,7 @@ class QuickTransferScreen extends StatefulWidget {
     this.initialAmount,
     this.initialNote,
     this.initialPayeeName,
+    this.initialQrPayload,
   });
 
   @override
@@ -51,11 +57,18 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
   late final TextEditingController _noteController;
   late final TextEditingController _payeeNameController;
 
-  BankAppModel? _recipientBank;
+  /// Recipient bank as a NAPAS BIN. Kept even when we don't have that bank's
+  /// app in our list, so a SeABank / MSB / … QR still pays the right bank.
+  String? _recipientBin;
+  String? get _recipientName => BankDeeplinkService.bankNameForBin(_recipientBin);
   WalletModel? _selectedWallet;
   BankAppModel? _sendingBank;
   CategoryModel? _selectedCategory;
   bool _savePayee = false;
+  final FocusNode _amountFocus = FocusNode();
+
+  /// Most-used expense categories, offered as one-tap chips.
+  late final List<CategoryModel> _quickCategories;
 
   late final Box<CategoryModel> _catBox;
   late final Box<AppSettings> _settingsBox;
@@ -88,11 +101,11 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     _payeeNameController =
         TextEditingController(text: widget.initialPayeeName ?? '');
 
-    // Khởi tạo ngân hàng nhận
-    if (widget.initialBankBin != null) {
-      _recipientBank = BankDeeplinkService.findByBin(widget.initialBankBin);
-    }
-    _recipientBank ??= BankDeeplinkService.supportedBanks.first;
+    // Recipient bank comes from the QR / payee only — never a default.
+    final initialBin = widget.initialBankBin?.trim();
+    _recipientBin = (initialBin != null && initialBin.isNotEmpty)
+        ? initialBin
+        : null;
 
     // Ngân hàng gửi mặc định lấy từ Ví ngân hàng đã cài đặt trong app (loại bỏ ví tiền mặt)
     final bankWallets = WalletService.getWallets()
@@ -111,16 +124,33 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
       _sendingBank = BankDeeplinkService.findById(_selectedWallet!.bankId);
     }
 
-    // Khởi tạo danh mục
-    final expenseCategories = _catBox.values
-        .where((c) => c.effectiveTypeIndex == 0)
+    // Category is chosen by the user (or a saved payee), not silently set to
+    // whatever expense category happens to be first.
+
+    // No bank wallet set up: reuse the app they paid with last time.
+    _sendingBank ??=
+        BankDeeplinkService.findById(PaymentPrefsService.lastSendingBankId);
+
+    _quickCategories = PaymentPrefsService.frequentExpenseCategoryIds()
+        .map((id) => _catBox.values.where((c) => c.id == id).firstOrNull)
+        .whereType<CategoryModel>()
         .toList();
-    if (expenseCategories.isNotEmpty) {
-      _selectedCategory = expenseCategories.first;
-    }
 
     // Load danh bạ người nhận
     _loadSavedPayees();
+
+    // Paid this account before? Same category as last time.
+    _selectedCategory ??= _categoryById(
+      PaymentPrefsService.categoryFor(_recipientBin, widget.initialAccountNo),
+    );
+
+    // A static QR names the recipient but not the amount: go straight there.
+    if (_amountController.text.isEmpty &&
+        (widget.initialAccountNo ?? '').isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _amountFocus.requestFocus();
+      });
+    }
 
     // Voice AI
     _speech = stt.SpeechToText();
@@ -137,6 +167,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     _amountController.dispose();
     _noteController.dispose();
     _payeeNameController.dispose();
+    _amountFocus.dispose();
     _pulseController.dispose();
     _speech.stop();
     super.dispose();
@@ -163,6 +194,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
               p.bankBin == widget.initialBankBin,
         );
         _payeeNameController.text = match.nickname;
+        _selectedCategory ??= _categoryById(match.defaultCategoryId);
       } catch (_) {}
     }
   }
@@ -269,12 +301,16 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     }
   }
 
+  CategoryModel? _categoryById(String? id) {
+    if (id == null) return null;
+    return _catBox.values.where((c) => c.id == id).firstOrNull;
+  }
+
   void _applyPayee(SavedPayee payee) {
     HapticFeedback.selectionClick();
     setState(() {
       _accountNoController.text = payee.accountNo;
-      _recipientBank = BankDeeplinkService.findByBin(payee.bankBin) ??
-          _recipientBank;
+      _recipientBin = payee.bankBin;
       if (payee.defaultNote != null && payee.defaultNote!.isNotEmpty) {
         _noteController.text = payee.defaultNote!;
       }
@@ -284,6 +320,10 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
             (c) => c.id == payee.defaultCategoryId,
           );
         } catch (_) {}
+      } else {
+        _selectedCategory ??= _categoryById(
+          PaymentPrefsService.categoryFor(payee.bankBin, payee.accountNo),
+        );
       }
     });
   }
@@ -325,141 +365,107 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
 
   void _showBankPicker() {
     FocusManager.instance.primaryFocus?.unfocus();
-    final theme = Theme.of(context);
-    final brightness = theme.brightness;
+    final directory = BankDeeplinkService.recipientDirectory();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) {
         String searchQuery = '';
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final filtered = BankDeeplinkService.supportedBanks.where((b) {
-              final q = searchQuery.toLowerCase();
-              return b.shortName.toLowerCase().contains(q) ||
-                  b.fullName.toLowerCase().contains(q);
+            final brightness = Theme.of(context).brightness;
+            final q = searchQuery.trim().toLowerCase();
+            final filtered = directory.where((entry) {
+              if (q.isEmpty) return true;
+              final app = BankDeeplinkService.findByBin(entry.$1);
+              return entry.$2.toLowerCase().contains(q) ||
+                  entry.$1.contains(q) ||
+                  (app?.fullName.toLowerCase().contains(q) ?? false) ||
+                  (app?.id.toLowerCase().contains(q) ?? false);
             }).toList();
 
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              decoration: BoxDecoration(
-                color: AppColors.getSurface(brightness),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(SheepRadius.sheet),
+            return SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.75,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  SheepSpacing.page,
+                  SheepSpacing.md,
+                  SheepSpacing.page,
+                  0,
                 ),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: SheepSpacing.page,
-                vertical: SheepSpacing.md,
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.getTextSecondary(brightness)
-                          .withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
+                child: Column(
+                  children: [
+                    const SheepDragHandle(),
+                    const SizedBox(height: SheepSpacing.md),
+                    Text(
+                      'Ngân hàng nhận',
+                      style: SheepTextStyles.sheetTitle(context),
                     ),
-                  ),
-                  const SizedBox(height: SheepSpacing.md),
-                  Text(
-                    'Chọn Ngân Hàng Thụ Hưởng',
-                    style: SheepTextStyles.itemTitle(context).copyWith(
-                      fontSize: SheepTypeScale.title,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: SheepSpacing.md),
-                  // Ô tìm kiếm ngân hàng
-                  TextField(
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      hintText: 'Tìm ngân hàng (VCB, Techcombank, MB...)',
-                      hintStyle: SheepTextStyles.itemMeta(context),
-                      filled: true,
-                      fillColor: AppColors.getSubtleSurface(brightness),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(SheepRadius.md),
-                        borderSide: BorderSide.none,
+                    const SizedBox(height: SheepSpacing.md),
+                    TextField(
+                      autofocus: false,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        hintText: 'Tìm ngân hàng (VCB, MB, SeABank…)',
+                        hintStyle: SheepTextStyles.itemMeta(context),
+                        filled: true,
+                        fillColor: AppColors.getSubtleSurface(brightness),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(SheepRadius.md),
+                          borderSide: BorderSide.none,
+                        ),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                      onChanged: (val) =>
+                          setModalState(() => searchQuery = val),
+                    ),
+                    const SizedBox(height: SheepSpacing.sm),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final (bin, name) = filtered[index];
+                          final app = BankDeeplinkService.findByBin(bin);
+                          final isSelected = _recipientBin == bin;
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                            ),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _recipientBin = bin);
+                              Navigator.pop(context);
+                            },
+                            leading: _BankBadge(bin: bin, name: name),
+                            title: Text(
+                              name,
+                              style: SheepTextStyles.itemTitle(context),
+                            ),
+                            subtitle: Text(
+                              app?.fullName ?? 'Mã BIN $bin',
+                              style: SheepTextStyles.itemMeta(context),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: isSelected
+                                ? Icon(
+                                    Icons.check_rounded,
+                                    color: AppColors.getTextPrimary(
+                                      brightness,
+                                    ),
+                                  )
+                                : null,
+                          );
+                        },
                       ),
                     ),
-                    onChanged: (val) {
-                      setModalState(() => searchQuery = val);
-                    },
-                  ),
-                  const SizedBox(height: SheepSpacing.md),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: filtered.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 6),
-                      itemBuilder: (context, index) {
-                        final bank = filtered[index];
-                        final isSelected = _recipientBank?.id == bank.id;
-
-                        return ListTile(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => _recipientBank = bank);
-                            Navigator.pop(context);
-                          },
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(SheepRadius.md),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? bank.brandColor
-                                  : AppColors.getBorder(brightness),
-                            ),
-                          ),
-                          tileColor: isSelected
-                              ? bank.brandColor.withValues(alpha: 0.1)
-                              : AppColors.getSurface(brightness),
-                          leading: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: bank.brandColor.withValues(alpha: 0.15),
-                              borderRadius:
-                                  BorderRadius.circular(SheepRadius.sm),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              bank.shortName.substring(0, 3).toUpperCase(),
-                              style: TextStyle(
-                                fontFamily: 'Quicksand',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: bank.brandColor,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            bank.shortName,
-                            style: SheepTextStyles.itemTitle(context),
-                          ),
-                          subtitle: Text(
-                            bank.fullName,
-                            style: SheepTextStyles.itemMeta(context),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: isSelected
-                              ? Icon(Icons.check_circle, color: bank.brandColor)
-                              : null,
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -495,86 +501,142 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
     return double.tryParse(clean) ?? 0;
   }
 
+  /// Bank app to send from: a bank wallet if the user has any, otherwise
+  /// any supported bank app (a wallet is optional, not a prerequisite).
+  Future<void> _pickSendingApp() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final hasBankWallets = WalletService.getWallets().any(
+      (w) => w.bankId != null && w.bankId!.trim().isNotEmpty,
+    );
+    if (hasBankWallets) {
+      await InstalledWalletPickerModal.show(
+        context: context,
+        selectedWalletId: _selectedWallet?.id,
+        onWalletSelected: (wallet, bank) {
+          setState(() {
+            _selectedWallet = wallet;
+            _sendingBank = bank;
+          });
+        },
+      );
+      return;
+    }
+    final bank = await BankAppPickerModal.show(
+      context: context,
+      selectedBank: _sendingBank,
+      title: 'Chuyển bằng app nào?',
+    );
+    if (bank != null && mounted) {
+      setState(() {
+        _sendingBank = bank;
+        _selectedWallet = null;
+      });
+    }
+  }
+
   Future<void> _handleConfirmTransfer() async {
-    final accountNo = _accountNoController.text.trim();
-    if (accountNo.length < 6) {
-      SheepNotifications.showError(context, 'Số tài khoản không hợp lệ!');
+    FocusManager.instance.primaryFocus?.unfocus();
+    final accountNo = _accountNoController.text.replaceAll(RegExp(r'\s'), '');
+
+    // Never guess the recipient bank: a wrong bank + a valid account number
+    // can be someone else's account.
+    if (_recipientBin == null) {
+      SheepNotifications.showError(context, 'Chọn ngân hàng nhận trước nhé');
+      _showBankPicker();
+      return;
+    }
+    if (!RegExp(r'^[0-9A-Za-z]{6,19}$').hasMatch(accountNo)) {
+      SheepNotifications.showError(context, 'Số tài khoản không hợp lệ');
       return;
     }
 
     final amount = _getParsedAmount();
     if (amount <= 0) {
-      SheepNotifications.showError(context, 'Vui lòng nhập số tiền hợp lệ!');
+      SheepNotifications.showError(context, 'Nhập số tiền cần chuyển');
       return;
     }
 
     if (_selectedCategory == null) {
-      SheepNotifications.showError(context, 'Vui lòng chọn danh mục!');
+      SheepNotifications.showError(context, 'Chọn danh mục cho khoản chi này');
+      _showCategoryPicker();
       return;
     }
 
-    if (_selectedWallet == null || _sendingBank == null) {
-      SheepNotifications.showError(
-        context,
-        'Vui lòng chọn ví ngân hàng đã cài đặt trong app để chuyển tiền!',
-      );
+    if (_sendingBank == null) {
+      SheepNotifications.showError(context, 'Chọn app ngân hàng để chuyển');
+      await _pickSendingApp();
       return;
     }
 
+    final sendingBank = _sendingBank!;
+    final recipientBin = _recipientBin!;
     final note = _noteController.text.trim().isNotEmpty
         ? _noteController.text.trim()
         : 'Chuyen tien';
+    final recipientName = _recipientName ?? 'Ngân hàng nhận';
 
-    // 1. Tạo chuỗi VietQR
-    final qrPayload = VietQrParser.generateVietQr(
-      bankBin: _recipientBank?.bin ?? '',
-      bankAccount: accountNo,
+    // Keep the scanned QR untouched while the user pays exactly who it
+    // names (it may carry merchant / bill references); otherwise build a
+    // fresh one for the record.
+    final scanned = widget.initialQrPayload;
+    final qrPayload = scanned != null &&
+            accountNo == widget.initialAccountNo?.trim() &&
+            recipientBin == widget.initialBankBin?.trim()
+        ? scanned
+        : VietQrParser.generateVietQr(
+            bankBin: recipientBin,
+            bankAccount: accountNo,
+            amount: amount,
+            purpose: note,
+          );
+
+    // Opening the bank app proves nothing about the transfer (the user can
+    // back out, fail OTP, lack funds), so every transfer starts as pending
+    // and is confirmed when the user comes back. It is created *before*
+    // leaving the app so the "did it go through?" prompt can find it.
+    final pending = await PendingTransferService.createPendingTransfer(
       amount: amount,
-      purpose: note,
+      note: note,
+      categoryId: _selectedCategory!.id,
+      walletId: _selectedWallet?.id,
+      sendingBankId: sendingBank.id,
+      recipientBankBin: recipientBin,
+      recipientBankName: recipientName,
+      accountNo: accountNo,
+      qrPayload: qrPayload,
+    );
+    final moneyBox = Hive.box<Transaction>(kMoneyBox);
+
+    final launched = await BankDeeplinkService.launchBankApp(
+      bank: sendingBank,
+      qrPayload: qrPayload,
+      accountNo: accountNo,
+      recipientBin: recipientBin,
+      amount: amount,
+      note: note,
     );
 
-    final recipientName = _recipientBank?.shortName ?? 'Ngân hàng nhận';
-    final isAutofill =
-        _sendingBank != null && _sendingBank!.canAutofillPayment;
-
-    // 2. Kích hoạt Deeplink mở App ngân hàng TRƯỚC
-    if (_sendingBank != null) {
-      if (!isAutofill && accountNo.isNotEmpty) {
-        try {
-          await Clipboard.setData(ClipboardData(text: accountNo));
-        } catch (_) {}
+    if (!launched) {
+      // Nothing happened: leave no trace in the ledger.
+      await PendingTransferService.cancelTransfer(pending.id);
+      await moneyBox.delete(pending.id);
+      if (mounted) {
+        SheepNotifications.showError(
+          context,
+          'Không mở được ${sendingBank.shortName}. Kiểm tra app đã được cài chưa.',
+        );
       }
-
-      final launched = await BankDeeplinkService.launchBankApp(
-        bank: _sendingBank!,
-        qrPayload: qrPayload,
-        accountNo: accountNo,
-        recipientBin: _recipientBank?.bin,
-        amount: amount,
-        note: note,
-      );
-
-      // Nếu không mở được app ngân hàng -> Báo lỗi và dừng lại, tuyệt đối KHÔNG tạo giao dịch chờ
-      if (!launched) {
-        if (mounted) {
-          SheepNotifications.showError(
-            context,
-            'Không thể mở ứng dụng ${_sendingBank!.shortName}. Vui lòng kiểm tra app đã cài đặt trên máy chưa!',
-          );
-        }
-        return;
-      }
+      return;
     }
 
-    // 3. Mở app thành công -> Lưu vào danh bạ nếu user chọn
-    if (_savePayee && _recipientBank != null) {
+    if (_savePayee) {
       final nickname = _payeeNameController.text.trim().isNotEmpty
           ? _payeeNameController.text.trim()
-          : (_recipientBank!.shortName);
+          : recipientName;
       final payee = SavedPayee(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         nickname: nickname,
-        bankBin: _recipientBank!.bin,
+        bankBin: recipientBin,
         accountNo: accountNo,
         defaultCategoryId: _selectedCategory?.id,
         defaultNote: note,
@@ -583,91 +645,25 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
       await _payeesBox.put(payee.id, payee.toJson());
     }
 
-    // 4. Tạo giao dịch và phát thông báo tương ứng
-    if (isAutofill) {
-      // FLOW TỰ ĐỘNG (ACB, BIDV, VietinBank, OCB - Ngân hàng hỗ trợ VietQR Autofill):
-      // Giao dịch được tạo tự động với trạng thái completed và trừ số dư ví
-      final resolvedWalletId = _selectedWallet?.id;
+    await PaymentPrefsService.rememberTransfer(
+      sendingBankId: sendingBank.id,
+      recipientBin: recipientBin,
+      accountNo: accountNo,
+      categoryId: _selectedCategory!.id,
+    );
+    // In case they never come back on their own.
+    await NotificationService.schedulePendingTransferReminder(
+      pendingId: pending.id,
+      amount: amount,
+      recipient: '$accountNo · $recipientName',
+    );
 
-      final moneyBox = Hive.box<Transaction>(kMoneyBox);
-      final tx = Transaction(
-        id: Transaction.createId(),
-        amount: amount,
-        note: note,
-        date: DateTime.now(),
-        isExpense: true,
-        categoryId: _selectedCategory!.id,
-        status: TransactionStatus.completed,
-        walletId: resolvedWalletId,
+    if (mounted) {
+      Navigator.pop(context, moneyBox.get(pending.id));
+      SheepNotifications.showSuccess(
+        context,
+        'Đã mở ${sendingBank.shortName}. Chuyển xong thì quay lại để xác nhận nhé.',
       );
-      await moneyBox.put(tx.id, tx);
-
-      if (resolvedWalletId != null) {
-        try {
-          final wallets = WalletService.getWallets();
-          final w = wallets.firstWhere((w) => w.id == resolvedWalletId);
-          final newBal =
-              (w.initialBalance - amount).clamp(0.0, double.infinity);
-          await WalletService.adjustBalance(w.id, newBal);
-        } catch (_) {}
-      }
-
-      if (mounted) {
-        try {
-          await NotificationService.checkAndTriggerNotifications(
-            context,
-            _selectedCategory!.id,
-            DateTime.now(),
-          );
-        } catch (_) {}
-      }
-
-      await NotificationService.showTransactionActionNotification(
-        action: TransactionActionType.created,
-        note: note,
-        amount: amount,
-        categoryName: _selectedCategory?.name,
-      );
-
-      if (mounted) {
-        Navigator.pop(context, tx);
-        SheepNotifications.showSuccess(
-          context,
-          'Đã chuyển tiền & ghi sổ chi tiêu thành công!',
-        );
-      }
-    } else {
-      // FLOW THỦ CÔNG / LOẠI 2 (Vietcombank, Techcombank, MB, MoMo, ZaloPay...):
-      // Tạo bản ghi giao dịch Chờ xác nhận (Pending)
-      final pending = await PendingTransferService.createPendingTransfer(
-        amount: amount,
-        note: note,
-        categoryId: _selectedCategory!.id,
-        walletId: _selectedWallet?.id,
-        sendingBankId: _sendingBank?.id,
-        recipientBankBin: _recipientBank?.bin,
-        recipientBankName: recipientName,
-        accountNo: accountNo,
-        qrPayload: qrPayload,
-      );
-
-      final moneyBox = Hive.box<Transaction>(kMoneyBox);
-      final tx = moneyBox.get(pending.id);
-
-      await NotificationService.showTransactionActionNotification(
-        action: TransactionActionType.created,
-        note: note,
-        amount: amount,
-        categoryName: _selectedCategory?.name,
-      );
-
-      if (mounted) {
-        Navigator.pop(context, tx);
-        SheepNotifications.showSuccess(
-          context,
-          'Đã tạo giao dịch chờ xác nhận và mở ${_sendingBank?.shortName ?? 'ngân hàng'}.',
-        );
-      }
     }
   }
 
@@ -691,13 +687,8 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Chuyển tiền & Ghi sổ',
-          style: TextStyle(
-            fontFamily: 'Quicksand',
-            fontWeight: FontWeight.w700,
-            fontSize: SheepTypeScale.title,
-            color: AppColors.getTextPrimary(brightness),
-          ),
+          'Chuyển tiền',
+          style: SheepTextStyles.sheetTitle(context),
         ),
         actions: [
           // Nút Voice AI trên AppBar
@@ -754,7 +745,6 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                             ? '🎙️ Đang nghe... Hãy nói lệnh chuyển tiền (VD: Chuyển 500k cho mẹ tiền nhà)'
                             : '⚡ AI đang phân tích và điền form...',
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: SheepTypeScale.meta,
                           fontWeight: FontWeight.w600,
                           color: AppColors.expense,
@@ -768,7 +758,7 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
             // Danh bạ người nhận thường xuyên (Quick Payees Carousel)
             if (_savedPayees.isNotEmpty) ...[
               SheepSectionTitle(
-                title: 'NGƯỜI NHẬN THƯỜNG XUYÊN',
+                title: 'Người nhận thường xuyên',
                 padding: const EdgeInsets.only(bottom: 8),
               ),
               SizedBox(
@@ -807,7 +797,6 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                                     ? payee.nickname[0].toUpperCase()
                                     : '?',
                                 style: TextStyle(
-                                  fontFamily: 'Quicksand',
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
                                   color: bank?.brandColor ?? accentColor,
@@ -820,7 +809,6 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontFamily: 'Quicksand',
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.getTextPrimary(brightness),
@@ -848,67 +836,18 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Chọn ngân hàng nhận
-                  GestureDetector(
+                  // Ngân hàng nhận — must be picked; never defaulted.
+                  _PickerTile(
                     onTap: _showBankPicker,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.getSubtleSurface(brightness),
-                        borderRadius: BorderRadius.circular(SheepRadius.md),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: (_recipientBank?.brandColor ?? accentColor)
-                                  .withValues(alpha: 0.15),
-                              borderRadius:
-                                  BorderRadius.circular(SheepRadius.sm),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              _recipientBank?.shortName
-                                      .substring(0, 3)
-                                      .toUpperCase() ??
-                                  'BNK',
-                              style: TextStyle(
-                                fontFamily: 'Quicksand',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: _recipientBank?.brandColor ?? accentColor,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'NGÂN HÀNG THỤ HƯỞNG',
-                                  style:
-                                      SheepTextStyles.itemMeta(context).copyWith(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                Text(
-                                  _recipientBank?.shortName ?? 'Chọn ngân hàng',
-                                  style: SheepTextStyles.itemTitle(context),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.keyboard_arrow_down,
-                            color: AppColors.getTextSecondary(brightness),
-                          ),
-                        ],
-                      ),
-                    ),
+                    leading: _recipientBin != null
+                        ? _BankBadge(bin: _recipientBin!, name: _recipientName ?? '')
+                        : null,
+                    label: 'Ngân hàng nhận',
+                    value: _recipientName ??
+                        (_recipientBin != null
+                            ? 'Mã BIN $_recipientBin'
+                            : 'Chọn ngân hàng'),
+                    isPlaceholder: _recipientBin == null,
                   ),
                   const SizedBox(height: SheepSpacing.md),
 
@@ -917,14 +856,13 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                     controller: _accountNoController,
                     keyboardType: TextInputType.number,
                     style: TextStyle(
-                      fontFamily: 'Quicksand',
                       fontSize: SheepTypeScale.item,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
                       color: AppColors.getTextPrimary(brightness),
                     ),
                     decoration: InputDecoration(
-                      labelText: 'SỐ TÀI KHOẢN NHẬN',
+                      labelText: 'Số tài khoản nhận',
                       labelStyle: SheepTextStyles.itemMeta(context).copyWith(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -942,7 +880,6 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                         style: TextButton.styleFrom(
                           foregroundColor: accentColor,
                           textStyle: const TextStyle(
-                            fontFamily: 'Quicksand',
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -955,27 +892,21 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                   // Số tiền
                   TextField(
                     controller: _amountController,
+                    focusNode: _amountFocus,
                     keyboardType: TextInputType.number,
-                    style: TextStyle(
-                      fontFamily: 'Quicksand',
-                      fontSize: SheepTypeScale.headline,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.expense,
+                    style: SheepTextStyles.amount(
+                      context,
+                      size: SheepTypeScale.headline,
                     ),
                     decoration: InputDecoration(
-                      labelText: 'SỐ TIỀN CHUYỂN',
+                      labelText: 'Số tiền',
                       labelStyle: SheepTextStyles.itemMeta(context).copyWith(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                       hintText: '0',
                       suffixText: '₫',
-                      suffixStyle: TextStyle(
-                        fontFamily: 'Quicksand',
-                        fontSize: SheepTypeScale.bodyLarge,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.expense,
-                      ),
+                      suffixStyle: SheepTextStyles.amount(context),
                       filled: true,
                       fillColor: AppColors.getSubtleSurface(brightness),
                       border: OutlineInputBorder(
@@ -1048,13 +979,12 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                           controller: _noteController,
                           maxLength: 50,
                           style: TextStyle(
-                            fontFamily: 'Quicksand',
                             fontSize: SheepTypeScale.item,
                             fontWeight: FontWeight.w600,
                             color: AppColors.getTextPrimary(brightness),
                           ),
                           decoration: InputDecoration(
-                            labelText: 'NỘI DUNG',
+                            labelText: 'Nội dung',
                             labelStyle:
                                 SheepTextStyles.itemMeta(context).copyWith(
                               fontSize: 10,
@@ -1079,6 +1009,33 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                       ),
                     ],
                   ),
+                  if (_quickCategories.isNotEmpty) ...[
+                    const SizedBox(height: SheepSpacing.sm),
+                    Wrap(
+                      spacing: SheepSpacing.sm,
+                      runSpacing: SheepSpacing.sm,
+                      children: [
+                        for (final cat in _quickCategories)
+                          SheepChip(
+                            label: cat.name,
+                            selected: _selectedCategory?.id == cat.id,
+                            leading: Icon(
+                              cat.iconData,
+                              size: 16,
+                              color: _selectedCategory?.id == cat.id
+                                  ? AppColors.getOnPrimaryFill(brightness)
+                                  : Color(
+                                      cat.colorValue ?? accentColor.toARGB32(),
+                                    ),
+                            ),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _selectedCategory = cat);
+                            },
+                          ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: SheepSpacing.md),
 
                   // Tùy chọn lưu vào danh bạ
@@ -1095,7 +1052,6 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                         child: Text(
                           'Lưu vào danh bạ người nhận thường xuyên',
                           style: TextStyle(
-                            fontFamily: 'Quicksand',
                             fontSize: SheepTypeScale.label,
                             fontWeight: FontWeight.w600,
                             color: AppColors.getTextPrimary(brightness),
@@ -1110,13 +1066,12 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
                       child: TextField(
                         controller: _payeeNameController,
                         style: TextStyle(
-                          fontFamily: 'Quicksand',
                           fontSize: SheepTypeScale.item,
                           fontWeight: FontWeight.w600,
                           color: AppColors.getTextPrimary(brightness),
                         ),
                         decoration: InputDecoration(
-                          labelText: 'TÊN GỢI NHỚ (VD: Chủ nhà, Mẹ, Quỹ lớp...)',
+                          labelText: 'Tên gợi nhớ (VD: Chủ nhà, Mẹ…)',
                           labelStyle:
                               SheepTextStyles.itemMeta(context).copyWith(
                             fontSize: 10,
@@ -1139,35 +1094,172 @@ class _QuickTransferScreenState extends State<QuickTransferScreen>
             ),
             const SizedBox(height: SheepSpacing.md),
 
-            // Chọn ví ngân hàng để chuyển (Chỉ hiển thị các ví ngân hàng đã cài đặt trong app)
-            InstalledWalletSelectorTile(
-              wallet: _selectedWallet,
-              bank: _sendingBank,
-              label: 'CHỌN VÍ THANH TOÁN',
-              onTap: () {
-                InstalledWalletPickerModal.show(
-                  context: context,
-                  selectedWalletId: _selectedWallet?.id,
-                  onWalletSelected: (wallet, bank) {
-                    setState(() {
-                      _selectedWallet = wallet;
-                      _sendingBank = bank;
-                    });
-                  },
-                );
-              },
+            // App / wallet used to send
+            _PickerTile(
+              onTap: _pickSendingApp,
+              leading: _sendingBank != null
+                  ? _BankBadge(
+                      bin: _sendingBank!.bin,
+                      name: _sendingBank!.shortName,
+                    )
+                  : null,
+              label: 'Chuyển bằng',
+              value: _selectedWallet?.name ??
+                  _sendingBank?.shortName ??
+                  'Chọn app ngân hàng',
+              detail: _selectedWallet != null
+                  ? 'Số dư ${CurrencyUtil.formatMoney(_selectedWallet!.initialBalance, locale: 'vi_VN')}'
+                  : null,
+              isPlaceholder: _sendingBank == null,
+              card: true,
             ),
             const SizedBox(height: SheepSpacing.xl),
 
-            // Nút Chuyển tiền & Ghi sổ
             SheepButton(
-              label: 'Chuyển tiền & Ghi sổ',
+              label: 'Mở app ngân hàng để chuyển',
               isFullWidth: true,
-              backgroundColor: accentColor,
-              icon: const Icon(LineIcons.paperPlane, size: 20),
+              large: true,
+              icon: const Icon(Icons.open_in_new_rounded, size: 20),
               onPressed: _handleConfirmTransfer,
             ),
+            const SizedBox(height: SheepSpacing.sm),
+            Text(
+              'Giao dịch được ghi “Chờ xác nhận” cho tới khi bạn xác nhận đã chuyển xong.',
+              textAlign: TextAlign.center,
+              style: SheepTextStyles.itemMeta(context),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bank logo from VietQR's CDN, falling back to the bank's initials offline.
+class _BankBadge extends StatelessWidget {
+  final String bin;
+  final String name;
+  static const double size = 36;
+
+  const _BankBadge({required this.bin, required this.name});
+
+  String get _initials {
+    final app = BankDeeplinkService.findByBin(bin);
+    if (app != null && app.id.length <= 4) return app.id.toUpperCase();
+    final words = name.split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    if (words.length > 1) return words.take(2).map((w) => w[0]).join().toUpperCase();
+    return name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final app = BankDeeplinkService.findByBin(bin);
+    final color = app?.brandColor ?? AppColors.getTextSecondary(brightness);
+    final fallback = Center(
+      child: Text(
+        _initials,
+        style: SheepTextStyles.itemMeta(context).copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+    return Container(
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(SheepRadius.sm),
+        border: Border.all(color: AppColors.getBorder(brightness)),
+      ),
+      child: app?.logoUrl != null
+          ? Padding(
+              padding: const EdgeInsets.all(3),
+              child: Image.network(
+                app!.logoUrl!,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => fallback,
+              ),
+            )
+          : fallback,
+    );
+  }
+}
+
+/// "Label / value ▾" row used for the recipient bank and the paying app.
+class _PickerTile extends StatelessWidget {
+  final VoidCallback onTap;
+  final Widget? leading;
+  final String label;
+  final String value;
+  final String? detail;
+  final bool isPlaceholder;
+  final bool card;
+
+  const _PickerTile({
+    required this.onTap,
+    required this.label,
+    required this.value,
+    this.leading,
+    this.detail,
+    this.isPlaceholder = false,
+    this.card = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final radius = BorderRadius.circular(card ? SheepRadius.xl : SheepRadius.md);
+    return Material(
+      color: card
+          ? AppColors.getSurface(brightness)
+          : AppColors.getSubtleSurface(brightness),
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: card
+            ? BorderSide(color: AppColors.getBorder(brightness))
+            : BorderSide.none,
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: SheepTextStyles.itemMeta(context)),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: SheepTextStyles.itemTitle(context).copyWith(
+                        color: isPlaceholder
+                            ? AppColors.getTextMuted(brightness)
+                            : null,
+                      ),
+                    ),
+                    if (detail != null)
+                      Text(detail!, style: SheepTextStyles.itemMeta(context)),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.getTextSecondary(brightness),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -99,12 +99,7 @@ class SheepTypeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final activeColor = AppColors.getInteractiveAccent(
-      theme.brightness,
-      theme.colorScheme.primary,
-    );
-    final onActiveColor = AppColors.getOnAccent(theme.brightness, activeColor);
+    final onActiveColor = AppColors.getTextPrimary(Theme.of(context).brightness);
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalWidth = constraints.maxWidth;
@@ -115,29 +110,18 @@ class SheepTypeToggle extends StatelessWidget {
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             color: AppColors.getSubtleSurface(Theme.of(context).brightness),
-            borderRadius: BorderRadius.circular(SheepRadius.lg),
-            border: Border.all(
-              color: AppColors.getBorder(Theme.of(context).brightness),
-            ),
+            borderRadius: BorderRadius.circular(SheepRadius.md),
           ),
           child: Stack(
             children: [
               AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutBack,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
                 left: (isExpense ? 0 : 1) * itemWidth,
                 width: itemWidth,
                 top: 0,
                 bottom: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: activeColor,
-                    borderRadius: BorderRadius.circular(SheepRadius.sm),
-                    boxShadow: AppColors.getSoftShadow(
-                      Theme.of(context).brightness,
-                    ),
-                  ),
-                ),
+                child: const SheepSegmentIndicator(),
               ),
               Row(
                 children: [
@@ -180,10 +164,10 @@ class SheepTypeToggle extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             style: Theme.of(context).textTheme.labelSmall!.copyWith(
               fontSize: SheepTypeScale.label,
-              fontWeight: FontWeight.bold,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
               color: isActive
                   ? color
-                  : Theme.of(context).textTheme.labelSmall?.color,
+                  : AppColors.getTextSecondary(Theme.of(context).brightness),
             ),
             child: Text(title),
           ),
@@ -209,12 +193,7 @@ class SheepTripleToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final activeColor = AppColors.getInteractiveAccent(
-      theme.brightness,
-      theme.colorScheme.primary,
-    );
-    final onActiveColor = AppColors.getOnAccent(theme.brightness, activeColor);
+    final onActiveColor = AppColors.getTextPrimary(Theme.of(context).brightness);
     return LayoutBuilder(
       builder: (context, constraints) {
         final l10n = L10n.of(context);
@@ -229,10 +208,7 @@ class SheepTripleToggle extends StatelessWidget {
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             color: AppColors.getSubtleSurface(Theme.of(context).brightness),
-            borderRadius: BorderRadius.circular(SheepRadius.lg),
-            border: Border.all(
-              color: AppColors.getBorder(Theme.of(context).brightness),
-            ),
+            borderRadius: BorderRadius.circular(SheepRadius.md),
           ),
           child: Stack(
             children: [
@@ -252,18 +228,18 @@ class SheepTripleToggle extends StatelessWidget {
                           width: itemWidth,
                           top: 0,
                           bottom: 0,
-                          child: _buildIndicator(context),
+                          child: const SheepSegmentIndicator(),
                         );
                       },
                     )
                   : AnimatedPositioned(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
                       left: selectedIndex * itemWidth,
                       width: itemWidth,
                       top: 0,
                       bottom: 0,
-                      child: _buildIndicator(context),
+                      child: const SheepSegmentIndicator(),
                     ),
 
               // TEXT LABELS
@@ -280,13 +256,15 @@ class SheepTripleToggle extends StatelessWidget {
                           duration: const Duration(milliseconds: 200),
                           style: Theme.of(context).textTheme.labelSmall!
                               .copyWith(
-                                fontSize: SheepTypeScale.meta,
-                                fontWeight: FontWeight.bold,
+                                fontSize: SheepTypeScale.label,
+                                fontWeight: isActive
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
                                 color: isActive
                                     ? onActiveColor
-                                    : Theme.of(
-                                        context,
-                                      ).textTheme.labelSmall?.color,
+                                    : AppColors.getTextSecondary(
+                                        Theme.of(context).brightness,
+                                      ),
                               ),
                           child: Text(currentLabels[index]),
                         ),
@@ -301,18 +279,29 @@ class SheepTripleToggle extends StatelessWidget {
       },
     );
   }
+}
 
-  Widget _buildIndicator(BuildContext context) {
-    final theme = Theme.of(context);
-    final activeColor = AppColors.getInteractiveAccent(
-      theme.brightness,
-      theme.colorScheme.primary,
-    );
-    return Container(
+/// The sliding "thumb" of segmented controls: a raised surface on a grey
+/// track, so the selected option reads clearly without using brand colour.
+class SheepSegmentIndicator extends StatelessWidget {
+  const SheepSegmentIndicator({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: activeColor,
-        borderRadius: BorderRadius.circular(SheepRadius.sm),
-        boxShadow: AppColors.getSoftShadow(Theme.of(context).brightness),
+        color: isDark ? const Color(0xFF3A3A3A) : Colors.white,
+        borderRadius: BorderRadius.circular(SheepRadius.sm + 1),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
       ),
     );
   }

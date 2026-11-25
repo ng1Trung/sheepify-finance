@@ -4,6 +4,7 @@ import 'package:lottie/lottie.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/category_image_store.dart';
 import '../../../core/utils/l10n.dart';
+import 'sheep_kit.dart';
 
 class SheepSpacing {
   static const double xs = 4;
@@ -20,17 +21,27 @@ class SheepSpacing {
   );
 }
 
+/// One radius scale for the whole app:
+/// sm = small badges, md = controls (buttons, inputs, segmented),
+/// lg = list groups / tiles, xl = cards, sheet = bottom sheets & dialogs.
 class SheepRadius {
-  static const double sm = 10;
+  static const double sm = 8;
   static const double md = 12;
-  static const double lg = 14;
+  static const double lg = 12;
   static const double xl = 16;
-  static const double sheet = 24;
+  static const double sheet = 20;
   static const double pill = 999;
 }
 
+class SheepControl {
+  /// Standard tap height for buttons, inputs and pills (>= 48dp guideline).
+  static const double height = 48;
+  static const double heightLarge = 52;
+  static const double heightSmall = 36;
+}
+
 class SheepTypeScale {
-  static const double micro = 11;
+  static const double micro = 12; // Smallest size allowed anywhere
   static const double meta = 12;
   static const double label = 13;
   static const double body = 14;
@@ -71,14 +82,31 @@ class SheepTextStyles {
   }
 
   static TextStyle dateHeader(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
     return Theme.of(context).textTheme.bodyMedium!.copyWith(
-      color: AppColors.getTextSecondary(
-        brightness,
-      ).withValues(alpha: brightness == Brightness.light ? 0.42 : 0.58),
-      fontSize: SheepTypeScale.item,
+      color: AppColors.getTextSecondary(Theme.of(context).brightness),
+      fontSize: SheepTypeScale.meta,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0,
+    );
+  }
+
+  static TextStyle sheetTitle(BuildContext context) {
+    return Theme.of(context).textTheme.titleLarge!.copyWith(
+      color: AppColors.getTextPrimary(Theme.of(context).brightness),
+      fontSize: SheepTypeScale.title,
       fontWeight: FontWeight.w700,
       letterSpacing: 0,
+    );
+  }
+
+  /// Money amounts: tabular figures so columns of numbers line up.
+  static TextStyle amount(BuildContext context, {double? size, Color? color}) {
+    return Theme.of(context).textTheme.bodyMedium!.copyWith(
+      color: color ?? AppColors.getTextPrimary(Theme.of(context).brightness),
+      fontSize: size ?? SheepTypeScale.item,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0,
+      fontFeatures: const [FontFeature.tabularFigures()],
     );
   }
 
@@ -117,9 +145,11 @@ class SheepCard extends StatelessWidget {
     final resolvedRadius = BorderRadius.circular(
       borderRadius ?? SheepRadius.xl,
     );
+    // Clip at the card's outer edge, *then* pad. Clipping the padded inner
+    // box with the same radius used to shave the corners off glyphs sitting
+    // at the content's top-left / bottom-left (e.g. the "S" of "Số dư").
     return Container(
       margin: margin,
-      padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color ?? AppColors.getSurface(brightness),
         borderRadius: resolvedRadius,
@@ -127,10 +157,13 @@ class SheepCard extends StatelessWidget {
         boxShadow: AppColors.getSoftShadow(brightness),
       ),
       child: Material(
-        color: Colors.transparent,
+        type: MaterialType.transparency,
         clipBehavior: Clip.antiAlias,
         borderRadius: resolvedRadius,
-        child: child,
+        child: Padding(
+          padding: padding ?? const EdgeInsets.all(16),
+          child: child,
+        ),
       ),
     );
   }
@@ -158,7 +191,7 @@ class SheepCategoryIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageFile = CategoryImageStore.resolve(imagePath);
     final hasReadableImage = imageFile?.existsSync() ?? false;
-    final radius = BorderRadius.circular(SheepRadius.md);
+    final radius = BorderRadius.circular(size / 2);
 
     return Container(
       width: size,
@@ -185,12 +218,12 @@ class SheepCategoryIcon extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: radius,
-                border: Border.all(
-                  color:
-                      borderColor ??
-                      (hasReadableImage ? color : color.withValues(alpha: 0.3)),
-                  width: hasReadableImage ? 1.5 : 1.0,
-                ),
+                border: borderColor != null || hasReadableImage
+                    ? Border.all(
+                        color: borderColor ?? color,
+                        width: hasReadableImage ? 1.5 : 1.0,
+                      )
+                    : null,
               ),
             ),
           ),
@@ -274,6 +307,11 @@ class SheepEmptyState extends StatelessWidget {
   }
 }
 
+enum SheepButtonVariant { primary, secondary, ghost, danger }
+
+/// The one button used across the app.
+/// primary = neutral black/white fill (max one per view),
+/// secondary = soft grey fill, ghost = text only, danger = soft red.
 class SheepButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -281,6 +319,8 @@ class SheepButton extends StatelessWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
   final Widget? icon;
+  final SheepButtonVariant variant;
+  final bool large;
 
   const SheepButton({
     super.key,
@@ -290,35 +330,65 @@ class SheepButton extends StatelessWidget {
     this.backgroundColor,
     this.foregroundColor,
     this.icon,
+    this.variant = SheepButtonVariant.primary,
+    this.large = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final resolvedBackground = backgroundColor ?? theme.primaryColor;
-    final resolvedForeground =
+    final brightness = Theme.of(context).brightness;
+    final (Color bg, Color fg) = switch (variant) {
+      SheepButtonVariant.primary => (
+        AppColors.getPrimaryFill(brightness),
+        AppColors.getOnPrimaryFill(brightness),
+      ),
+      SheepButtonVariant.secondary => (
+        AppColors.getSubtleSurface(brightness),
+        AppColors.getTextPrimary(brightness),
+      ),
+      SheepButtonVariant.ghost => (
+        Colors.transparent,
+        AppColors.getTextPrimary(brightness),
+      ),
+      SheepButtonVariant.danger => (
+        AppColors.tint(AppColors.expense, brightness),
+        AppColors.expense,
+      ),
+    };
+    final resolvedBg = backgroundColor ?? bg;
+    final resolvedFg =
         foregroundColor ??
-        AppColors.getOnAccent(theme.brightness, resolvedBackground);
-    final style = ElevatedButton.styleFrom(
-      backgroundColor: resolvedBackground,
-      foregroundColor: resolvedForeground,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      minimumSize: Size.fromHeight(
-        icon != null ? 56 : 48,
-      ), // Use icon presence as proxy for primary actions
-    );
+        (backgroundColor != null
+            ? AppColors.getOnAccent(brightness, backgroundColor!)
+            : fg);
 
-    Widget buttonChild = icon != null
-        ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [icon!, const SizedBox(width: 8), Text(label)],
-          )
-        : Text(label);
-
-    Widget btn = ElevatedButton(
+    final btn = TextButton(
       onPressed: onPressed,
-      style: style,
-      child: buttonChild,
+      style: TextButton.styleFrom(
+        backgroundColor: resolvedBg,
+        foregroundColor: resolvedFg,
+        disabledBackgroundColor: resolvedBg.withValues(alpha: 0.4),
+        disabledForegroundColor: resolvedFg.withValues(alpha: 0.6),
+        minimumSize: Size(
+          64,
+          large ? SheepControl.heightLarge : SheepControl.height,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: SheepSpacing.xl),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SheepRadius.md),
+        ),
+        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontSize: SheepTypeScale.bodyLarge,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0,
+        ),
+      ),
+      child: icon == null
+          ? Text(label)
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [icon!, const SizedBox(width: 8), Text(label)],
+            ),
     );
 
     if (isFullWidth) {
@@ -376,6 +446,8 @@ class SheepListTile extends StatelessWidget {
   }
 }
 
+/// One transaction row. Flat (no border/background) so it can sit inside a
+/// [SheepGroup] with hairline dividers between rows.
 class SheepTransactionCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -417,249 +489,131 @@ class SheepTransactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final borderColor = AppColors.getBorder(brightness);
     final resolvedIconColor = iconColor ?? AppColors.getTextPrimary(brightness);
     final hasNote = dateText.trim().isNotEmpty;
 
-    return Container(
-      margin: margin ?? const EdgeInsets.only(bottom: SheepSpacing.itemGap),
-      decoration: BoxDecoration(
-        color: AppColors.getSurface(brightness),
-        borderRadius: BorderRadius.circular(SheepRadius.lg),
-        border: Border.all(color: borderColor),
-      ),
+    return Padding(
+      padding: margin ?? EdgeInsets.zero,
       child: InkWell(
-        borderRadius: BorderRadius.circular(SheepRadius.lg),
         onTap: onTap,
-        child: SizedBox(
-          height: hasNote ? 64 : 54,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 60),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: SheepSpacing.md,
+              vertical: SheepSpacing.sm + 2,
+            ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SheepCategoryIcon(
                   icon: icon,
                   color: resolvedIconColor,
-                  size: 34,
+                  size: 36,
                   imagePath: iconImagePath,
                   backgroundColor: iconBackground,
                   borderColor: iconBorderColor,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: SheepSpacing.md),
                 Expanded(
-                  child: !hasNote
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      title,
-                                      style: SheepTextStyles.itemTitle(context)
-                                          .copyWith(
-                                            fontSize: SheepTypeScale.item,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (badgeText != null) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: badgeColor ??
-                                            const Color(0xFFF59E0B)
-                                                .withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(
-                                            SheepRadius.sm),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (badgeIcon != null) ...[
-                                            Icon(
-                                              badgeIcon,
-                                              size: 10,
-                                              color: badgeTextColor ??
-                                                  const Color(0xFFD97706),
-                                            ),
-                                            const SizedBox(width: 3),
-                                          ],
-                                          Text(
-                                            badgeText!,
-                                            style: TextStyle(
-                                              fontFamily: 'Quicksand',
-                                              fontSize: 10.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: badgeTextColor ??
-                                                  const Color(0xFFD97706),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              title,
+                              style: SheepTextStyles.itemTitle(
+                                context,
+                              ).copyWith(fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(width: 10),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                if (amountIcon != null) ...[
-                                  Icon(
-                                    amountIcon,
-                                    size: 16,
-                                    color: amountColor,
-                                  ),
-                                  const SizedBox(width: 3),
-                                ],
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 128,
-                                  ),
-                                  child: Text(
-                                    amountText,
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(
-                                      fontSize: SheepTypeScale.item,
-                                      fontWeight: FontWeight.w700,
-                                      color: amountColor,
-                                      letterSpacing: 0,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
+                          ),
+                          if (badgeText != null) ...[
+                            const SizedBox(width: 6),
+                            _StatusBadge(
+                              text: badgeText!,
+                              icon: badgeIcon,
+                              color: badgeTextColor ?? AppColors.warning,
+                              background: badgeColor,
                             ),
                           ],
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    title,
-                                    style: SheepTextStyles.itemTitle(context)
-                                        .copyWith(
-                                          fontSize: SheepTypeScale.item,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    if (amountIcon != null) ...[
-                                      Icon(
-                                        amountIcon,
-                                        size: 16,
-                                        color: amountColor,
-                                      ),
-                                      const SizedBox(width: 3),
-                                    ],
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 128,
-                                      ),
-                                      child: Text(
-                                        amountText,
-                                        textAlign: TextAlign.right,
-                                        style: TextStyle(
-                                          fontSize: SheepTypeScale.item,
-                                          fontWeight: FontWeight.w700,
-                                          color: amountColor,
-                                          letterSpacing: 0,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    dateText,
-                                    style: SheepTextStyles.itemMeta(
-                                      context,
-                                    ).copyWith(fontSize: SheepTypeScale.body),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (badgeText != null) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: badgeColor ??
-                                          const Color(0xFFF59E0B)
-                                              .withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(
-                                          SheepRadius.sm),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (badgeIcon != null) ...[
-                                          Icon(
-                                            badgeIcon,
-                                            size: 10,
-                                            color: badgeTextColor ??
-                                                const Color(0xFFD97706),
-                                          ),
-                                          const SizedBox(width: 3),
-                                        ],
-                                        Text(
-                                          badgeText!,
-                                          style: TextStyle(
-                                            fontFamily: 'Quicksand',
-                                            fontSize: 10.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: badgeTextColor ??
-                                                const Color(0xFFD97706),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
+                        ],
+                      ),
+                      if (hasNote) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          dateText,
+                          style: SheepTextStyles.itemMeta(context),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: SheepSpacing.md),
+                if (amountIcon != null) ...[
+                  Icon(amountIcon, size: 16, color: amountColor),
+                  const SizedBox(width: 3),
+                ],
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 140),
+                  child: Text(
+                    amountText,
+                    textAlign: TextAlign.right,
+                    style: SheepTextStyles.amount(context, color: amountColor),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Small pill used for transaction status (pending / cancelled).
+class _StatusBadge extends StatelessWidget {
+  final String text;
+  final IconData? icon;
+  final Color color;
+  final Color? background;
+
+  const _StatusBadge({
+    required this.text,
+    required this.color,
+    this.icon,
+    this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: background ?? color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(SheepRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            text,
+            style: SheepTextStyles.itemMeta(
+              context,
+            ).copyWith(color: color, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }
@@ -1020,14 +974,7 @@ class SheepDatePicker {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(SheepRadius.sm),
-                      ),
-                    ),
+                    const SheepDragHandle(),
                     const SizedBox(height: SheepSpacing.xl),
                     Text(
                       DateFormat(
@@ -1147,14 +1094,7 @@ class SheepDateRangePicker {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(SheepRadius.sm),
-                      ),
-                    ),
+                    const SheepDragHandle(),
                     const SizedBox(height: SheepSpacing.xl),
                     Text(
                       end == null ||

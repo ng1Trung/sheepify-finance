@@ -38,6 +38,21 @@ class TransactionImageStore {
     return path.join(_directoryName, fileName);
   }
 
+  /// Deletes an image previously saved by this store. Absolute paths (legacy
+  /// refs that point outside the app folder) are left untouched.
+  static Future<void> deleteStoredRef(String? storedRef) async {
+    if (storedRef == null || storedRef.isEmpty || path.isAbsolute(storedRef)) {
+      return;
+    }
+    final file = resolve(storedRef);
+    if (file == null || !path.isWithin(_imageDirectory.path, file.path)) {
+      return;
+    }
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+
   static File? resolve(String? storedRef) {
     if (storedRef == null || storedRef.isEmpty) return null;
 
